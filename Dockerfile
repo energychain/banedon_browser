@@ -23,11 +23,42 @@ RUN apk add --no-cache zip
 # Build extension package
 RUN chmod +x build.sh && ./build.sh
 
-# Production stage
-FROM node:18-alpine AS production
+# Production stage - Use Debian for better browser support
+FROM node:18-slim AS production
 
-# Install dumb-init for proper signal handling
-RUN apk add --no-cache dumb-init
+# Install system dependencies for headless browser automation
+RUN apt-get update && apt-get install -y \
+    # Browser dependencies
+    chromium \
+    # Display server for headless mode
+    xvfb \
+    # Font support
+    fonts-liberation \
+    fonts-noto-color-emoji \
+    # Audio support
+    libasound2 \
+    # Accessibility
+    libatk-bridge2.0-0 \
+    # Graphics
+    libdrm2 \
+    libxkbcommon0 \
+    libxss1 \
+    # Security
+    libu2f-udev \
+    # Vulkan support
+    libvulkan1 \
+    # Process management
+    dumb-init \
+    # Cleanup
+    && rm -rf /var/lib/apt/lists/*
+
+# Set environment variables for browser automation
+ENV CHROME_BIN=/usr/bin/chromium \
+    CHROME_PATH=/usr/bin/chromium \
+    CHROMIUM_PATH=/usr/bin/chromium \
+    DISPLAY=:99 \
+    PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
 # Create app user
 RUN addgroup -g 1001 -S nodejs && \
@@ -48,6 +79,20 @@ COPY --chown=appuser:nodejs package*.json ./
 # Create logs directory
 RUN mkdir -p logs && chown appuser:nodejs logs
 
+# Create startup script for Xvfb and application
+RUN echo '#!/bin/bash\n\
+# Start Xvfb (virtual display) in background\n\
+Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &\n\
+\n\
+# Wait a moment for Xvfb to start\n\
+sleep 2\n\
+\n\
+# Start the Node.js application\n\
+exec node src/server.js\n\
+' > /app/start.sh && \
+chmod +x /app/start.sh && \
+chown appuser:nodejs /app/start.sh
+
 # Switch to non-root user
 USER appuser
 
@@ -67,5 +112,5 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
 # Use dumb-init to handle signals properly
 ENTRYPOINT ["dumb-init", "--"]
 
-# Start the application
-CMD ["node", "src/server.js"]
+# Start the application with Xvfb
+CMD ["./start.sh"]

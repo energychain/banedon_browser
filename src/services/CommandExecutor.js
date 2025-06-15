@@ -1,6 +1,7 @@
 const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
 const config = require('../utils/config');
+const ServerBrowserManager = require('./ServerBrowserManager');
 
 class CommandExecutor {
   constructor(sessionManager) {
@@ -8,6 +9,7 @@ class CommandExecutor {
     this.commandQueue = new Map(); // sessionId -> command queue
     this.pendingCommands = new Map(); // commandId -> command info
     this.commandResults = new Map(); // commandId -> result
+    this.serverBrowser = new ServerBrowserManager(); // Server-side browser manager
   }
 
   /**
@@ -22,13 +24,29 @@ class CommandExecutor {
       throw new Error(`Session not found: ${sessionId}`);
     }
 
-    if (!session.isConnected) {
-      throw new Error(`Session not connected: ${sessionId}`);
-    }
-
     // Validate command
     this.validateCommand(commandData);
 
+    // Check if extension is connected
+    const connection = this.sessionManager.getConnection(sessionId);
+    const hasExtensionConnection = connection && connection.readyState === 1;
+
+    // Decide execution strategy
+    if (hasExtensionConnection && session.isConnected) {
+      // Use extension-based execution
+      return await this.executeViaExtension(sessionId, commandData);
+    } else {
+      // Use server-side browser execution
+      logger.info(`No extension connection for session ${sessionId}, using server-side browser`);
+      return await this.executeViaServerBrowser(sessionId, commandData);
+    }
+  }
+
+  /**
+   * Execute command via browser extension
+   * @private
+   */
+  async executeViaExtension(sessionId, commandData) {
     // Create command object
     const command = {
       id: uuidv4(),
@@ -55,10 +73,6 @@ class CommandExecutor {
 
     // Send command to extension via WebSocket
     const connection = this.sessionManager.getConnection(sessionId);
-    if (!connection || connection.readyState !== 1) {
-      this.pendingCommands.delete(command.id);
-      throw new Error(`WebSocket connection not available for session: ${sessionId}`);
-    }
 
     try {
       // Send command to extension
@@ -90,6 +104,72 @@ class CommandExecutor {
       this.pendingCommands.delete(command.id);
       command.status = 'failed';
       command.error = error.message;
+      throw error;
+    }
+  }
+
+  /**
+   * Execute command via server-side browser
+   * @private
+   */
+  async executeViaServerBrowser(sessionId, commandData) {
+    try {
+      // Create command object for tracking
+      const command = {
+        id: uuidv4(),
+        sessionId,
+        type: commandData.type,
+        payload: commandData.payload || {},
+        timeout: commandData.timeout || config.COMMAND_TIMEOUT,
+        createdAt: new Date(),
+        status: 'executing',
+        retryCount: 0
+      };
+
+      // Add to session commands for tracking
+      this.sessionManager.addCommand(sessionId, command);
+
+      logger.debug(`Executing server-side command: ${command.id}`, { 
+        sessionId, 
+        type: command.type 
+      });
+
+      // Execute command using server browser
+      const result = await this.serverBrowser.executeCommand(sessionId, {
+        type: command.type,
+        payload: command.payload
+      });
+
+      command.status = result.success ? 'completed' : 'failed';
+      command.completedAt = new Date();
+      command.result = result.result;
+      command.error = result.error;
+
+      // Store result
+      this.commandResults.set(command.id, {
+        commandId: command.id,
+        success: result.success,
+        result: result.result,
+        error: result.error,
+        completedAt: command.completedAt,
+        executedBy: 'server'
+      });
+
+      logger.debug(`Server command completed: ${command.id}`, { 
+        success: result.success,
+        sessionId 
+      });
+
+      return {
+        commandId: command.id,
+        success: result.success,
+        result: result.result,
+        error: result.error,
+        executedBy: 'server',
+        timestamp: result.timestamp
+      };
+    } catch (error) {
+      logger.error(`Server browser execution failed for session ${sessionId}:`, error);
       throw error;
     }
   }
@@ -335,7 +415,7 @@ class CommandExecutor {
    * Cleanup commands for session
    * @param {string} sessionId - Session ID
    */
-  cleanupSession(sessionId) {
+  async cleanupSession(sessionId) {
     // Cancel all pending commands for this session
     for (const [commandId, command] of this.pendingCommands.entries()) {
       if (command.sessionId === sessionId) {
@@ -346,7 +426,25 @@ class CommandExecutor {
     // Clear command queue
     this.commandQueue.delete(sessionId);
     
-    logger.debug(`Cleaned up commands for session: ${sessionId}`);
+    // Close server browser for this session
+    await this.serverBrowser.closeBrowser(sessionId);
+    
+    logger.debug(`Cleaned up commands and browser for session: ${sessionId}`);
+  }
+
+  /**
+   * Cleanup all resources
+   */
+  async cleanup() {
+    // Close all server browsers
+    await this.serverBrowser.closeAll();
+    
+    // Clear all pending commands
+    this.pendingCommands.clear();
+    this.commandQueue.clear();
+    this.commandResults.clear();
+    
+    logger.info('CommandExecutor cleanup completed');
   }
 }
 

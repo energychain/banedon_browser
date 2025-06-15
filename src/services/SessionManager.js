@@ -150,9 +150,9 @@ class SessionManager {
   /**
    * Delete session
    * @param {string} sessionId - Session ID
-   * @returns {boolean} True if session was deleted
+   * @returns {Promise<boolean>} True if session was deleted
    */
-  deleteSession(sessionId) {
+  async deleteSession(sessionId) {
     const session = this.sessions.get(sessionId);
     if (!session) {
       return false;

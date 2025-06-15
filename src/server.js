@@ -100,6 +100,9 @@ class BrowserAutomationService {
     const commandRouter = commandRoutes(this.sessionManager);
     this.app.use('/api/sessions', commandRouter);
     
+    // Store reference to command executor for cleanup
+    this.commandExecutor = commandRouter.commandExecutor;
+    
     // Set command executor in WebSocket manager
     this.wsManager.setCommandExecutor(commandRouter.commandExecutor);
 
@@ -196,6 +199,11 @@ class BrowserAutomationService {
 
       // Close WebSocket connections
       await this.wsManager.closeAllConnections();
+      
+      // Cleanup command executor (closes all server browsers)
+      if (this.commandExecutor) {
+        await this.commandExecutor.cleanup();
+      }
       
       // Cleanup sessions
       await this.sessionManager.cleanup();
