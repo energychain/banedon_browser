@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Browser Automation Service - API Documentation</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            color: #333;
+        }
+        
+        .header {
+            text-align: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 20px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .endpoint {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            margin: 20px 0;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .endpoint-header {
+            background: #f8f9fa;
+            padding: 15px 20px;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .method {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+        }
+        
+        .method.get { background: #d4edda; color: #155724; }
+        .method.post { background: #cce5ff; color: #004085; }
+        .method.put { background: #fff3cd; color: #856404; }
+        .method.delete { background: #f8d7da; color: #721c24; }
+        
+        .endpoint-content {
+            padding: 20px;
+        }
+        
+        .code-block {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-family: monospace;
+            overflow-x: auto;
+            font-size: 0.9rem;
+        }
+        
+        .response-example {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+        
+        .toc {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .toc ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        
+        .toc li {
+            padding: 5px 0;
+        }
+        
+        .toc a {
+            text-decoration: none;
+            color: #667eea;
+        }
+        
+        .toc a:hover {
+            text-decoration: underline;
+        }
+        
+        h2 {
+            color: #667eea;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 10px;
+        }
+        
+        .parameter {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 10px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📚 Browser Automation Service API</h1>
+        <p>Complete REST API documentation for browser automation</p>
+    </div>
+
+    <div class="toc">
+        <h3>Table of Contents</h3>
+        <ul>
+            <li><a href="#overview">Overview</a></li>
+            <li><a href="#authentication">Authentication</a></li>
+            <li><a href="#sessions">Session Management</a></li>
+            <li><a href="#commands">Command Execution</a></li>
+            <li><a href="#websocket">WebSocket API</a></li>
+            <li><a href="#errors">Error Handling</a></li>
+        </ul>
+    </div>
+
+    <section id="overview">
+        <h2>Overview</h2>
+        <p>The Browser Automation Service provides a REST API for controlling web browsers remotely. The service uses sessions to manage browser instances and supports both REST API calls and WebSocket connections for real-time communication.</p>
+        
+        <div class="parameter">
+            <strong>Base URL:</strong> <code id="baseUrl">http://localhost:3010</code><br>
+            <strong>WebSocket URL:</strong> <code id="wsUrl">ws://localhost:3010/ws</code>
+        </div>
+    </section>
+
+    <section id="authentication">
+        <h2>Authentication</h2>
+        <p>Currently, the service uses session-based authentication. Each session has a unique identifier that must be included in API calls and WebSocket connections.</p>
+    </section>
+
+    <section id="sessions">
+        <h2>Session Management</h2>
+
+        <div class="endpoint">
+            <div class="endpoint-header">
+                <span class="method post">POST</span>
+                <span>/api/sessions</span>
+            </div>
+            <div class="endpoint-content">
+                <h4>Create a new session</h4>
+                <p>Creates a new browser automation session.</p>
+                
+                <h5>Request Body:</h5>
+                <div class="code-block">
+{
+  "metadata": {
+    "browser": "chrome",
+    "purpose": "testing",
+    "user": "developer"
+  }
+}
+                </div>
+                
+                <h5>Response:</h5>
+                <div class="response-example">
+{
+  "sessionId": "uuid-here",
+  "status": "active",
+  "createdAt": "2024-01-01T12:00:00Z",
+  "metadata": {
+    "browser": "chrome",
+    "purpose": "testing",
+    "user": "developer"
+  }
+}
+                </div>
+            </div>
+        </div>
+
+        <div class="endpoint">
+            <div class="endpoint-header">
+                <span class="method get">GET</span>
+                <span>/api/sessions</span>
+            </div>
+            <div class="endpoint-content">
+                <h4>List all sessions</h4>
+                <p>Retrieves all active sessions.</p>
+                
+                <h5>Response:</h5>
+                <div class="response-example">
+{
+  "sessions": [
+    {
+      "sessionId": "uuid-here",
+      "status": "active",
+      "createdAt": "2024-01-01T12:00:00Z",
+      "lastActivity": "2024-01-01T12:05:00Z",
+      "metadata": { ... }
+    }
+  ]
+}
+                </div>
+            </div>
+        </div>
+
+        <div class="endpoint">
+            <div class="endpoint-header">
+                <span class="method get">GET</span>
+                <span>/api/sessions/{sessionId}</span>
+            </div>
+            <div class="endpoint-content">
+                <h4>Get session details</h4>
+                <p>Retrieves details for a specific session.</p>
+                
+                <div class="parameter">
+                    <strong>Path Parameters:</strong><br>
+                    <code>sessionId</code> - The unique session identifier
+                </div>
+            </div>
+        </div>
+
+        <div class="endpoint">
+            <div class="endpoint-header">
+                <span class="method delete">DELETE</span>
+                <span>/api/sessions/{sessionId}</span>
+            </div>
+            <div class="endpoint-content">
+                <h4>Delete a session</h4>
+                <p>Terminates and removes a session.</p>
+                
+                <div class="parameter">
+                    <strong>Path Parameters:</strong><br>
+                    <code>sessionId</code> - The unique session identifier
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="commands">
+        <h2>Command Execution</h2>
+
+        <div class="endpoint">
+            <div class="endpoint-header">
+                <span class="method post">POST</span>
+                <span>/api/sessions/{sessionId}/commands</span>
+            </div>
+            <div class="endpoint-content">
+                <h4>Execute a command</h4>
+                <p>Sends a command to the browser for execution.</p>
+                
+                <div class="parameter">
+                    <strong>Path Parameters:</strong><br>
+                    <code>sessionId</code> - The unique session identifier
+                </div>
+                
+                <h5>Common Commands:</h5>
+                
+                <h6>Navigate to URL:</h6>
+                <div class="code-block">
+{
+  "action": "navigate",
+  "url": "https://example.com"
+}
+                </div>
+                
+                <h6>Click Element:</h6>
+                <div class="code-block">
+{
+  "action": "click",
+  "selector": "#button-id"
+}
+                </div>
+                
+                <h6>Fill Input:</h6>
+                <div class="code-block">
+{
+  "action": "fill",
+  "selector": "input[name='username']",
+  "value": "user123"
+}
+                </div>
+                
+                <h6>Get Page Title:</h6>
+                <div class="code-block">
+{
+  "action": "getTitle"
+}
+                </div>
+                
+                <h6>Take Screenshot:</h6>
+                <div class="code-block">
+{
+  "action": "screenshot"
+}
+                </div>
+                
+                <h5>Response:</h5>
+                <div class="response-example">
+{
+  "commandId": "uuid-here",
+  "status": "completed",
+  "result": {
+    "success": true,
+    "data": "Command result data"
+  },
+  "executedAt": "2024-01-01T12:00:00Z"
+}
+                </div>
+            </div>
+        </div>
+
+        <div class="endpoint">
+            <div class="endpoint-header">
+                <span class="method get">GET</span>
+                <span>/api/sessions/{sessionId}/commands</span>
+            </div>
+            <div class="endpoint-content">
+                <h4>Get command history</h4>
+                <p>Retrieves the command execution history for a session.</p>
+                
+                <div class="parameter">
+                    <strong>Path Parameters:</strong><br>
+                    <code>sessionId</code> - The unique session identifier
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="websocket">
+        <h2>WebSocket API</h2>
+        <p>Real-time communication via WebSocket connection.</p>
+        
+        <h3>Connection</h3>
+        <div class="code-block">
+WebSocket URL: ws://localhost:3010/ws?sessionId={sessionId}
+        </div>
+        
+        <h3>Message Format</h3>
+        <p>Messages sent over WebSocket follow the same format as REST API commands:</p>
+        <div class="code-block">
+{
+  "action": "navigate",
+  "url": "https://example.com"
+}
+        </div>
+        
+        <h3>Events</h3>
+        <p>The server sends various events through the WebSocket connection:</p>
+        
+        <h4>Command Result:</h4>
+        <div class="code-block">
+{
+  "type": "commandResult",
+  "commandId": "uuid-here",
+  "result": { ... }
+}
+        </div>
+        
+        <h4>Session Status:</h4>
+        <div class="code-block">
+{
+  "type": "sessionStatus",
+  "status": "active",
+  "sessionId": "uuid-here"
+}
+        </div>
+    </section>
+
+    <section id="errors">
+        <h2>Error Handling</h2>
+        <p>The API uses standard HTTP status codes and returns error details in JSON format.</p>
+        
+        <h3>Common Error Responses:</h3>
+        
+        <h4>400 Bad Request:</h4>
+        <div class="response-example">
+{
+  "error": "Invalid request format",
+  "details": "Missing required field: action"
+}
+        </div>
+        
+        <h4>404 Not Found:</h4>
+        <div class="response-example">
+{
+  "error": "Session not found",
+  "sessionId": "invalid-uuid"
+}
+        </div>
+        
+        <h4>500 Internal Server Error:</h4>
+        <div class="response-example">
+{
+  "error": "Command execution failed",
+  "details": "Element not found: #non-existent"
+}
+        </div>
+    </section>
+
+    <div style="text-align: center; margin: 40px 0;">
+        <a href="/" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 25px; text-decoration: none; border-radius: 25px;">← Back to Dashboard</a>
+    </div>
+
+    <script>
+        // Update URLs based on current location
+        const baseUrl = window.location.origin;
+        document.getElementById('baseUrl').textContent = baseUrl;
+        document.getElementById('wsUrl').textContent = baseUrl.replace('http', 'ws') + '/ws';
+    </script>
+</body>
+</html>

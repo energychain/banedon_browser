@@ -2,6 +2,8 @@ const express = require('express');
 const cors = require('cors');
 const { createServer } = require('http');
 const WebSocket = require('ws');
+const path = require('path');
+const fs = require('fs');
 const logger = require('./utils/logger');
 const config = require('./utils/config');
 
@@ -36,6 +38,9 @@ class BrowserAutomationService {
     // Parse JSON bodies
     this.app.use(express.json({ limit: '10mb' }));
     
+    // Serve static files from public directory
+    this.app.use(express.static('public'));
+    
     // Request logging
     this.app.use((req, res, next) => {
       logger.info(`${req.method} ${req.path}`, { 
@@ -67,6 +72,22 @@ class BrowserAutomationService {
     // Set command executor in WebSocket manager
     this.wsManager.setCommandExecutor(commandRouter.commandExecutor);
 
+    // Extension routes
+    this.setupExtensionRoutes();
+
+    // Documentation routes
+    this.app.get('/api/docs', (req, res) => {
+      res.sendFile('api-docs.html', { root: 'public' });
+    });
+
+    this.app.get('/openapi.json', (req, res) => {
+      res.sendFile('openapi.json', { root: 'public' });
+    });
+
+    this.app.get('/extension/install-guide', (req, res) => {
+      res.sendFile('install-guide.html', { root: 'public' });
+    });
+
     // 404 handler
     this.app.use('*', (req, res) => {
       res.status(404).json({ error: 'Endpoint not found' });
@@ -80,6 +101,43 @@ class BrowserAutomationService {
         message: process.env.NODE_ENV === 'development' ? err.message : undefined
       });
     });
+  }
+
+  setupExtensionRoutes() {
+    // Extension download route
+    this.app.get('/extension/download', (req, res) => {
+      const zipPath = path.join(__dirname, '..', 'build', 'browser-automation-extension.zip');
+      
+      if (fs.existsSync(zipPath)) {
+        // Serve the pre-built extension ZIP file
+        res.download(zipPath, 'browser-automation-extension.zip', (err) => {
+          if (err) {
+            logger.error('Error downloading extension:', err);
+            res.status(500).json({ 
+              error: 'Download failed',
+              message: 'Unable to download extension package'
+            });
+          }
+        });
+      } else {
+        // If no built package exists, provide instructions
+        res.status(404).json({
+          error: 'Extension package not found',
+          message: 'Extension package not built yet',
+          instructions: [
+            'Run "./build.sh" to build the extension package',
+            'Or access extension files directly at /extension/',
+            'Follow the installation guide for manual installation'
+          ],
+          extensionFiles: '/extension/',
+          installGuide: '/extension/install-guide',
+          buildCommand: './build.sh'
+        });
+      }
+    });
+
+    // Serve extension files directly for development
+    this.app.use('/extension/files', express.static(path.join(__dirname, '..', 'extension')));
   }
 
   setupWebSocket() {

@@ -175,6 +175,12 @@ mkdir -p logs
 # Make scripts executable
 chmod +x *.sh 2>/dev/null || true
 
+# Build extension package locally (will be included in Docker build)
+if [ -f "build.sh" ]; then
+    echo "🔨 Building extension package for Docker..."
+    ./build.sh 2>/dev/null || echo "⚠️  Extension build failed, will be built in Docker"
+fi
+
 # Build and start services
 echo "🚀 Building and starting services..."
 cd $DEPLOY_PATH

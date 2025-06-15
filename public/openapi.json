@@ -1,0 +1,693 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Browser Automation Service API",
+    "description": "A service for automating browser actions through WebSocket connections and REST API",
+    "version": "1.0.0",
+    "contact": {
+      "name": "Browser Automation Service",
+      "url": "http://10.0.0.2:3010"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://10.0.0.2:3010",
+      "description": "Production server"
+    },
+    {
+      "url": "http://localhost:3010",
+      "description": "Local development server"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Health",
+      "description": "Service health and status endpoints"
+    },
+    {
+      "name": "Sessions",
+      "description": "Session management for browser automation"
+    },
+    {
+      "name": "Commands",
+      "description": "Browser command execution"
+    },
+    {
+      "name": "Extension",
+      "description": "Browser extension download and documentation"
+    }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": ["Health"],
+        "summary": "Health check endpoint",
+        "description": "Returns the current health status of the service",
+        "operationId": "getHealth",
+        "responses": {
+          "200": {
+            "description": "Service is healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                },
+                "example": {
+                  "status": "healthy",
+                  "timestamp": "2024-01-15T10:30:00Z",
+                  "uptime": 3600000
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sessions": {
+      "get": {
+        "tags": ["Sessions"],
+        "summary": "List all active sessions",
+        "description": "Returns a list of all currently active browser automation sessions",
+        "operationId": "getSessions",
+        "responses": {
+          "200": {
+            "description": "List of active sessions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "sessions": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Session"
+                      }
+                    },
+                    "count": {
+                      "type": "integer",
+                      "description": "Total number of active sessions"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Sessions"],
+        "summary": "Create a new session",
+        "description": "Creates a new browser automation session",
+        "operationId": "createSession",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSessionRequest"
+              },
+              "examples": {
+                "basic": {
+                  "summary": "Basic session creation",
+                  "value": {
+                    "metadata": {
+                      "browser": "chrome",
+                      "purpose": "testing"
+                    }
+                  }
+                },
+                "detailed": {
+                  "summary": "Detailed session with options",
+                  "value": {
+                    "metadata": {
+                      "browser": "chrome",
+                      "purpose": "automated-testing",
+                      "user": "test-team",
+                      "project": "web-automation"
+                    },
+                    "options": {
+                      "timeout": 60000,
+                      "maxCommands": 100
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Session created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many sessions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sessions/{sessionId}": {
+      "get": {
+        "tags": ["Sessions"],
+        "summary": "Get session details",
+        "description": "Returns details about a specific session",
+        "operationId": "getSession",
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Unique session identifier"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Session details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Session not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Sessions"],
+        "summary": "Delete a session",
+        "description": "Terminates and removes a browser automation session",
+        "operationId": "deleteSession",
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Unique session identifier"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Session deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Session deleted successfully"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Session not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sessions/{sessionId}/commands": {
+      "post": {
+        "tags": ["Commands"],
+        "summary": "Execute a command",
+        "description": "Executes a browser automation command in the specified session",
+        "operationId": "executeCommand",
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Unique session identifier"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CommandRequest"
+              },
+              "examples": {
+                "click": {
+                  "summary": "Click element",
+                  "value": {
+                    "action": "click",
+                    "selector": "#submit-button",
+                    "options": {
+                      "waitForSelector": true,
+                      "timeout": 5000
+                    }
+                  }
+                },
+                "type": {
+                  "summary": "Type text",
+                  "value": {
+                    "action": "type",
+                    "selector": "input[name='username']",
+                    "value": "testuser",
+                    "options": {
+                      "clearFirst": true
+                    }
+                  }
+                },
+                "navigate": {
+                  "summary": "Navigate to URL",
+                  "value": {
+                    "action": "navigate",
+                    "url": "https://example.com",
+                    "options": {
+                      "waitUntil": "networkidle"
+                    }
+                  }
+                },
+                "screenshot": {
+                  "summary": "Take screenshot",
+                  "value": {
+                    "action": "screenshot",
+                    "options": {
+                      "fullPage": true,
+                      "format": "png"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Command executed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommandResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid command",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Session not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "Command timeout",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sessions/{sessionId}/commands/{commandId}": {
+      "get": {
+        "tags": ["Commands"],
+        "summary": "Get command status",
+        "description": "Returns the status and result of a specific command",
+        "operationId": "getCommandStatus",
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Unique session identifier"
+          },
+          {
+            "name": "commandId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Unique command identifier"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Command status and result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommandResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Session or command not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/extension/download": {
+      "get": {
+        "tags": ["Extension"],
+        "summary": "Download browser extension",
+        "description": "Downloads the browser extension package as a ZIP file",
+        "operationId": "downloadExtension",
+        "responses": {
+          "200": {
+            "description": "Extension package",
+            "content": {
+              "application/zip": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            },
+            "headers": {
+              "Content-Disposition": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "attachment; filename=browser-automation-extension.zip"
+              }
+            }
+          },
+          "404": {
+            "description": "Extension package not found"
+          }
+        }
+      }
+    },
+    "/extension/install": {
+      "get": {
+        "tags": ["Extension"],
+        "summary": "Extension installation guide",
+        "description": "Returns an HTML page with installation instructions for the browser extension",
+        "operationId": "getInstallationGuide",
+        "responses": {
+          "200": {
+            "description": "Installation guide HTML page",
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "HealthResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["healthy", "degraded", "unhealthy"],
+            "description": "Current health status"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when health was checked"
+          },
+          "uptime": {
+            "type": "integer",
+            "description": "Service uptime in milliseconds"
+          }
+        },
+        "required": ["status", "timestamp", "uptime"]
+      },
+      "Session": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique session identifier"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Session creation timestamp"
+          },
+          "lastActivity": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Last activity timestamp"
+          },
+          "metadata": {
+            "type": "object",
+            "description": "Session metadata provided during creation"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["active", "idle", "error"],
+            "description": "Current session status"
+          },
+          "commandCount": {
+            "type": "integer",
+            "description": "Number of commands executed in this session"
+          }
+        },
+        "required": ["id", "createdAt", "status"]
+      },
+      "CreateSessionRequest": {
+        "type": "object",
+        "properties": {
+          "metadata": {
+            "type": "object",
+            "properties": {
+              "browser": {
+                "type": "string",
+                "example": "chrome",
+                "description": "Browser type"
+              },
+              "purpose": {
+                "type": "string",
+                "example": "testing",
+                "description": "Purpose of the session"
+              },
+              "user": {
+                "type": "string",
+                "description": "User or team identifier"
+              },
+              "project": {
+                "type": "string",
+                "description": "Project identifier"
+              }
+            },
+            "required": ["browser", "purpose"]
+          },
+          "options": {
+            "type": "object",
+            "properties": {
+              "timeout": {
+                "type": "integer",
+                "default": 30000,
+                "description": "Session timeout in milliseconds"
+              },
+              "maxCommands": {
+                "type": "integer",
+                "default": 100,
+                "description": "Maximum number of commands per session"
+              }
+            }
+          }
+        },
+        "required": ["metadata"]
+      },
+      "CommandRequest": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": ["click", "type", "navigate", "screenshot", "scroll", "wait", "evaluate"],
+            "description": "The action to perform"
+          },
+          "selector": {
+            "type": "string",
+            "description": "CSS selector for element-based actions"
+          },
+          "url": {
+            "type": "string",
+            "description": "URL for navigation actions"
+          },
+          "value": {
+            "type": "string",
+            "description": "Value for type actions or JavaScript for evaluate actions"
+          },
+          "options": {
+            "type": "object",
+            "properties": {
+              "timeout": {
+                "type": "integer",
+                "default": 5000,
+                "description": "Command timeout in milliseconds"
+              },
+              "waitForSelector": {
+                "type": "boolean",
+                "default": false,
+                "description": "Wait for selector to be available"
+              },
+              "clearFirst": {
+                "type": "boolean",
+                "default": false,
+                "description": "Clear input before typing"
+              },
+              "fullPage": {
+                "type": "boolean",
+                "default": false,
+                "description": "Take full page screenshot"
+              },
+              "format": {
+                "type": "string",
+                "enum": ["png", "jpeg"],
+                "default": "png",
+                "description": "Screenshot format"
+              },
+              "waitUntil": {
+                "type": "string",
+                "enum": ["load", "networkidle", "domcontentloaded"],
+                "default": "load",
+                "description": "Navigation wait condition"
+              }
+            }
+          }
+        },
+        "required": ["action"]
+      },
+      "CommandResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique command identifier"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "executing", "completed", "failed", "timeout"],
+            "description": "Command execution status"
+          },
+          "result": {
+            "type": "object",
+            "description": "Command execution result"
+          },
+          "error": {
+            "type": "string",
+            "description": "Error message if command failed"
+          },
+          "startTime": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Command start timestamp"
+          },
+          "endTime": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Command completion timestamp"
+          },
+          "duration": {
+            "type": "integer",
+            "description": "Command execution duration in milliseconds"
+          }
+        },
+        "required": ["id", "status"]
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "Error message"
+          },
+          "code": {
+            "type": "string",
+            "description": "Error code"
+          },
+          "details": {
+            "type": "object",
+            "description": "Additional error details"
+          }
+        },
+        "required": ["error"]
+      }
+    }
+  }
+}

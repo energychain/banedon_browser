@@ -10,9 +10,18 @@ COPY package*.json ./
 # Install dependencies
 RUN npm ci --only=production
 
-# Copy source code
+# Copy source code and extension files
 COPY src/ ./src/
 COPY docs/ ./docs/
+COPY extension/ ./extension/
+COPY public/ ./public/
+COPY build.sh ./
+
+# Install zip utility for building extension package
+RUN apk add --no-cache zip
+
+# Build extension package
+RUN chmod +x build.sh && ./build.sh
 
 # Production stage
 FROM node:18-alpine AS production
@@ -31,6 +40,9 @@ WORKDIR /app
 COPY --from=builder --chown=appuser:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=appuser:nodejs /app/src ./src
 COPY --from=builder --chown=appuser:nodejs /app/docs ./docs
+COPY --from=builder --chown=appuser:nodejs /app/extension ./extension
+COPY --from=builder --chown=appuser:nodejs /app/public ./public
+COPY --from=builder --chown=appuser:nodejs /app/build ./build
 COPY --chown=appuser:nodejs package*.json ./
 
 # Create logs directory

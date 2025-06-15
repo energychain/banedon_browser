@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Browser Automation Service - Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .status-bar {
+            background: rgba(255,255,255,0.9);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .status-item {
+            text-align: center;
+        }
+
+        .status-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .status-label {
+            font-size: 0.9rem;
+            color: #666;
+            text-transform: uppercase;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+        }
+
+        .card h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .icon {
+            font-size: 1.8rem;
+        }
+
+        .btn {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 25px;
+            text-decoration: none;
+            border-radius: 25px;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            margin: 5px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #64b3f4 0%, #c2e59c 100%);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ff8e53 100%);
+        }
+
+        .extension-download {
+            background: linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%);
+            text-align: center;
+            color: white;
+            padding: 40px;
+            margin-bottom: 30px;
+            border-radius: 15px;
+        }
+
+        .extension-download h2 {
+            margin-bottom: 20px;
+            color: white;
+        }
+
+        .code-block {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 0.9rem;
+            overflow-x: auto;
+        }
+
+        .input-group {
+            margin: 15px 0;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+
+        .input-group input, .input-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+
+        .response-area {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+            border-left: 4px solid #667eea;
+            min-height: 100px;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #eee;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .tab.active {
+            border-bottom-color: #667eea;
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .footer {
+            text-align: center;
+            color: white;
+            opacity: 0.8;
+            margin-top: 50px;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .status-bar {
+                flex-direction: column;
+            }
+            
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 Browser Automation Service</h1>
+            <p>Control browsers remotely via API and WebSocket connections</p>
+        </div>
+
+        <div class="status-bar" id="statusBar">
+            <div class="status-item">
+                <div class="status-value" id="serviceStatus">●</div>
+                <div class="status-label">Service Status</div>
+            </div>
+            <div class="status-item">
+                <div class="status-value" id="activeSessions">-</div>
+                <div class="status-label">Active Sessions</div>
+            </div>
+            <div class="status-item">
+                <div class="status-value" id="wsConnections">-</div>
+                <div class="status-label">WebSocket Connections</div>
+            </div>
+            <div class="status-item">
+                <div class="status-value" id="uptime">-</div>
+                <div class="status-label">Uptime</div>
+            </div>
+        </div>
+
+        <div class="extension-download">
+            <h2>🧩 Browser Extension</h2>
+            <p>Install the browser extension to enable remote browser automation</p>
+            <a href="/extension/download" class="btn" id="downloadBtn">📥 Download Extension</a>
+            <a href="/extension/install-guide" class="btn btn-secondary">📖 Installation Guide</a>
+        </div>
+
+        <div class="grid">
+            <div class="card">
+                <h2><span class="icon">🚀</span>Quick Start</h2>
+                <p>Get started with the Browser Automation Service in 3 simple steps:</p>
+                <ol style="margin: 15px 0; padding-left: 20px;">
+                    <li>Download and install the browser extension</li>
+                    <li>Create a session using the API</li>
+                    <li>Send commands via REST API or WebSocket</li>
+                </ol>
+                <button class="btn" onclick="showTab('getting-started')">Get Started</button>
+            </div>
+
+            <div class="card">
+                <h2><span class="icon">🔧</span>API Testing</h2>
+                <p>Test the REST API endpoints directly from this dashboard.</p>
+                <button class="btn" onclick="showTab('api-test')">Test API</button>
+                <button class="btn btn-secondary" onclick="loadApiDocs()">📚 View API Docs</button>
+            </div>
+
+            <div class="card">
+                <h2><span class="icon">📋</span>OpenAPI Specification</h2>
+                <p>Complete OpenAPI 3.0 specification for integration and development.</p>
+                <a href="/openapi.json" class="btn" target="_blank">📥 Download OpenAPI JSON</a>
+                <a href="https://editor.swagger.io/?url=http://10.0.0.2:3010/openapi.json" class="btn btn-secondary" target="_blank">🔧 Open in Swagger Editor</a>
+            </div>
+
+            <div class="card">
+                <h2><span class="icon">🌐</span>WebSocket Testing</h2>
+                <p>Test real-time WebSocket connections and messaging.</p>
+                <button class="btn" onclick="showTab('websocket-test')">Test WebSocket</button>
+                <div style="margin-top: 15px;">
+                    <small><strong>WebSocket URL:</strong> <code id="wsUrl">ws://localhost:3010/ws</code></small>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2><span class="icon">📊</span>Service Information</h2>
+                <p>View service configuration and endpoints.</p>
+                <div class="code-block" style="margin-top: 15px;">
+                    <strong>Base URL:</strong> <span id="baseUrl">http://localhost:3010</span><br>
+                    <strong>Health Check:</strong> <span id="healthUrl">http://localhost:3010/health</span><br>
+                    <strong>API Base:</strong> <span id="apiUrl">http://localhost:3010/api</span>
+                </div>
+                <button class="btn btn-secondary" onclick="refreshStatus()">🔄 Refresh Status</button>
+            </div>
+        </div>
+
+        <!-- Tabbed Content -->
+        <div class="card" id="tabbedContent" style="display: none;">
+            <div class="tabs">
+                <div class="tab" data-tab="getting-started">Getting Started</div>
+                <div class="tab" data-tab="api-test">API Testing</div>
+                <div class="tab" data-tab="websocket-test">WebSocket Testing</div>
+            </div>
+
+            <!-- Getting Started Tab -->
+            <div class="tab-content" id="getting-started">
+                <h3>Getting Started Guide</h3>
+                <h4>1. Install Browser Extension</h4>
+                <p>Download the extension package and install it in your browser:</p>
+                <div class="code-block">
+1. Download extension from the button above
+2. Extract the ZIP file
+3. Open Chrome → Extensions (chrome://extensions/)
+4. Enable "Developer mode"
+5. Click "Load unpacked" and select the extracted folder
+                </div>
+
+                <h4>2. Create a Session</h4>
+                <p>First, create a session to get a session ID:</p>
+                <div class="code-block">
+POST /api/sessions
+Content-Type: application/json
+
+{
+  "metadata": {
+    "browser": "chrome",
+    "purpose": "testing"
+  }
+}
+                </div>
+
+                <h4>3. Configure Extension</h4>
+                <p>Enter the session ID in the browser extension popup and connect.</p>
+
+                <h4>4. Send Commands</h4>
+                <p>Use the session ID to send automation commands:</p>
+                <div class="code-block">
+POST /api/sessions/{sessionId}/commands
+Content-Type: application/json
+
+{
+  "action": "navigate",
+  "url": "https://example.com"
+}
+                </div>
+            </div>
+
+            <!-- API Testing Tab -->
+            <div class="tab-content" id="api-test">
+                <h3>API Testing Interface</h3>
+                
+                <h4>Create Session</h4>
+                <div class="input-group">
+                    <label>Session Metadata (JSON):</label>
+                    <textarea id="sessionMetadata" rows="3">{"browser": "chrome", "purpose": "testing", "user": "dashboard"}</textarea>
+                </div>
+                <button class="btn" onclick="createSession()">Create Session</button>
+                
+                <h4>Send Command</h4>
+                <div class="input-group">
+                    <label>Session ID:</label>
+                    <input type="text" id="commandSessionId" placeholder="Enter session ID">
+                </div>
+                <div class="input-group">
+                    <label>Command (JSON):</label>
+                    <textarea id="commandData" rows="4">{"action": "navigate", "url": "https://example.com"}</textarea>
+                </div>
+                <button class="btn" onclick="sendCommand()">Send Command</button>
+                
+                <h4>Get Sessions</h4>
+                <button class="btn btn-secondary" onclick="getSessions()">List All Sessions</button>
+                
+                <div class="response-area" id="apiResponse">API responses will appear here...</div>
+            </div>
+
+            <!-- WebSocket Testing Tab -->
+            <div class="tab-content" id="websocket-test">
+                <h3>WebSocket Testing Interface</h3>
+                
+                <div class="input-group">
+                    <label>Session ID:</label>
+                    <input type="text" id="wsSessionId" placeholder="Enter session ID for WebSocket connection">
+                </div>
+                
+                <div style="margin: 15px 0;">
+                    <button class="btn" onclick="connectWebSocket()">Connect WebSocket</button>
+                    <button class="btn btn-danger" onclick="disconnectWebSocket()">Disconnect</button>
+                    <span id="wsStatus" style="margin-left: 15px; font-weight: bold;">Disconnected</span>
+                </div>
+                
+                <div class="input-group">
+                    <label>Message to Send (JSON):</label>
+                    <textarea id="wsMessage" rows="3">{"action": "navigate", "url": "https://example.com"}</textarea>
+                </div>
+                <button class="btn btn-secondary" onclick="sendWebSocketMessage()">Send Message</button>
+                
+                <div class="response-area" id="wsResponse">WebSocket messages will appear here...</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>Browser Automation Service Dashboard | <a href="/health" style="color: white;">Health Check</a> | <a href="https://github.com/energychain/banedon_browser" style="color: white;">GitHub</a></p>
+    </div>
+
+    <script>
+        let ws = null;
+        const baseUrl = window.location.origin;
+        
+        // Update URLs based on current location
+        document.getElementById('baseUrl').textContent = baseUrl;
+        document.getElementById('healthUrl').textContent = baseUrl + '/health';
+        document.getElementById('apiUrl').textContent = baseUrl + '/api';
+        document.getElementById('wsUrl').textContent = baseUrl.replace('http', 'ws') + '/ws';
+
+        // Load service status on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            refreshStatus();
+            setupTabs();
+        });
+
+        function setupTabs() {
+            const tabs = document.querySelectorAll('.tab');
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    const tabName = tab.getAttribute('data-tab');
+                    showTab(tabName);
+                });
+            });
+        }
+
+        function showTab(tabName) {
+            document.getElementById('tabbedContent').style.display = 'block';
+            
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            // Remove active from all tabs
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Show selected tab content
+            document.getElementById(tabName).classList.add('active');
+            document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+            
+            // Scroll to content
+            document.getElementById('tabbedContent').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        async function refreshStatus() {
+            try {
+                const response = await fetch('/health');
+                const data = await response.json();
+                
+                document.getElementById('serviceStatus').textContent = '🟢';
+                document.getElementById('serviceStatus').style.color = '#28a745';
+                document.getElementById('activeSessions').textContent = data.activeSessions || 0;
+                document.getElementById('wsConnections').textContent = data.wsConnections || 0;
+                document.getElementById('uptime').textContent = formatUptime(data.uptime);
+            } catch (error) {
+                document.getElementById('serviceStatus').textContent = '🔴';
+                document.getElementById('serviceStatus').style.color = '#dc3545';
+                console.error('Failed to fetch status:', error);
+            }
+        }
+
+        function formatUptime(seconds) {
+            if (!seconds) return 'Unknown';
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            return `${hours}h ${minutes}m`;
+        }
+
+        async function createSession() {
+            try {
+                const metadata = JSON.parse(document.getElementById('sessionMetadata').value);
+                const response = await fetch('/api/sessions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ metadata })
+                });
+                const data = await response.json();
+                document.getElementById('apiResponse').textContent = JSON.stringify(data, null, 2);
+                
+                // Auto-fill session ID in command section
+                if (data.sessionId) {
+                    document.getElementById('commandSessionId').value = data.sessionId;
+                    document.getElementById('wsSessionId').value = data.sessionId;
+                }
+            } catch (error) {
+                document.getElementById('apiResponse').textContent = 'Error: ' + error.message;
+            }
+        }
+
+        async function sendCommand() {
+            try {
+                const sessionId = document.getElementById('commandSessionId').value;
+                const commandData = JSON.parse(document.getElementById('commandData').value);
+                
+                const response = await fetch(`/api/sessions/${sessionId}/commands`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(commandData)
+                });
+                const data = await response.json();
+                document.getElementById('apiResponse').textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                document.getElementById('apiResponse').textContent = 'Error: ' + error.message;
+            }
+        }
+
+        async function getSessions() {
+            try {
+                const response = await fetch('/api/sessions');
+                const data = await response.json();
+                document.getElementById('apiResponse').textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                document.getElementById('apiResponse').textContent = 'Error: ' + error.message;
+            }
+        }
+
+        function connectWebSocket() {
+            const sessionId = document.getElementById('wsSessionId').value;
+            if (!sessionId) {
+                alert('Please enter a session ID');
+                return;
+            }
+
+            const wsUrl = baseUrl.replace('http', 'ws') + `/ws?sessionId=${sessionId}`;
+            ws = new WebSocket(wsUrl);
+
+            ws.onopen = function() {
+                document.getElementById('wsStatus').textContent = 'Connected';
+                document.getElementById('wsStatus').style.color = '#28a745';
+                document.getElementById('wsResponse').textContent = 'WebSocket connected\n';
+            };
+
+            ws.onmessage = function(event) {
+                const current = document.getElementById('wsResponse').textContent;
+                document.getElementById('wsResponse').textContent = current + 'Received: ' + event.data + '\n';
+            };
+
+            ws.onclose = function() {
+                document.getElementById('wsStatus').textContent = 'Disconnected';
+                document.getElementById('wsStatus').style.color = '#dc3545';
+                const current = document.getElementById('wsResponse').textContent;
+                document.getElementById('wsResponse').textContent = current + 'WebSocket disconnected\n';
+            };
+
+            ws.onerror = function(error) {
+                const current = document.getElementById('wsResponse').textContent;
+                document.getElementById('wsResponse').textContent = current + 'WebSocket error: ' + error + '\n';
+            };
+        }
+
+        function disconnectWebSocket() {
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+        }
+
+        function sendWebSocketMessage() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                alert('WebSocket is not connected');
+                return;
+            }
+
+            try {
+                const message = document.getElementById('wsMessage').value;
+                ws.send(message);
+                const current = document.getElementById('wsResponse').textContent;
+                document.getElementById('wsResponse').textContent = current + 'Sent: ' + message + '\n';
+            } catch (error) {
+                const current = document.getElementById('wsResponse').textContent;
+                document.getElementById('wsResponse').textContent = current + 'Error sending message: ' + error.message + '\n';
+            }
+        }
+
+        function loadApiDocs() {
+            window.open('/api/docs', '_blank');
+        }
+
+        // Auto-refresh status every 30 seconds
+        setInterval(refreshStatus, 30000);
+    </script>
+</body>
+</html>

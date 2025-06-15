@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Browser Extension Installation Guide</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            color: #333;
+        }
+        
+        .header {
+            text-align: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 20px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .step {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        .step h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        
+        .code-block {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-family: monospace;
+            overflow-x: auto;
+        }
+        
+        .btn {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 25px;
+            text-decoration: none;
+            border-radius: 25px;
+            margin: 10px 5px;
+            transition: transform 0.2s;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .screenshot {
+            max-width: 100%;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        
+        .warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🧩 Browser Extension Installation Guide</h1>
+        <p>Step-by-step instructions to install and configure the Browser Automation Extension</p>
+    </div>
+
+    <div class="step">
+        <h3>Step 1: Download the Extension</h3>
+        <p>Download the extension package from the service dashboard:</p>
+        <a href="/extension/download" class="btn">📥 Download Extension Package</a>
+        <p><small>This will download a ZIP file containing the browser extension.</small></p>
+    </div>
+
+    <div class="step">
+        <h3>Step 2: Extract the Package</h3>
+        <p>Extract the downloaded ZIP file to a folder on your computer. You should see the following files:</p>
+        <div class="code-block">
+extension/
+├── manifest.json
+├── popup.html
+├── popup.js
+├── content.js
+├── background.js
+├── styles.css
+└── icons/
+    ├── icon16.png
+    ├── icon32.png
+    ├── icon48.png
+    └── icon128.png
+        </div>
+    </div>
+
+    <div class="step">
+        <h3>Step 3: Open Chrome Extensions Page</h3>
+        <p>Open Google Chrome and navigate to the extensions page:</p>
+        <div class="code-block">chrome://extensions/</div>
+        <p>Alternatively, you can:</p>
+        <ul>
+            <li>Click the three dots menu (⋮) in the top right</li>
+            <li>Go to "More Tools" → "Extensions"</li>
+        </ul>
+    </div>
+
+    <div class="step">
+        <h3>Step 4: Enable Developer Mode</h3>
+        <p>In the top right corner of the Extensions page, toggle on "Developer mode".</p>
+        <div class="warning">
+            <strong>Note:</strong> Developer mode is required to install unpacked extensions.
+        </div>
+    </div>
+
+    <div class="step">
+        <h3>Step 5: Load the Extension</h3>
+        <p>Click the "Load unpacked" button that appears after enabling Developer mode.</p>
+        <p>Select the folder where you extracted the extension files (the folder containing manifest.json).</p>
+    </div>
+
+    <div class="step">
+        <h3>Step 6: Verify Installation</h3>
+        <p>After loading, you should see the Browser Automation extension in your extensions list. The extension icon should appear in your browser toolbar.</p>
+        <div class="success">
+            <strong>Success!</strong> The extension is now installed and ready to use.
+        </div>
+    </div>
+
+    <div class="step">
+        <h3>Step 7: Configure the Extension</h3>
+        <p>Click on the extension icon in your toolbar to open the popup. You'll need to configure:</p>
+        <ul>
+            <li><strong>Server URL:</strong> <code id="serverUrl">http://localhost:3010</code></li>
+            <li><strong>Session ID:</strong> Create a session first using the API</li>
+        </ul>
+        
+        <h4>Creating a Session</h4>
+        <p>Before connecting the extension, create a session using the REST API:</p>
+        <div class="code-block">
+curl -X POST <span id="apiUrl">http://localhost:3010</span>/api/sessions \
+  -H "Content-Type: application/json" \
+  -d '{"metadata":{"browser":"chrome","purpose":"testing"}}'
+        </div>
+        <p>This will return a session ID that you can use in the extension.</p>
+    </div>
+
+    <div class="step">
+        <h3>Step 8: Test the Connection</h3>
+        <p>After entering the server URL and session ID in the extension popup:</p>
+        <ol>
+            <li>Click "Connect" in the extension popup</li>
+            <li>The status should change to "Connected"</li>
+            <li>You can now send commands to control this browser tab</li>
+        </ol>
+    </div>
+
+    <div class="step">
+        <h3>Troubleshooting</h3>
+        <h4>Extension won't load:</h4>
+        <ul>
+            <li>Make sure Developer mode is enabled</li>
+            <li>Check that you selected the correct folder (containing manifest.json)</li>
+            <li>Verify all files were extracted properly</li>
+        </ul>
+        
+        <h4>Can't connect to server:</h4>
+        <ul>
+            <li>Verify the server URL is correct</li>
+            <li>Make sure the Browser Automation Service is running</li>
+            <li>Check that you have a valid session ID</li>
+            <li>Test the health endpoint: <a id="healthLink" href="/health" target="_blank">Health Check</a></li>
+        </ul>
+        
+        <h4>Commands not working:</h4>
+        <ul>
+            <li>Ensure the extension is connected (green status)</li>
+            <li>Check the browser console for error messages</li>
+            <li>Verify the session ID is valid and active</li>
+        </ul>
+    </div>
+
+    <div style="text-align: center; margin: 40px 0;">
+        <a href="/" class="btn">← Back to Dashboard</a>
+        <a href="/extension/download" class="btn">📥 Download Extension</a>
+    </div>
+
+    <script>
+        // Update URLs based on current location
+        const baseUrl = window.location.origin;
+        document.getElementById('serverUrl').textContent = baseUrl;
+        document.getElementById('apiUrl').textContent = baseUrl;
+        document.getElementById('healthLink').href = baseUrl + '/health';
+    </script>
+</body>
+</html>
