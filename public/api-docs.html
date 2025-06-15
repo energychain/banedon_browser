@@ -138,7 +138,15 @@
 
     <section id="overview">
         <h2>Overview</h2>
-        <p>The Browser Automation Service provides a REST API for controlling web browsers remotely. The service uses sessions to manage browser instances and supports both REST API calls and WebSocket connections for real-time communication.</p>
+        <p>The Browser Automation Service provides a REST API for controlling web browsers remotely through <strong>two execution modes</strong>:</p>
+        
+        <div class="parameter">
+            <strong>🔌 Extension-Based Mode:</strong> Commands executed in user's browser via WebSocket-connected extension<br>
+            <strong>🤖 Server-Side Mode:</strong> Commands executed in headless Chromium browser on the server<br>
+            <strong>🎯 Automatic Selection:</strong> Service automatically chooses the best mode based on connection availability
+        </div>
+        
+        <p>This hybrid approach provides maximum flexibility - use extension mode for interactive workflows and server-side mode for automation and CI/CD pipelines.</p>
         
         <div class="parameter">
             <strong>Base URL:</strong> <code id="baseUrl">http://localhost:3010</code><br>
@@ -266,58 +274,100 @@
                     <code>sessionId</code> - The unique session identifier
                 </div>
                 
-                <h5>Common Commands:</h5>
+                <h5>Available Commands:</h5>
                 
                 <h6>Navigate to URL:</h6>
                 <div class="code-block">
 {
-  "action": "navigate",
-  "url": "https://example.com"
+  "type": "navigate",
+  "payload": {
+    "url": "https://example.com"
+  }
 }
                 </div>
                 
                 <h6>Click Element:</h6>
                 <div class="code-block">
 {
-  "action": "click",
-  "selector": "#button-id"
+  "type": "click",
+  "payload": {
+    "selector": "#button-id"
+  }
 }
                 </div>
                 
-                <h6>Fill Input:</h6>
+                <h6>Type Text:</h6>
                 <div class="code-block">
 {
-  "action": "fill",
-  "selector": "input[name='username']",
-  "value": "user123"
+  "type": "type",
+  "payload": {
+    "selector": "input[name='username']",
+    "text": "user123"
+  }
 }
                 </div>
                 
                 <h6>Get Page Title:</h6>
                 <div class="code-block">
 {
-  "action": "getTitle"
+  "type": "getTitle"
+}
+                </div>
+                
+                <h6>Get Element Text:</h6>
+                <div class="code-block">
+{
+  "type": "getText",
+  "payload": {
+    "selector": "h1"
+  }
 }
                 </div>
                 
                 <h6>Take Screenshot:</h6>
                 <div class="code-block">
 {
-  "action": "screenshot"
+  "type": "screenshot",
+  "payload": {
+    "fullPage": false
+  }
+}
+                </div>
+                
+                <h6>Evaluate JavaScript:</h6>
+                <div class="code-block">
+{
+  "type": "evaluate",
+  "payload": {
+    "script": "document.querySelectorAll('p').length"
+  }
+}
+                </div>
+                
+                <h6>Wait for Element:</h6>
+                <div class="code-block">
+{
+  "type": "waitForElement",
+  "payload": {
+    "selector": "#dynamic-content",
+    "timeout": 10000
+  }
 }
                 </div>
                 
                 <h5>Response:</h5>
                 <div class="response-example">
 {
-  "commandId": "uuid-here",
-  "status": "completed",
-  "result": {
-    "success": true,
-    "data": "Command result data"
-  },
-  "executedAt": "2024-01-01T12:00:00Z"
+  "success": true,
+  "command": {
+    "id": "uuid-here",
+    "type": "navigate",
+    "status": "completed"
+  }
 }
+                </div>
+                
+                <p><strong>Note:</strong> For detailed command results, check the command status using the command ID.</p>
                 </div>
             </div>
         </div>

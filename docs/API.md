@@ -2,10 +2,28 @@
 
 ## Overview
 
-The Browser Automation Service provides a REST API for managing browser automation sessions and executing commands through a connected browser extension.
+The Browser Automation Service provides a REST API for managing browser automation sessions and executing commands through **two execution modes**:
+
+1. **Extension-Based Mode**: Commands executed in user's browser via WebSocket-connected extension
+2. **Server-Side Mode**: Commands executed in headless Chromium browser on the server
+
+The service **automatically chooses** the appropriate execution mode based on connection availability.
 
 **Base URL**: `http://localhost:3010`  
 **WebSocket URL**: `ws://localhost:3010/ws`
+
+## Execution Modes
+
+### Extension-Based Execution
+- **When**: Browser extension is connected via WebSocket
+- **Benefits**: Real-time user interaction, access to user's actual browser state
+- **Use Cases**: Interactive workflows, user-guided automation
+
+### Server-Side Execution  
+- **When**: No extension connection available (automatic fallback)
+- **Benefits**: Fully programmatic, works without user interaction, perfect for CI/CD
+- **Use Cases**: Automated testing, data scraping, headless workflows
+- **Technology**: Puppeteer with headless Chromium
 
 ## Authentication
 
@@ -255,6 +273,8 @@ Cancels a pending command.
 
 ## Command Types
 
+The service supports both **extension commands** (original) and **server-side commands** (new). All commands work in both execution modes.
+
 ### Navigate
 Navigates the browser to a specified URL.
 
@@ -282,7 +302,9 @@ Captures a screenshot of the current page.
 ```json
 {
   "type": "screenshot",
-  "payload": {}
+  "payload": {
+    "fullPage": false  // optional: capture full page
+  }
 }
 ```
 
@@ -290,45 +312,47 @@ Captures a screenshot of the current page.
 ```json
 {
   "screenshot": "data:image/png;base64,iVBORw0KGgoAAAANS...",
-  "timestamp": "2024-01-15T10:00:00Z",
-  "tabInfo": {
-    "id": 123,
-    "url": "https://example.com",
-    "title": "Page Title"
-  }
+  "dimensions": {
+    "width": 1280,
+    "height": 720
+  },
+  "timestamp": "2024-01-15T10:00:00Z"
 }
 ```
 
-### Extract
-Extracts data from page elements using CSS selectors.
+### Get Page Title
+Gets the current page title.
 
 ```json
 {
-  "type": "extract",
-  "payload": {
-    "selector": "h1",
-    "attribute": "text",  // optional
-    "multiple": false     // optional
-  }
+  "type": "getTitle"
 }
 ```
 
 **Result:**
 ```json
 {
-  "data": {
-    "text": "Main Heading",
-    "html": "<h1>Main Heading</h1>",
-    "tagName": "h1",
-    "attributes": {}
-  },
-  "selector": "h1",
-  "count": 1,
-  "timestamp": "2024-01-15T10:00:00Z"
+  "title": "Example Domain"
 }
 ```
 
-### Click
+### Get Current URL
+Gets the current page URL.
+
+```json
+{
+  "type": "getUrl"
+}
+```
+
+**Result:**
+```json
+{
+  "url": "https://example.com"
+}
+```
+
+### Click Element
 Clicks on an element specified by CSS selector.
 
 ```json
@@ -343,18 +367,11 @@ Clicks on an element specified by CSS selector.
 **Result:**
 ```json
 {
-  "selector": "button#submit",
-  "action": "click",
-  "element": {
-    "tagName": "button",
-    "id": "submit",
-    "className": "btn primary"
-  },
-  "timestamp": "2024-01-15T10:00:00Z"
+  "clicked": "button#submit"
 }
 ```
 
-### Type
+### Type Text
 Types text into an input element.
 
 ```json
@@ -370,19 +387,135 @@ Types text into an input element.
 **Result:**
 ```json
 {
-  "selector": "input[name='username']",
-  "action": "type",
-  "element": {
-    "tagName": "input",
-    "id": "",
-    "className": ""
-  },
-  "timestamp": "2024-01-15T10:00:00Z"
+  "typed": "john_doe",
+  "target": "input[name='username']"
 }
 ```
 
-### Execute
-Executes custom JavaScript code on the page.
+### Get Element Text
+Extracts text content from an element.
+
+```json
+{
+  "type": "getText",
+  "payload": {
+    "selector": "h1"
+  }
+}
+```
+
+**Result:**
+```json
+{
+  "text": "Main Heading",
+  "selector": "h1"
+}
+```
+
+### Get Element Attribute
+Gets an attribute value from an element.
+
+```json
+{
+  "type": "getAttribute",
+  "payload": {
+    "selector": "a#link",
+    "attribute": "href"
+  }
+}
+```
+
+**Result:**
+```json
+{
+  "attribute": "href",
+  "value": "https://example.com/page",
+  "selector": "a#link"
+}
+```
+
+### Wait for Element
+Waits for an element to appear on the page.
+
+```json
+{
+  "type": "waitForElement",
+  "payload": {
+    "selector": "#dynamic-content",
+    "timeout": 10000  // optional: timeout in milliseconds
+  }
+}
+```
+
+**Result:**
+```json
+{
+  "found": "#dynamic-content"
+}
+```
+
+### Evaluate JavaScript
+Executes JavaScript code on the page and returns the result.
+
+```json
+{
+  "type": "evaluate",
+  "payload": {
+    "script": "document.querySelectorAll('p').length"
+  }
+}
+```
+
+**Result:**
+```json
+{
+  "result": 5
+}
+```
+
+### Scroll Page
+Scrolls the page to specified coordinates.
+
+```json
+{
+  "type": "scroll",
+  "payload": {
+    "x": 0,     // optional: horizontal position
+    "y": 500    // optional: vertical position
+  }
+}
+```
+
+**Result:**
+```json
+{
+  "scrolled": {
+    "x": 0,
+    "y": 500
+  }
+}
+```
+
+### Legacy Commands (Extension Mode Only)
+
+These commands are supported for backward compatibility but only work in extension mode:
+
+#### Extract (Legacy)
+Extracts data from page elements using CSS selectors.
+
+```json
+{
+  "type": "extract",
+  "payload": {
+    "selector": "h1",
+    "attribute": "text",  // optional
+    "multiple": false     // optional
+  }
+}
+```
+
+#### Execute (Legacy)  
+Use `evaluate` command instead for new implementations.
 
 ```json
 {
@@ -390,39 +523,6 @@ Executes custom JavaScript code on the page.
   "payload": {
     "script": "return document.title;"
   }
-}
-```
-
-**Result:**
-```json
-{
-  "result": "Page Title",
-  "timestamp": "2024-01-15T10:00:00Z"
-}
-```
-
-### Scroll
-Scrolls the page to specified coordinates.
-
-```json
-{
-  "type": "scroll",
-  "payload": {
-    "x": 0,
-    "y": 500,
-    "selector": null  // optional: scroll specific element
-  }
-}
-```
-
-**Result:**
-```json
-{
-  "scrollPosition": {
-    "x": 0,
-    "y": 500
-  },
-  "timestamp": "2024-01-15T10:00:00Z"
 }
 ```
 

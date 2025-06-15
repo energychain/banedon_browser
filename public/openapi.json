@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Browser Automation Service API",
-    "description": "A service for automating browser actions through WebSocket connections and REST API",
+    "description": "A service for automating browser actions through two execution modes: Extension-based (WebSocket connected browser extension) and Server-side (headless Chromium). The service automatically chooses the appropriate mode based on connection availability.",
     "version": "1.0.0",
     "contact": {
       "name": "Browser Automation Service",
@@ -576,62 +576,81 @@
       "CommandRequest": {
         "type": "object",
         "properties": {
-          "action": {
+          "type": {
             "type": "string",
-            "enum": ["click", "type", "navigate", "screenshot", "scroll", "wait", "evaluate"],
-            "description": "The action to perform"
+            "enum": [
+              "navigate", 
+              "screenshot", 
+              "click", 
+              "type", 
+              "scroll",
+              "getTitle",
+              "getUrl", 
+              "getText", 
+              "getAttribute", 
+              "waitForElement", 
+              "evaluate",
+              "extract",
+              "execute"
+            ],
+            "description": "The command type to execute"
           },
-          "selector": {
-            "type": "string",
-            "description": "CSS selector for element-based actions"
-          },
-          "url": {
-            "type": "string",
-            "description": "URL for navigation actions"
-          },
-          "value": {
-            "type": "string",
-            "description": "Value for type actions or JavaScript for evaluate actions"
-          },
-          "options": {
+          "payload": {
             "type": "object",
+            "description": "Command-specific payload data",
             "properties": {
-              "timeout": {
-                "type": "integer",
-                "default": 5000,
-                "description": "Command timeout in milliseconds"
+              "url": {
+                "type": "string",
+                "description": "URL for navigate command"
               },
-              "waitForSelector": {
-                "type": "boolean",
-                "default": false,
-                "description": "Wait for selector to be available"
+              "selector": {
+                "type": "string", 
+                "description": "CSS selector for element-based commands"
               },
-              "clearFirst": {
-                "type": "boolean",
-                "default": false,
-                "description": "Clear input before typing"
+              "text": {
+                "type": "string",
+                "description": "Text for type command"
+              },
+              "attribute": {
+                "type": "string",
+                "description": "Attribute name for getAttribute command"
+              },
+              "script": {
+                "type": "string",
+                "description": "JavaScript code for evaluate command"
+              },
+              "x": {
+                "type": "number",
+                "description": "X coordinate for scroll command"
+              },
+              "y": {
+                "type": "number", 
+                "description": "Y coordinate for scroll command"
               },
               "fullPage": {
                 "type": "boolean",
                 "default": false,
                 "description": "Take full page screenshot"
               },
-              "format": {
-                "type": "string",
-                "enum": ["png", "jpeg"],
-                "default": "png",
-                "description": "Screenshot format"
+              "timeout": {
+                "type": "integer",
+                "default": 30000,
+                "description": "Command timeout in milliseconds"
               },
-              "waitUntil": {
-                "type": "string",
-                "enum": ["load", "networkidle", "domcontentloaded"],
-                "default": "load",
-                "description": "Navigation wait condition"
+              "multiple": {
+                "type": "boolean",
+                "default": false,
+                "description": "Extract multiple elements (extract command)"
               }
             }
+          },
+          "timeout": {
+            "type": "integer",
+            "default": 30000,
+            "description": "Command timeout in milliseconds"
           }
         },
-        "required": ["action"]
+        "required": ["type"]
       },
       "CommandResponse": {
         "type": "object",
