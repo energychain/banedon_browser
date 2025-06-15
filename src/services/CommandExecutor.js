@@ -317,14 +317,12 @@ class CommandExecutor {
       throw new Error('Command type is required');
     }
 
-    // Combined valid types for both extension and server-side execution
     const validTypes = [
       // Original extension commands
       'navigate', 'screenshot', 'extract', 'execute', 'click', 'type', 'scroll',
-      // Additional server-side commands
+      // New server-side commands
       'getTitle', 'getUrl', 'getText', 'getAttribute', 'waitForElement', 'evaluate'
     ];
-    
     if (!validTypes.includes(commandData.type)) {
       throw new Error(`Invalid command type: ${commandData.type}`);
     }
@@ -337,17 +335,28 @@ class CommandExecutor {
         }
         break;
       case 'extract':
-      case 'getText':
-      case 'click':
-      case 'type':
         if (!commandData.payload?.selector) {
-          throw new Error('Selector is required for this command');
+          throw new Error('Selector is required for extract command');
         }
         break;
       case 'execute':
-      case 'evaluate':
         if (!commandData.payload?.script) {
-          throw new Error('Script is required for execute/evaluate command');
+          throw new Error('Script is required for execute command');
+        }
+        break;
+      case 'click':
+        if (!commandData.payload?.selector) {
+          throw new Error('Selector is required for click command');
+        }
+        break;
+      case 'type':
+        if (!commandData.payload?.selector || !commandData.payload?.text) {
+          throw new Error('Selector and text are required for type command');
+        }
+        break;
+      case 'getText':
+        if (!commandData.payload?.selector) {
+          throw new Error('Selector is required for getText command');
         }
         break;
       case 'getAttribute':
@@ -360,17 +369,12 @@ class CommandExecutor {
           throw new Error('Selector is required for waitForElement command');
         }
         break;
-        break;
-      case 'click':
-        if (!commandData.payload?.selector) {
-          throw new Error('Selector is required for click command');
+      case 'evaluate':
+        if (!commandData.payload?.script) {
+          throw new Error('Script is required for evaluate command');
         }
         break;
-      case 'type':
-        if (!commandData.payload?.selector || !commandData.payload?.text) {
-          throw new Error('Selector and text are required for type command');
-        }
-        break;
+      // getTitle, getUrl, scroll, navigate, screenshot don't require specific payload validation
     }
   }
 
