@@ -26,13 +26,25 @@ This document lists all the deployment-related files created for server installa
   - Security headers
 
 ### Deployment Scripts
-- **`deploy.sh`** - Quick deployment script
+- **`deploy.sh`** - Local deployment script
   - Automated Docker deployment
   - Environment setup
   - Health checks
   - Status reporting
 
-- **`status-check.sh`** - Service status verification script
+- **`remote-deploy.sh`** - Remote deployment script
+  - Deploys to server 10.0.0.2 via SSH
+  - Automated git checkout to /opt/banedon_browser
+  - Complete remote setup and service start
+  - Ensures changes are committed before deployment
+
+- **`remote-status.sh`** - Remote service status checker
+  - Comprehensive remote service monitoring
+  - Container and service health checks
+  - Resource usage monitoring
+  - External connectivity testing
+
+- **`status-check.sh`** - Local service status verification script
   - Connectivity tests
   - API endpoint validation
   - Docker container checks
@@ -40,12 +52,23 @@ This document lists all the deployment-related files created for server installa
 
 ## 🚀 Quick Deployment Steps
 
+### Option A: Local Deployment (on server)
 1. **Clone repository** on server 10.0.0.2
 2. **Run deployment script**: `./deploy.sh`
 3. **Open firewall port 3010** (or 80/443 for nginx)
 4. **Verify installation**: `./status-check.sh`
 5. **Build extension**: `./build.sh`
 6. **Distribute extension** to users
+
+### Option B: Remote Deployment (from development machine)
+1. **Ensure changes are committed**: `git add . && git commit -m "Your message"`
+2. **Run remote deployment**: `./remote-deploy.sh [username]`
+3. **Open firewall port 3010** on server 10.0.0.2
+4. **Check remote status**: `./remote-status.sh [username]`
+5. **Build extension**: `./build.sh` (locally)
+6. **Distribute extension** to users
+
+> **Note**: Remote deployment requires SSH access to server 10.0.0.2
 
 ## 🌐 Required Public URLs/Ports
 
