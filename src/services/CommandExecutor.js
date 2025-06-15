@@ -317,7 +317,14 @@ class CommandExecutor {
       throw new Error('Command type is required');
     }
 
-    const validTypes = ['navigate', 'screenshot', 'extract', 'execute', 'click', 'type', 'scroll'];
+    // Combined valid types for both extension and server-side execution
+    const validTypes = [
+      // Original extension commands
+      'navigate', 'screenshot', 'extract', 'execute', 'click', 'type', 'scroll',
+      // Additional server-side commands
+      'getTitle', 'getUrl', 'getText', 'getAttribute', 'waitForElement', 'evaluate'
+    ];
+    
     if (!validTypes.includes(commandData.type)) {
       throw new Error(`Invalid command type: ${commandData.type}`);
     }
@@ -330,14 +337,29 @@ class CommandExecutor {
         }
         break;
       case 'extract':
+      case 'getText':
+      case 'click':
+      case 'type':
         if (!commandData.payload?.selector) {
-          throw new Error('Selector is required for extract command');
+          throw new Error('Selector is required for this command');
         }
         break;
       case 'execute':
+      case 'evaluate':
         if (!commandData.payload?.script) {
-          throw new Error('Script is required for execute command');
+          throw new Error('Script is required for execute/evaluate command');
         }
+        break;
+      case 'getAttribute':
+        if (!commandData.payload?.selector || !commandData.payload?.attribute) {
+          throw new Error('Selector and attribute are required for getAttribute command');
+        }
+        break;
+      case 'waitForElement':
+        if (!commandData.payload?.selector) {
+          throw new Error('Selector is required for waitForElement command');
+        }
+        break;
         break;
       case 'click':
         if (!commandData.payload?.selector) {
