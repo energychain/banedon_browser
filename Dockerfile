@@ -15,7 +15,7 @@ COPY src/ ./src/
 COPY docs/ ./docs/
 COPY extension/ ./extension/
 COPY public/ ./public/
-COPY build.sh ./
+COPY build.sh ./build.sh
 
 # Install zip utility for building extension package
 RUN apk add --no-cache zip

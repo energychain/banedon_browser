@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 # Build script for Browser Automation Service Extension
 
