@@ -1,0 +1,138 @@
+const express = require('express');
+const cors = require('cors');
+const { createServer } = require('http');
+const WebSocket = require('ws');
+const logger = require('./utils/logger');
+const config = require('./utils/config');
+
+// Import route handlers
+const sessionRoutes = require('./routes/sessions');
+const commandRoutes = require('./routes/commands');
+
+// Import services
+const SessionManager = require('./services/SessionManager');
+const WebSocketManager = require('./services/WebSocketManager');
+
+class BrowserAutomationService {
+  constructor() {
+    this.app = express();
+    this.server = createServer(this.app);
+    this.sessionManager = new SessionManager();
+    this.wsManager = new WebSocketManager(this.sessionManager);
+    
+    this.setupMiddleware();
+    this.setupRoutes();
+    this.setupWebSocket();
+    this.setupGracefulShutdown();
+  }
+
+  setupMiddleware() {
+    // CORS configuration
+    this.app.use(cors({
+      origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000'],
+      credentials: true
+    }));
+
+    // Parse JSON bodies
+    this.app.use(express.json({ limit: '10mb' }));
+    
+    // Request logging
+    this.app.use((req, res, next) => {
+      logger.info(`${req.method} ${req.path}`, { 
+        ip: req.ip, 
+        userAgent: req.get('User-Agent') 
+      });
+      next();
+    });
+  }
+
+  setupRoutes() {
+    // Health check endpoint
+    this.app.get('/health', (req, res) => {
+      res.json({
+        status: 'healthy',
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
+        version: require('../package.json').version,
+        activeSessions: this.sessionManager.getActiveSessionCount(),
+        wsConnections: this.wsManager.getConnectionCount()
+      });
+    });
+
+    // API routes
+    this.app.use('/api/sessions', sessionRoutes(this.sessionManager));
+    const commandRouter = commandRoutes(this.sessionManager);
+    this.app.use('/api/sessions', commandRouter);
+    
+    // Set command executor in WebSocket manager
+    this.wsManager.setCommandExecutor(commandRouter.commandExecutor);
+
+    // 404 handler
+    this.app.use('*', (req, res) => {
+      res.status(404).json({ error: 'Endpoint not found' });
+    });
+
+    // Error handler
+    this.app.use((err, req, res, next) => {
+      logger.error('Unhandled error:', err);
+      res.status(500).json({ 
+        error: 'Internal server error',
+        message: process.env.NODE_ENV === 'development' ? err.message : undefined
+      });
+    });
+  }
+
+  setupWebSocket() {
+    const wss = new WebSocket.Server({ 
+      server: this.server,
+      path: '/ws',
+      verifyClient: this.wsManager.verifyClient.bind(this.wsManager)
+    });
+
+    wss.on('connection', (ws, req) => {
+      this.wsManager.handleConnection(ws, req);
+    });
+
+    logger.info('WebSocket server initialized on /ws');
+  }
+
+  setupGracefulShutdown() {
+    const shutdown = async (signal) => {
+      logger.info(`Received ${signal}. Starting graceful shutdown...`);
+      
+      // Stop accepting new connections
+      this.server.close(() => {
+        logger.info('HTTP server closed');
+      });
+
+      // Close WebSocket connections
+      await this.wsManager.closeAllConnections();
+      
+      // Cleanup sessions
+      await this.sessionManager.cleanup();
+      
+      logger.info('Graceful shutdown completed');
+      process.exit(0);
+    };
+
+    process.on('SIGINT', () => shutdown('SIGINT'));
+    process.on('SIGTERM', () => shutdown('SIGTERM'));
+  }
+
+  start() {
+    const port = config.PORT;
+    this.server.listen(port, () => {
+      logger.info(`Browser Automation Service started on port ${port}`);
+      logger.info(`Health check: http://localhost:${port}/health`);
+      logger.info(`WebSocket endpoint: ws://localhost:${port}/ws`);
+    });
+  }
+}
+
+// Start the service if this file is run directly
+if (require.main === module) {
+  const service = new BrowserAutomationService();
+  service.start();
+}
+
+module.exports = BrowserAutomationService;

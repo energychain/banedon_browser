@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Browser Automation Service</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Browser Automation</h1>
+      <div class="status-indicator" id="statusIndicator">
+        <span class="status-dot" id="statusDot"></span>
+        <span class="status-text" id="statusText">Disconnected</span>
+      </div>
+    </header>
+
+    <main>
+      <!-- Connection Section -->
+      <section class="section" id="connectionSection">
+        <h2>Connection</h2>
+        
+        <div class="form-group">
+          <label for="serverUrl">Server URL:</label>
+          <input type="text" id="serverUrl" value="ws://localhost:3010/ws" placeholder="ws://localhost:3010/ws">
+        </div>
+        
+        <div class="form-group">
+          <label for="sessionId">Session ID:</label>
+          <input type="text" id="sessionId" placeholder="Enter session ID or create new">
+          <button type="button" id="createSessionBtn" class="btn btn-secondary">Create New</button>
+        </div>
+        
+        <div class="button-group">
+          <button type="button" id="connectBtn" class="btn btn-primary">Connect</button>
+          <button type="button" id="disconnectBtn" class="btn btn-danger" disabled>Disconnect</button>
+        </div>
+      </section>
+
+      <!-- Session Info Section -->
+      <section class="section" id="sessionInfoSection" style="display: none;">
+        <h2>Session Information</h2>
+        <div class="info-grid">
+          <div class="info-item">
+            <label>Session ID:</label>
+            <span id="currentSessionId">-</span>
+          </div>
+          <div class="info-item">
+            <label>Status:</label>
+            <span id="currentStatus">-</span>
+          </div>
+          <div class="info-item">
+            <label>Server:</label>
+            <span id="currentServer">-</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Manual Testing Section -->
+      <section class="section" id="testingSection" style="display: none;">
+        <h2>Manual Testing</h2>
+        
+        <div class="test-group">
+          <h3>Navigation</h3>
+          <div class="form-group">
+            <input type="url" id="testUrl" placeholder="https://example.com" value="https://httpbin.org/html">
+            <button type="button" id="testNavigateBtn" class="btn btn-primary">Navigate</button>
+          </div>
+        </div>
+        
+        <div class="test-group">
+          <h3>Screenshots</h3>
+          <button type="button" id="testScreenshotBtn" class="btn btn-primary">Take Screenshot</button>
+          <div id="screenshotResult" class="result-area"></div>
+        </div>
+        
+        <div class="test-group">
+          <h3>Element Extraction</h3>
+          <div class="form-group">
+            <input type="text" id="testSelector" placeholder="CSS selector (e.g., h1)" value="h1">
+            <button type="button" id="testExtractBtn" class="btn btn-primary">Extract</button>
+          </div>
+          <div id="extractResult" class="result-area"></div>
+        </div>
+      </section>
+
+      <!-- Logs Section -->
+      <section class="section" id="logsSection">
+        <h2>Activity Log</h2>
+        <div id="logContainer" class="log-container">
+          <div class="log-entry info">Extension loaded and ready</div>
+        </div>
+        <button type="button" id="clearLogsBtn" class="btn btn-secondary btn-small">Clear Logs</button>
+      </section>
+    </main>
+
+    <footer>
+      <div class="footer-text">
+        Browser Automation Service v1.0.0
+      </div>
+    </footer>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

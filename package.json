@@ -1,0 +1,39 @@
+{
+  "name": "browser-automation-service",
+  "version": "1.0.0",
+  "description": "Standalone browser automation service with extension interface",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
+    "cli": "node src/cli.js"
+  },
+  "dependencies": {
+    "axios": "^1.4.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.5.0",
+    "express": "^4.18.0",
+    "uuid": "^9.0.0",
+    "ws": "^8.13.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.42.0",
+    "jest": "^29.5.0",
+    "nodemon": "^2.0.22",
+    "prettier": "^2.8.8",
+    "supertest": "^6.3.3"
+  },
+  "keywords": [
+    "browser",
+    "automation",
+    "extension",
+    "api",
+    "websocket"
+  ],
+  "author": "",
+  "license": "ISC"
+}
