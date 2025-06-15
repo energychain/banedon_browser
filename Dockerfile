@@ -60,9 +60,9 @@ ENV CHROME_BIN=/usr/bin/chromium \
     PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
     PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
-# Create app user
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S appuser -u 1001
+# Create app user (Debian syntax)
+RUN groupadd -r -g 1001 nodejs && \
+    useradd -r -u 1001 -g nodejs appuser
 
 # Set working directory
 WORKDIR /app
