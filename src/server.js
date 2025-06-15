@@ -29,9 +29,40 @@ class BrowserAutomationService {
   }
 
   setupMiddleware() {
-    // CORS configuration
+    // CORS configuration with pattern matching
     this.app.use(cors({
-      origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000'],
+      origin: (origin, callback) => {
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) return callback(null, true);
+        
+        const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:3000').split(',');
+        
+        // Check for exact matches first
+        let isAllowed = allowedOrigins.includes(origin);
+        
+        // If not exact match, check for pattern matches
+        if (!isAllowed) {
+          isAllowed = allowedOrigins.some(allowedOrigin => {
+            // Handle chrome-extension:// pattern
+            if (allowedOrigin === 'chrome-extension://' && origin.startsWith('chrome-extension://')) {
+              return true;
+            }
+            // Handle moz-extension:// pattern
+            if (allowedOrigin === 'moz-extension://' && origin.startsWith('moz-extension://')) {
+              return true;
+            }
+            // Handle wildcard patterns
+            if (allowedOrigin.includes('*')) {
+              const pattern = allowedOrigin.replace(/\*/g, '.*');
+              const regex = new RegExp(`^${pattern}$`);
+              return regex.test(origin);
+            }
+            return false;
+          });
+        }
+        
+        callback(null, isAllowed);
+      },
       credentials: true
     }));
 

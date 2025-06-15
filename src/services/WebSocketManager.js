@@ -32,9 +32,36 @@ class WebSocketManager {
     // Check origin in production
     if (config.NODE_ENV === 'production') {
       const allowedOrigins = config.ALLOWED_ORIGINS.split(',');
-      if (origin && !allowedOrigins.includes(origin)) {
-        logger.warn(`Connection rejected from unauthorized origin: ${origin}`);
-        return false;
+      
+      if (origin) {
+        // Check for exact matches first
+        let isAllowed = allowedOrigins.includes(origin);
+        
+        // If not exact match, check for pattern matches (like chrome-extension://)
+        if (!isAllowed) {
+          isAllowed = allowedOrigins.some(allowedOrigin => {
+            // Handle chrome-extension:// pattern
+            if (allowedOrigin === 'chrome-extension://' && origin.startsWith('chrome-extension://')) {
+              return true;
+            }
+            // Handle moz-extension:// pattern
+            if (allowedOrigin === 'moz-extension://' && origin.startsWith('moz-extension://')) {
+              return true;
+            }
+            // Handle wildcard patterns
+            if (allowedOrigin.includes('*')) {
+              const pattern = allowedOrigin.replace(/\*/g, '.*');
+              const regex = new RegExp(`^${pattern}$`);
+              return regex.test(origin);
+            }
+            return false;
+          });
+        }
+        
+        if (!isAllowed) {
+          logger.warn(`Connection rejected from unauthorized origin: ${origin}`);
+          return false;
+        }
       }
     }
 
