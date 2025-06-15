@@ -147,7 +147,7 @@ fi
 
 # Stop existing services if docker-compose.yml exists
 if [ -f "docker-compose.yml" ]; then
-    \$DOCKER_COMPOSE_CMD down 2>/dev/null || true
+    \$DOCKER_COMPOSE_CMD -f docker-compose.yml down 2>/dev/null || true
 else
     echo "⚠️  No docker-compose.yml found yet"
 fi
@@ -179,6 +179,14 @@ chmod +x *.sh 2>/dev/null || true
 echo "🚀 Building and starting services..."
 cd $DEPLOY_PATH
 
+# Verify we're in the right directory and have the compose file
+if [ ! -f "docker-compose.yml" ]; then
+    echo "❌ Error: docker-compose.yml not found in $DEPLOY_PATH"
+    exit 1
+fi
+
+echo "✅ Found docker-compose.yml in \$(pwd)"
+
 # Use docker compose or docker-compose depending on what's available
 if docker compose version >/dev/null 2>&1; then
     DOCKER_COMPOSE_CMD="docker compose"
@@ -186,15 +194,18 @@ else
     DOCKER_COMPOSE_CMD="docker-compose"
 fi
 
+echo "🐳 Using: \$DOCKER_COMPOSE_CMD"
+
 # Build and start the service
-\$DOCKER_COMPOSE_CMD up -d --build
+\$DOCKER_COMPOSE_CMD -f docker-compose.yml up -d --build
 
 # Wait a moment for services to start
 sleep 5
 
 # Check service health
 echo "🏥 Checking service health..."
-\$DOCKER_COMPOSE_CMD ps
+cd $DEPLOY_PATH
+\$DOCKER_COMPOSE_CMD -f docker-compose.yml ps
 
 # Test health endpoint
 echo "🧪 Testing health endpoint..."
@@ -216,12 +227,12 @@ if curl -f http://localhost:3010/health >/dev/null 2>&1; then
     echo "🏥 Health check: http://$SERVER_IP:3010/health"
     echo ""
     echo "📊 Service status:"
-    \$DOCKER_COMPOSE_CMD ps
+    \$DOCKER_COMPOSE_CMD -f docker-compose.yml ps
 else
     echo ""
     echo "❌ Deployment completed but service health check failed"
     echo "📋 Check logs:"
-    echo "   \$DOCKER_COMPOSE_CMD logs browser-automation-service"
+    echo "   \$DOCKER_COMPOSE_CMD -f docker-compose.yml logs browser-automation-service"
     exit 1
 fi
 EOF
@@ -237,10 +248,10 @@ echo "  Health: http://$SERVER_IP:3010/health"
 echo ""
 echo "🔧 Management Commands (run on server):"
 echo "  cd $DEPLOY_PATH"
-echo "  \$DOCKER_COMPOSE_CMD ps          # Check status"
-echo "  \$DOCKER_COMPOSE_CMD logs        # View logs"
-echo "  \$DOCKER_COMPOSE_CMD restart     # Restart service"
-echo "  \$DOCKER_COMPOSE_CMD down        # Stop service"
+echo "  \$DOCKER_COMPOSE_CMD -f docker-compose.yml ps          # Check status"
+echo "  \$DOCKER_COMPOSE_CMD -f docker-compose.yml logs        # View logs"
+echo "  \$DOCKER_COMPOSE_CMD -f docker-compose.yml restart     # Restart service"
+echo "  \$DOCKER_COMPOSE_CMD -f docker-compose.yml down        # Stop service"
 echo ""
 echo "🧪 Test the deployment:"
 echo "  curl http://$SERVER_IP:3010/health"

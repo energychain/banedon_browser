@@ -55,7 +55,7 @@ if command -v docker &> /dev/null; then
         if [ -f "docker-compose.yml" ]; then
             echo ""
             echo "📊 Container Status:"
-            docker-compose ps
+            docker-compose -f docker-compose.yml ps
             
             echo ""
             echo "📈 Resource Usage:"
@@ -90,7 +90,7 @@ fi
 echo ""
 echo "📋 Recent Logs (last 10 lines):"
 if [ -f "docker-compose.yml" ]; then
-    docker-compose logs --tail=10 browser-automation-service 2>/dev/null || echo "  Could not retrieve logs"
+    docker-compose -f docker-compose.yml logs --tail=10 browser-automation-service 2>/dev/null || echo "  Could not retrieve logs"
 else
     echo "  ❌ docker-compose.yml not found"
 fi
@@ -122,6 +122,6 @@ echo "  External: http://$SERVER_IP:3010"
 echo "  Health: http://$SERVER_IP:3010/health"
 echo ""
 echo "🛠 Management commands (run on server):"
-echo "  ssh $SERVER_USER@$SERVER_IP 'cd $DEPLOY_PATH && docker-compose logs'"
-echo "  ssh $SERVER_USER@$SERVER_IP 'cd $DEPLOY_PATH && docker-compose restart'"
-echo "  ssh $SERVER_USER@$SERVER_IP 'cd $DEPLOY_PATH && docker-compose down'"
+echo "  ssh $SERVER_USER@$SERVER_IP 'cd $DEPLOY_PATH && docker-compose -f docker-compose.yml logs'"
+echo "  ssh $SERVER_USER@$SERVER_IP 'cd $DEPLOY_PATH && docker-compose -f docker-compose.yml restart'"
+echo "  ssh $SERVER_USER@$SERVER_IP 'cd $DEPLOY_PATH && docker-compose -f docker-compose.yml down'"
