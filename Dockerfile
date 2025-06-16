@@ -1,7 +1,38 @@
 # Multi-stage Docker build for Browser Automation Service
-FROM node:18-alpine AS builder
+FROM node:18-alpine AS # Create startup script with improved browser support
+RUN echo '#!/bin/bash\n\
+set -e\n\
+\n\
+# Create and set permissions for tmp directories\n\
+mkdir -p /tmp/puppeteer /tmp/.X99-lock\n\
+chown -R appuser:nodejs /tmp/puppeteer /tmp/.X99-lock || true\n\
+\n\
+# Start Xvfb display server in background\n\
+echo "Starting Xvfb..."\n\
+Xvfb :99 -screen 0 1920x1080x24 -ac +extension GLX +render -noreset > /dev/null 2>&1 &\n\
+\n\
+# Wait for Xvfb to start\n\
+sleep 3\n\
+\n\
+# Export display variable\n\
+export DISPLAY=:99\n\
+\n\
+# Test if display is working\n\
+if ! xdpyinfo -display :99 >/dev/null 2>&1; then\n\
+  echo "Warning: Xvfb display not ready, continuing anyway..."\n\
+fi\n\
+\n\
+# Start the Node.js application\n\
+echo "Starting Browser Automation Service..."\n\
+exec node src/server.js\n\
+' > /app/start.sh && \
+chmod +x /app/start.sh && \
+chown appuser:nodejs /app/start.sh
 
-# Set working directory
+# Create logs directory and set proper permissions  
+RUN mkdir -p logs /tmp/puppeteer && \
+    chown -R appuser:nodejs logs /tmp/puppeteer && \
+    chmod 755 /tmporking directory
 WORKDIR /app
 
 # Copy package files
@@ -32,23 +63,49 @@ RUN apt-get update && apt-get install -y \
     chromium \
     # Display server for headless mode
     xvfb \
+    x11-utils \
     # Font support
     fonts-liberation \
     fonts-noto-color-emoji \
+    fonts-dejavu-core \
     # Audio support
     libasound2 \
     # Accessibility
     libatk-bridge2.0-0 \
-    # Graphics
+    libatk1.0-0 \
+    # Graphics and rendering
     libdrm2 \
     libxkbcommon0 \
     libxss1 \
+    libgconf-2-4 \
+    libxrandr2 \
+    libasound2 \
+    libpangocairo-1.0-0 \
+    libatk1.0-0 \
+    libcairo-gobject2 \
+    libgtk-3-0 \
+    libgdk-pixbuf2.0-0 \
     # Security
     libu2f-udev \
     # Vulkan support
     libvulkan1 \
+    # Additional dependencies
+    libxcomposite1 \
+    libxcursor1 \
+    libxdamage1 \
+    libxi6 \
+    libxtst6 \
+    libnss3 \
+    libcups2 \
+    libxrandr2 \
+    libasound2 \
+    libpangocairo-1.0-0 \
+    libcairo2 \
+    libgcc1 \
     # Process management
     dumb-init \
+    # Debugging tools (optional)
+    procps \
     # Cleanup
     && rm -rf /var/lib/apt/lists/*
 
@@ -58,7 +115,10 @@ ENV CHROME_BIN=/usr/bin/chromium \
     CHROMIUM_PATH=/usr/bin/chromium \
     DISPLAY=:99 \
     PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
-    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium \
+    NODE_ENV=production \
+    NO_SANDBOX=1 \
+    DEBIAN_FRONTEND=noninteractive
 
 # Create app user (Debian syntax)
 RUN groupadd -r -g 1001 nodejs && \
@@ -76,18 +136,36 @@ COPY --from=builder --chown=appuser:nodejs /app/public ./public
 COPY --from=builder --chown=appuser:nodejs /app/build ./build
 COPY --chown=appuser:nodejs package*.json ./
 
-# Create logs directory
-RUN mkdir -p logs && chown appuser:nodejs logs
+# Create logs directory and tmp directories for Puppeteer
+RUN mkdir -p logs /tmp/puppeteer && \
+    chown -R appuser:nodejs logs /tmp/puppeteer && \
+    chmod 755 /tmp
 
-# Create startup script for Xvfb and application
+# Create enhanced startup script for Xvfb and application
 RUN echo '#!/bin/bash\n\
-# Start Xvfb (virtual display) in background\n\
-Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &\n\
+set -e\n\
 \n\
-# Wait a moment for Xvfb to start\n\
-sleep 2\n\
+# Create and set permissions for tmp directories\n\
+mkdir -p /tmp/puppeteer /tmp/.X99-lock\n\
+\n\
+# Start Xvfb display server in background\n\
+echo "Starting Xvfb virtual display..."\n\
+Xvfb :99 -screen 0 1920x1080x24 -ac +extension GLX +render -noreset > /dev/null 2>&1 &\n\
+XVFB_PID=$!\n\
+\n\
+# Wait for Xvfb to start\n\
+sleep 3\n\
+\n\
+# Export display variable\n\
+export DISPLAY=:99\n\
+\n\
+# Verify Xvfb is running\n\
+if ! kill -0 $XVFB_PID 2>/dev/null; then\n\
+  echo "Warning: Xvfb failed to start, continuing without virtual display..."\n\
+fi\n\
 \n\
 # Start the Node.js application\n\
+echo "Starting Browser Automation Service..."\n\
 exec node src/server.js\n\
 ' > /app/start.sh && \
 chmod +x /app/start.sh && \

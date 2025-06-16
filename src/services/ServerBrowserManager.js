@@ -17,85 +17,157 @@ class ServerBrowserManager {
       // Close existing browser if any
       await this.closeBrowser(sessionId);
 
-      // Try different executable paths for Docker compatibility
-      const possiblePaths = [
-        '/usr/bin/chromium',           // Alpine/Docker standard
-        '/usr/bin/chromium-browser',   // Ubuntu/Debian
-        '/usr/bin/google-chrome',      // Google Chrome
+      logger.info(`Launching browser for session: ${sessionId}`);
+
+      // Docker-optimized Puppeteer configuration
+      const launchOptions = {
+        headless: true,
+        args: [
+          // Essential for Docker
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          
+          // Performance and stability
+          '--disable-gpu',
+          '--disable-software-rasterizer',
+          '--disable-background-timer-throttling',
+          '--disable-backgrounding-occluded-windows',
+          '--disable-renderer-backgrounding',
+          '--disable-features=TranslateUI',
+          '--disable-features=VizDisplayCompositor',
+          
+          // Memory optimization
+          '--memory-pressure-off',
+          '--max_old_space_size=4096',
+          
+          // Security (relaxed for automation)
+          '--disable-web-security',
+          '--disable-features=VizDisplayCompositor',
+          '--allow-running-insecure-content',
+          '--disable-features=VizDisplayCompositor',
+          
+          // UI elements
+          '--hide-scrollbars',
+          '--mute-audio',
+          '--disable-extensions',
+          '--disable-plugins',
+          '--disable-default-apps',
+          
+          // Network
+          '--aggressive-cache-discard',
+          '--disable-background-networking',
+          
+          // Window size
+          '--window-size=1920,1080',
+          
+          // Language
+          '--lang=en-US',
+          
+          // User data directory (temporary)
+          `--user-data-dir=/tmp/puppeteer-${sessionId}`,
+          
+          // Additional Docker fixes
+          '--disable-ipc-flooding-protection',
+          '--disable-crash-reporter',
+          '--disable-extensions-file-access-check',
+          '--disable-features=AudioServiceOutOfProcess',
+          '--disable-features=MediaRouter',
+          '--disable-hang-monitor',
+          '--disable-popup-blocking',
+          '--disable-prompt-on-repost',
+          '--disable-sync',
+          '--no-first-run',
+          '--no-default-browser-check',
+          '--no-zygote',
+          '--single-process',
+          '--disable-logging',
+          '--disable-permissions-api'
+        ],
+        
+        // Environment variables
+        env: {
+          ...process.env,
+          DISPLAY: ':99',
+          NO_SANDBOX: '1'
+        },
+        
+        // Timeouts
+        timeout: 30000,
+        
+        // Don't wait for initial load
+        waitForInitialPage: false
+      };
+
+      // Try to find Chromium executable
+      const chromiumPaths = [
+        '/usr/bin/chromium',
+        '/usr/bin/chromium-browser', 
+        '/usr/bin/google-chrome',
         '/usr/bin/google-chrome-stable',
+        '/snap/bin/chromium',
         process.env.PUPPETEER_EXECUTABLE_PATH,
         process.env.CHROME_BIN
       ].filter(Boolean);
 
-      let browser;
-      let lastError;
-
-      // Try each executable path
-      for (const execPath of possiblePaths) {
+      // Check if any executable exists
+      const fs = require('fs');
+      let executablePath = null;
+      
+      for (const path of chromiumPaths) {
         try {
-          logger.debug(`Attempting to launch browser with: ${execPath}`);
-          
-          browser = await puppeteer.launch({
-            executablePath: execPath,
-            headless: 'new',
-            args: [
-              '--no-sandbox',
-              '--disable-setuid-sandbox',
-              '--disable-dev-shm-usage',
-              '--disable-accelerated-2d-canvas',
-              '--no-first-run',
-              '--no-zygote',
-              '--single-process',
-              '--disable-gpu',
-              '--disable-background-timer-throttling',
-              '--disable-backgrounding-occluded-windows',
-              '--disable-renderer-backgrounding',
-              '--disable-web-security',
-              '--disable-features=VizDisplayCompositor',
-              '--disable-extensions',
-              '--disable-plugins',
-              '--disable-sync',
-              '--metrics-recording-only',
-              '--no-crash-upload',
-              '--disable-default-apps',
-              '--disable-hang-monitor',
-              '--disable-prompt-on-repost',
-              '--disable-domain-reliability',
-              '--disable-component-extensions-with-background-pages',
-              '--disable-backgrounding-occluded-windows',
-              '--disable-ipc-flooding-protection',
-              '--window-size=1280,720',
-              '--virtual-time-budget=5000'
-            ]
-          });
-          
-          logger.info(`Successfully launched browser with: ${execPath}`);
-          break;
-        } catch (error) {
-          lastError = error;
-          logger.debug(`Failed to launch with ${execPath}: ${error.message}`);
-          continue;
+          if (fs.existsSync(path)) {
+            executablePath = path;
+            logger.debug(`Found Chromium at: ${path}`);
+            break;
+          }
+        } catch (e) {
+          // Continue to next path
         }
       }
 
-      if (!browser) {
-        const errorMessage = `Failed to launch browser with any executable path. Last error: ${lastError?.message}. For full browser automation functionality, please install the browser extension from: http://10.0.0.2:3010/extension/download`;
-        throw new Error(errorMessage);
+      if (executablePath) {
+        launchOptions.executablePath = executablePath;
       }
 
+      logger.debug(`Launching browser with options:`, {
+        executablePath: executablePath || 'default',
+        argsCount: launchOptions.args.length,
+        sessionId
+      });
+
+      const browser = await puppeteer.launch(launchOptions);
+      
+      // Create new page with enhanced configuration
       const page = await browser.newPage();
       
-      // Set viewport
-      await page.setViewport({ width: 1280, height: 720 });
+      // Set enhanced viewport
+      await page.setViewport({ 
+        width: 1920, 
+        height: 1080,
+        deviceScaleFactor: 1
+      });
       
-      // Set user agent
+      // Set realistic user agent
       await page.setUserAgent('Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+      
+      // Set extra HTTP headers
+      await page.setExtraHTTPHeaders({
+        'Accept-Language': 'en-US,en;q=0.9'
+      });
+      
+      // Enable request interception for debugging if needed
+      // await page.setRequestInterception(true);
+      
+      // Set default navigation timeout
+      page.setDefaultNavigationTimeout(30000);
+      page.setDefaultTimeout(30000);
 
       // Store references
       this.browsers.set(sessionId, browser);
       this.pages.set(sessionId, page);
 
-      logger.info(`Browser launched for session: ${sessionId}`);
+      logger.info(`Browser successfully launched for session: ${sessionId}`);
       
       return { browser, page };
     } catch (error) {
