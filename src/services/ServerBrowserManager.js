@@ -14,6 +14,17 @@ class ServerBrowserManager {
     try {
       logger.info(`Launching browser for session: ${sessionId}`);
       
+      // Create crash dumps directory for this session
+      const fs = require('fs');
+      const path = require('path');
+      const crashDir = path.join('/tmp', 'crash-dumps', sessionId);
+      
+      try {
+        fs.mkdirSync(crashDir, { recursive: true });
+      } catch (e) {
+        logger.warn(`Could not create crash dir ${crashDir}: ${e.message}`);
+      }
+
       // Ultra-minimal configuration to avoid hanging
       const launchOptions = {
         headless: 'new',
@@ -44,14 +55,19 @@ class ServerBrowserManager {
           '--disable-crash-reporter',
           '--disable-breakpad',
           '--disable-crashpad',
-          '--no-crash-upload'
+          '--no-crash-upload',
+          // Provide crash handler database to satisfy requirement
+          `--crash-dumps-dir=${crashDir}`,
+          '--enable-crashpad=false',
+          '--disable-crash-reporter-for-testing'
         ],
         timeout: 10000, // 10 second timeout
         env: {
           ...process.env,
           NO_SANDBOX: '1',
           CHROME_CRASH_REPORTER_DISABLE: '1',
-          BREAKPAD_DISABLE: '1'
+          BREAKPAD_DISABLE: '1',
+          CHROME_CRASHPAD_HANDLER_DISABLE: '1'
         }
       };
 
