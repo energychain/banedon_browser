@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Natural Language Task Demo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .demo-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #fafafa;
+        }
+        .input-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        input, textarea, button {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .screenshot {
+            max-width: 100%;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+        }
+        .loading {
+            color: #007bff;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 Natural Language Browser Tasks</h1>
+        <p style="text-align: center; color: #666; margin-bottom: 30px;">
+            Control your browser using natural language with AI-powered task execution
+        </p>
+
+        <div class="demo-section">
+            <h3>📋 Create Session</h3>
+            <button id="createSession">Create New Session</button>
+            <div id="sessionResult" class="result" style="display: none;"></div>
+        </div>
+
+        <div class="demo-section">
+            <h3>🗣️ Natural Language Task</h3>
+            <div class="input-group">
+                <label for="sessionId">Session ID:</label>
+                <input type="text" id="sessionId" placeholder="Session ID will be filled automatically after creating session">
+            </div>
+            <div class="input-group">
+                <label for="taskInput">Task Description:</label>
+                <textarea id="taskInput" rows="3" placeholder="Examples:
+• Go to google.com
+• Search for 'AI news'
+• Click on the first result
+• Take a screenshot of the current page
+• Scroll down to see more content"></textarea>
+            </div>
+            <button id="executeTask" disabled>Execute Task</button>
+            <div id="taskResult" class="result" style="display: none;"></div>
+        </div>
+
+        <div class="demo-section">
+            <h3>📖 Example Tasks</h3>
+            <p>Try these example tasks:</p>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+                <button class="example-task" data-task="Go to tagesschau.de">📰 Go to tagesschau.de</button>
+                <button class="example-task" data-task="Go to google.com">🔍 Go to google.com</button>
+                <button class="example-task" data-task="Take a screenshot">📸 Take a screenshot</button>
+                <button class="example-task" data-task="Scroll down to see more content">⬇️ Scroll down</button>
+                <button class="example-task" data-task="Go back to the previous page">⬅️ Go back</button>
+                <button class="example-task" data-task="Refresh the current page">🔄 Refresh page</button>
+            </div>
+        </div>
+
+        <div class="demo-section">
+            <h3>📊 Session Status</h3>
+            <button id="checkStatus">Check Session Status</button>
+            <div id="statusResult" class="result" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin;
+        let currentSessionId = '';
+
+        // Create session
+        document.getElementById('createSession').addEventListener('click', async () => {
+            const button = document.getElementById('createSession');
+            const resultDiv = document.getElementById('sessionResult');
+            
+            button.textContent = 'Creating...';
+            button.disabled = true;
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result loading';
+            resultDiv.textContent = 'Creating new session...';
+
+            try {
+                const response = await fetch(`${API_BASE}/api/sessions`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        metadata: {
+                            browser: 'demo',
+                            purpose: 'natural-language-demo'
+                        }
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    currentSessionId = data.session.id;
+                    document.getElementById('sessionId').value = currentSessionId;
+                    document.getElementById('executeTask').disabled = false;
+                    
+                    resultDiv.className = 'result success';
+                    resultDiv.textContent = JSON.stringify(data, null, 2);
+                } else {
+                    throw new Error(data.error || 'Unknown error');
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `Error: ${error.message}`;
+            } finally {
+                button.textContent = 'Create New Session';
+                button.disabled = false;
+            }
+        });
+
+        // Execute natural language task
+        document.getElementById('executeTask').addEventListener('click', async () => {
+            const sessionId = document.getElementById('sessionId').value;
+            const task = document.getElementById('taskInput').value;
+            
+            if (!sessionId || !task) {
+                alert('Please create a session and enter a task description');
+                return;
+            }
+
+            const button = document.getElementById('executeTask');
+            const resultDiv = document.getElementById('taskResult');
+            
+            button.textContent = 'Executing...';
+            button.disabled = true;
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result loading';
+            resultDiv.textContent = 'Processing natural language task...';
+
+            try {
+                const response = await fetch(`${API_BASE}/api/sessions/${sessionId}/nl-tasks`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ task })
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    resultDiv.className = 'result success';
+                    let content = JSON.stringify(data, null, 2);
+                    
+                    // Add screenshot if available
+                    if (data.task.screenshot && data.task.screenshot.base64) {
+                        content += '\n\n--- SCREENSHOT ---\n';
+                        const img = document.createElement('img');
+                        img.src = `data:image/png;base64,${data.task.screenshot.base64}`;
+                        img.className = 'screenshot';
+                        resultDiv.innerHTML = `<pre>${content}</pre>`;
+                        resultDiv.appendChild(img);
+                    } else {
+                        resultDiv.textContent = content;
+                    }
+                } else {
+                    throw new Error(data.error || 'Unknown error');
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `Error: ${error.message}`;
+            } finally {
+                button.textContent = 'Execute Task';
+                button.disabled = false;
+            }
+        });
+
+        // Example tasks
+        document.querySelectorAll('.example-task').forEach(button => {
+            button.addEventListener('click', () => {
+                document.getElementById('taskInput').value = button.dataset.task;
+            });
+        });
+
+        // Check session status
+        document.getElementById('checkStatus').addEventListener('click', async () => {
+            const sessionId = document.getElementById('sessionId').value;
+            
+            if (!sessionId) {
+                alert('Please create a session first');
+                return;
+            }
+
+            const button = document.getElementById('checkStatus');
+            const resultDiv = document.getElementById('statusResult');
+            
+            button.textContent = 'Checking...';
+            button.disabled = true;
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result loading';
+            resultDiv.textContent = 'Checking session status...';
+
+            try {
+                const response = await fetch(`${API_BASE}/api/sessions/${sessionId}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    resultDiv.className = 'result success';
+                    resultDiv.textContent = JSON.stringify(data, null, 2);
+                } else {
+                    throw new Error(data.error || 'Unknown error');
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `Error: ${error.message}`;
+            } finally {
+                button.textContent = 'Check Session Status';
+                button.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
