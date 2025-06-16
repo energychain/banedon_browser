@@ -85,11 +85,11 @@ class ServerBrowserManager {
           '--disable-permissions-api'
         ],
         
-        // Environment variables
+        // Environment variables (remove DISPLAY requirement)
         env: {
           ...process.env,
-          DISPLAY: ':99',
-          NO_SANDBOX: '1'
+          NO_SANDBOX: '1',
+          PUPPETEER_DISABLE_HEADLESS_WARNING: 'true'
         },
         
         // Timeouts
@@ -136,7 +136,18 @@ class ServerBrowserManager {
         sessionId
       });
 
-      const browser = await puppeteer.launch(launchOptions);
+      let browser;
+      try {
+        browser = await puppeteer.launch(launchOptions);
+      } catch (launchError) {
+        logger.error(`Puppeteer launch failed:`, {
+          error: launchError.message,
+          stack: launchError.stack,
+          executablePath: executablePath || 'default',
+          sessionId
+        });
+        throw new Error(`Browser launch failed: ${launchError.message}`);
+      }
       
       // Create new page with enhanced configuration
       const page = await browser.newPage();
@@ -171,7 +182,16 @@ class ServerBrowserManager {
       
       return { browser, page };
     } catch (error) {
-      logger.error(`Failed to launch browser for session ${sessionId}:`, error);
+      logger.error(`Failed to launch browser for session ${sessionId}:`, {
+        message: error.message,
+        stack: error.stack,
+        sessionId
+      });
+      
+      // Clean up any partial state
+      this.browsers.delete(sessionId);
+      this.pages.delete(sessionId);
+      
       throw error;
     }
   }
