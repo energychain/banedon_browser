@@ -70,6 +70,9 @@ class ServerBrowserManager {
           // Additional Docker fixes
           '--disable-ipc-flooding-protection',
           '--disable-crash-reporter',
+          '--disable-breakpad',
+          '--disable-crashpad',
+          '--crash-dumps-dir=/tmp/crash-dumps',
           '--disable-extensions-file-access-check',
           '--disable-features=AudioServiceOutOfProcess',
           '--disable-features=MediaRouter',
@@ -112,6 +115,26 @@ class ServerBrowserManager {
 
       // Check if any executable exists
       const fs = require('fs');
+      
+      // Create necessary directories for crash handling and user data
+      const userDataDir = `/tmp/puppeteer-${sessionId}`;
+      const crashDir = '/tmp/crash-dumps';
+      
+      try {
+        if (!fs.existsSync(userDataDir)) {
+          fs.mkdirSync(userDataDir, { recursive: true });
+        }
+        if (!fs.existsSync(crashDir)) {
+          fs.mkdirSync(crashDir, { recursive: true });
+        }
+        
+        // Set permissions
+        fs.chmodSync(userDataDir, 0o755);
+        fs.chmodSync(crashDir, 0o755);
+      } catch (dirError) {
+        logger.warn(`Failed to create directories: ${dirError.message}`);
+      }
+      
       let executablePath = null;
       
       for (const path of chromiumPaths) {
