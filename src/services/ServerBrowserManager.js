@@ -39,7 +39,10 @@ class ServerBrowserManager {
           '--window-size=1920,1080',
           '--disable-web-security',
           '--disable-features=VizDisplayCompositor',
-          '--mute-audio'
+          '--mute-audio',
+          // Fix for crashpad database requirement
+          `--crash-dumps-dir=/tmp/crashes-${sessionId}`,
+          '--enable-crash-reporter'
         ],
         timeout: 10000, // 10 second timeout
         env: {
@@ -70,6 +73,15 @@ class ServerBrowserManager {
         launchOptions.executablePath = executablePath;
       } else {
         logger.info('Using Puppeteer bundled browser');
+      }
+
+      // Create crashes directory
+      const fs = require('fs');
+      const crashesDir = `/tmp/crashes-${sessionId}`;
+      try {
+        fs.mkdirSync(crashesDir, { recursive: true });
+      } catch (e) {
+        // Directory might already exist, ignore
       }
 
       // Launch with aggressive timeout
