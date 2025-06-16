@@ -67,22 +67,13 @@ class ServerBrowserManager {
           // User data directory (temporary)
           `--user-data-dir=/tmp/puppeteer-${sessionId}`,
           
-          // Crash handling (completely disable)
-          '--disable-crash-reporter',
-          '--disable-breakpad',
-          '--disable-client-side-phishing-detection',
-          '--disable-component-update',
-          '--disable-default-apps',
+          // Crash handling - provide what crashpad needs
           '--crash-dumps-dir=/tmp/crash-dumps',
-          '--no-crash-upload',
-          '--disable-crashpad',
+          '--breakpad-dump-location=/tmp/crash-dumps',
+          '--enable-crashpad',
           
           // Additional stability fixes
           '--disable-ipc-flooding-protection',
-          '--disable-crash-reporter',
-          '--disable-breakpad',
-          '--disable-crashpad',
-          '--crash-dumps-dir=/tmp/crash-dumps',
           '--disable-extensions-file-access-check',
           '--disable-features=AudioServiceOutOfProcess',
           '--disable-features=MediaRouter',
@@ -102,7 +93,8 @@ class ServerBrowserManager {
         env: {
           ...process.env,
           NO_SANDBOX: '1',
-          PUPPETEER_DISABLE_HEADLESS_WARNING: 'true'
+          PUPPETEER_DISABLE_HEADLESS_WARNING: 'true',
+          CRASHPAD_DATABASE_PATH: '/tmp/crashpad_database'
         },
         
         // Timeouts
@@ -129,18 +121,16 @@ class ServerBrowserManager {
       // Create necessary directories for crash handling and user data
       const userDataDir = `/tmp/puppeteer-${sessionId}`;
       const crashDir = '/tmp/crash-dumps';
+      const crashpadDb = '/tmp/crashpad_database';
       
       try {
-        if (!fs.existsSync(userDataDir)) {
-          fs.mkdirSync(userDataDir, { recursive: true });
-        }
-        if (!fs.existsSync(crashDir)) {
-          fs.mkdirSync(crashDir, { recursive: true });
-        }
-        
-        // Set permissions
-        fs.chmodSync(userDataDir, 0o755);
-        fs.chmodSync(crashDir, 0o755);
+        // Create all required directories
+        [userDataDir, crashDir, crashpadDb].forEach(dir => {
+          if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
+          }
+          fs.chmodSync(dir, 0o755);
+        });
       } catch (dirError) {
         logger.warn(`Failed to create directories: ${dirError.message}`);
       }
