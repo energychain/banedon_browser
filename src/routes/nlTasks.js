@@ -27,17 +27,36 @@ function createNLTaskRoutes(sessionManager, nlTaskService) {
       
       logger.info(`Natural language task requested for session ${sessionId}: ${taskDescription}`);
 
+      // Always return a result, even if there are errors
       const result = await nlTaskService.processTask(sessionId, taskDescription);
       
-      res.json({
-        success: true,
-        task: result
-      });
+      // If the result indicates failure but we have some response, still return success
+      if (!result.success && result.fallbackResponse) {
+        res.status(500).json({
+          success: false,
+          error: result.error,
+          task: result
+        });
+      } else {
+        res.json({
+          success: true,
+          task: result
+        });
+      }
     } catch (error) {
       logger.error('Failed to execute natural language task:', error);
       res.status(500).json({
         success: false,
-        error: error.message
+        error: error.message,
+        task: {
+          taskId: require('uuid').v4(),
+          sessionId: req.params.sessionId,
+          taskDescription: req.body.task || req.body.description || 'Unknown task',
+          error: error.message,
+          success: false,
+          timestamp: new Date().toISOString(),
+          fallbackResponse: true
+        }
       });
     }
   });
