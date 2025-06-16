@@ -271,6 +271,125 @@ Cancels a pending command.
 }
 ```
 
+## Natural Language Tasks
+
+The service now supports natural language task execution powered by Google's Gemini AI. Users can describe tasks in plain English, and the AI will analyze the current page, determine necessary actions, execute them, and provide feedback.
+
+### POST /api/sessions/:sessionId/nl-tasks
+
+Executes a natural language task with AI analysis and feedback.
+
+**Request Body:**
+```json
+{
+  "task": "Go to tagesschau.de"
+}
+```
+
+**Response (Observation Task):**
+```json
+{
+  "success": true,
+  "task": {
+    "taskId": "task_123",
+    "sessionId": "session_456",
+    "taskDescription": "Go to tagesschau.de",
+    "screenshot": {
+      "screenshotId": "screenshot_789",
+      "url": "/screenshots/screenshot_123.png",
+      "base64": "iVBORw0KGgoAAAANSUhEUgAAA...",
+      "timestamp": "2024-01-15T10:00:00Z"
+    },
+    "description": "I can see the Tagesschau website homepage with the main navigation, latest news articles, and the ARD logo at the top. The page displays current news headlines with preview images.",
+    "requiresAction": false,
+    "success": true,
+    "timestamp": "2024-01-15T10:00:00Z"
+  }
+}
+```
+
+**Response (Action Task):**
+```json
+{
+  "success": true,
+  "task": {
+    "taskId": "task_123",
+    "sessionId": "session_456", 
+    "taskDescription": "Open first news item",
+    "beforeScreenshot": {
+      "screenshotId": "screenshot_before",
+      "url": "/screenshots/screenshot_before.png",
+      "base64": "iVBORw0KGgoAAAANSUhEUgAAA...",
+      "timestamp": "2024-01-15T10:00:00Z"
+    },
+    "afterScreenshot": {
+      "screenshotId": "screenshot_after", 
+      "url": "/screenshots/screenshot_after.png",
+      "base64": "iVBORw0KGgoAAAANSUhEUgAAA...",
+      "timestamp": "2024-01-15T10:00:05Z"
+    },
+    "initialAnalysis": "I can see the Tagesschau homepage with several news articles displayed. The first news item appears to be about current political developments.",
+    "finalDescription": "Successfully navigated to the first news article. The page now shows the full article with headline, author, publication date, and the complete article text. The article discusses recent political developments with related images and additional context.",
+    "actionsExecuted": [
+      {
+        "type": "click", 
+        "description": "Click on the first news article",
+        "payload": {
+          "selector": ".teaser:first-child a"
+        }
+      }
+    ],
+    "executionResult": [
+      {
+        "action": {
+          "type": "click",
+          "payload": {
+            "selector": ".teaser:first-child a"
+          }
+        },
+        "result": {
+          "success": true,
+          "elementFound": true,
+          "clicked": true
+        },
+        "success": true
+      }
+    ],
+    "success": true,
+    "timestamp": "2024-01-15T10:00:00Z"
+  }
+}
+```
+
+### GET /api/sessions/:sessionId/nl-tasks
+
+Lists natural language tasks executed for a session.
+
+**Response:**
+```json
+{
+  "success": true,
+  "tasks": [
+    {
+      "id": "task_123",
+      "taskDescription": "Go to tagesschau.de",
+      "type": "nl-task",
+      "createdAt": "2024-01-15T10:00:00Z",
+      "status": "completed"
+    }
+  ],
+  "count": 1
+}
+```
+
+### GET /screenshots/:filename
+
+Downloads a screenshot file.
+
+**Response:** Binary PNG image data
+
+**Example URL:** `http://localhost:3010/screenshots/screenshot_123.png`
+
 ## Command Types
 
 The service supports both **extension commands** (original) and **server-side commands** (new). All commands work in both execution modes.

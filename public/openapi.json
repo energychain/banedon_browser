@@ -33,6 +33,10 @@
       "description": "Browser command execution"
     },
     {
+      "name": "Natural Language Tasks",
+      "description": "AI-powered natural language task execution"
+    },
+    {
       "name": "Extension",
       "description": "Browser extension download and documentation"
     }
@@ -420,6 +424,166 @@
         }
       }
     },
+    "/api/sessions/{sessionId}/nl-tasks": {
+      "post": {
+        "tags": ["Natural Language Tasks"],
+        "summary": "Execute natural language task",
+        "description": "Execute a natural language task with AI analysis and feedback",
+        "operationId": "executeNaturalLanguageTask",
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Unique session identifier"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["task"],
+                "properties": {
+                  "task": {
+                    "type": "string",
+                    "description": "Natural language description of the task to perform"
+                  },
+                  "description": {
+                    "type": "string",
+                    "description": "Alternative field name for task description"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Task executed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NaturalLanguageTaskResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Session not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": ["Natural Language Tasks"],
+        "summary": "Get natural language task history",
+        "description": "Get the history of natural language tasks for a session",
+        "operationId": "getNaturalLanguageTasks",
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Unique session identifier"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Task history retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "tasks": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/NaturalLanguageTask"
+                      }
+                    },
+                    "count": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Session not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/screenshots/{filename}": {
+      "get": {
+        "tags": ["Natural Language Tasks"],
+        "summary": "Download screenshot",
+        "description": "Download a screenshot file by filename",
+        "operationId": "downloadScreenshot",
+        "parameters": [
+          {
+            "name": "filename",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Screenshot filename"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Screenshot file",
+            "content": {
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Screenshot not found"
+          }
+        }
+      }
+    },
     "/extension/download": {
       "get": {
         "tags": ["Extension"],
@@ -688,6 +852,119 @@
           }
         },
         "required": ["id", "status"]
+      },
+      "Screenshot": {
+        "type": "object",
+        "properties": {
+          "screenshotId": {
+            "type": "string",
+            "description": "Unique screenshot identifier"
+          },
+          "url": {
+            "type": "string",
+            "description": "URL to download the screenshot"
+          },
+          "base64": {
+            "type": "string",
+            "description": "Base64 encoded screenshot data"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the screenshot was taken"
+          }
+        },
+        "required": ["screenshotId", "url", "timestamp"]
+      },
+      "NaturalLanguageTask": {
+        "type": "object",
+        "properties": {
+          "taskId": {
+            "type": "string",
+            "description": "Unique task identifier"
+          },
+          "sessionId": {
+            "type": "string",
+            "description": "Session identifier"
+          },
+          "taskDescription": {
+            "type": "string",
+            "description": "Natural language description of the task"
+          },
+          "screenshot": {
+            "$ref": "#/components/schemas/Screenshot"
+          },
+          "beforeScreenshot": {
+            "$ref": "#/components/schemas/Screenshot"
+          },
+          "afterScreenshot": {
+            "$ref": "#/components/schemas/Screenshot"
+          },
+          "description": {
+            "type": "string",
+            "description": "AI-generated description of what was observed or accomplished"
+          },
+          "initialAnalysis": {
+            "type": "string",
+            "description": "Initial AI analysis of the page before actions"
+          },
+          "finalDescription": {
+            "type": "string",
+            "description": "Final AI description after actions were performed"
+          },
+          "requiresAction": {
+            "type": "boolean",
+            "description": "Whether the task required browser actions"
+          },
+          "actionsExecuted": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "payload": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "List of actions that were executed"
+          },
+          "executionResult": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            },
+            "description": "Results of the executed actions"
+          },
+          "success": {
+            "type": "boolean",
+            "description": "Whether the task was completed successfully"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the task was completed"
+          }
+        },
+        "required": ["taskId", "sessionId", "taskDescription", "success", "timestamp"]
+      },
+      "NaturalLanguageTaskResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Whether the request was successful"
+          },
+          "task": {
+            "$ref": "#/components/schemas/NaturalLanguageTask"
+          }
+        },
+        "required": ["success", "task"]
       },
       "Error": {
         "type": "object",

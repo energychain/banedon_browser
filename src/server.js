@@ -10,10 +10,12 @@ const config = require('./utils/config');
 // Import route handlers
 const sessionRoutes = require('./routes/sessions');
 const commandRoutes = require('./routes/commands');
+const nlTaskRoutes = require('./routes/nlTasks');
 
 // Import services
 const SessionManager = require('./services/SessionManager');
 const WebSocketManager = require('./services/WebSocketManager');
+const NaturalLanguageTaskService = require('./services/NaturalLanguageTaskService');
 
 class BrowserAutomationService {
   constructor() {
@@ -102,6 +104,15 @@ class BrowserAutomationService {
     
     // Store reference to command executor for cleanup
     this.commandExecutor = commandRouter.commandExecutor;
+    
+    // Initialize natural language task service
+    this.nlTaskService = new NaturalLanguageTaskService(this.sessionManager, this.commandExecutor);
+    
+    // Natural language task routes
+    this.app.use('/api/sessions', nlTaskRoutes(this.sessionManager, this.nlTaskService));
+    
+    // Serve screenshots
+    this.app.use('/screenshots', express.static(path.join(__dirname, '..', 'public', 'screenshots')));
     
     // Set command executor in WebSocket manager
     this.wsManager.setCommandExecutor(commandRouter.commandExecutor);
@@ -203,6 +214,11 @@ class BrowserAutomationService {
       // Cleanup command executor (closes all server browsers)
       if (this.commandExecutor) {
         await this.commandExecutor.cleanup();
+      }
+      
+      // Cleanup natural language task service
+      if (this.nlTaskService) {
+        this.nlTaskService.cleanupOldScreenshots();
       }
       
       // Cleanup sessions

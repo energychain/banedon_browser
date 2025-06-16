@@ -22,6 +22,9 @@ const config = {
   ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS || 'http://localhost:3000',
   API_RATE_LIMIT: parseInt(process.env.API_RATE_LIMIT) || 100, // requests per minute
   
+  // AI configuration
+  GEMINI_API_KEY: process.env.GEMINI_API_KEY || 'AIzaSyAUV_utRoqQgumx1iGa9fdM5qGxDMbfm_k',
+  
   // Logging configuration
   LOG_LEVEL: process.env.LOG_LEVEL || 'info',
   LOG_FILE: process.env.LOG_FILE || 'automation-service.log'
