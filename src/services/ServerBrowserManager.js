@@ -17,35 +17,79 @@ class ServerBrowserManager {
       // Close existing browser if any
       await this.closeBrowser(sessionId);
 
-      const browser = await puppeteer.launch({
-        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || process.env.CHROME_BIN || '/usr/bin/google-chrome-stable',
-        headless: 'new', // Use new headless mode
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-accelerated-2d-canvas',
-          '--no-first-run',
-          '--no-zygote',
-          '--single-process',
-          '--disable-gpu',
-          '--disable-background-timer-throttling',
-          '--disable-backgrounding-occluded-windows',
-          '--disable-renderer-backgrounding',
-          '--disable-web-security',
-          '--disable-features=VizDisplayCompositor',
-          '--disable-extensions',
-          '--disable-plugins',
-          '--disable-sync',
-          '--metrics-recording-only',
-          '--no-crash-upload'
-        ]
-      });
+      // Try different executable paths for Docker compatibility
+      const possiblePaths = [
+        '/usr/bin/chromium',           // Alpine/Docker standard
+        '/usr/bin/chromium-browser',   // Ubuntu/Debian
+        '/usr/bin/google-chrome',      // Google Chrome
+        '/usr/bin/google-chrome-stable',
+        process.env.PUPPETEER_EXECUTABLE_PATH,
+        process.env.CHROME_BIN
+      ].filter(Boolean);
+
+      let browser;
+      let lastError;
+
+      // Try each executable path
+      for (const execPath of possiblePaths) {
+        try {
+          logger.debug(`Attempting to launch browser with: ${execPath}`);
+          
+          browser = await puppeteer.launch({
+            executablePath: execPath,
+            headless: 'new',
+            args: [
+              '--no-sandbox',
+              '--disable-setuid-sandbox',
+              '--disable-dev-shm-usage',
+              '--disable-accelerated-2d-canvas',
+              '--no-first-run',
+              '--no-zygote',
+              '--single-process',
+              '--disable-gpu',
+              '--disable-background-timer-throttling',
+              '--disable-backgrounding-occluded-windows',
+              '--disable-renderer-backgrounding',
+              '--disable-web-security',
+              '--disable-features=VizDisplayCompositor',
+              '--disable-extensions',
+              '--disable-plugins',
+              '--disable-sync',
+              '--metrics-recording-only',
+              '--no-crash-upload',
+              '--disable-default-apps',
+              '--disable-hang-monitor',
+              '--disable-prompt-on-repost',
+              '--disable-domain-reliability',
+              '--disable-component-extensions-with-background-pages',
+              '--disable-backgrounding-occluded-windows',
+              '--disable-ipc-flooding-protection',
+              '--window-size=1280,720',
+              '--virtual-time-budget=5000'
+            ]
+          });
+          
+          logger.info(`Successfully launched browser with: ${execPath}`);
+          break;
+        } catch (error) {
+          lastError = error;
+          logger.debug(`Failed to launch with ${execPath}: ${error.message}`);
+          continue;
+        }
+      }
+
+      if (!browser) {
+        const errorMessage = `Failed to launch browser with any executable path. Last error: ${lastError?.message}. For full browser automation functionality, please install the browser extension from: http://10.0.0.2:3010/extension/download`;
+        throw new Error(errorMessage);
+      }
 
       const page = await browser.newPage();
       
       // Set viewport
       await page.setViewport({ width: 1280, height: 720 });
+      
+      // Set user agent
+      await page.setUserAgent('Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
 
       // Store references
       this.browsers.set(sessionId, browser);

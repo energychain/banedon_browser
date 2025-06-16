@@ -133,6 +133,11 @@ class BrowserAutomationService {
       res.sendFile('install-guide.html', { root: 'public' });
     });
 
+    // Natural Language Demo page
+    this.app.get('/nl-demo', (req, res) => {
+      res.sendFile('nl-demo.html', { root: 'public' });
+    });
+
     // 404 handler
     this.app.use('*', (req, res) => {
       res.status(404).json({ error: 'Endpoint not found' });

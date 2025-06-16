@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Natural Language Browser Automation Demo</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+        .feature-card {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .demo-section {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 25px;
+            border-radius: 15px;
+            margin: 20px 0;
+        }
+        .api-example {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+        .button {
+            display: inline-block;
+            background: linear-gradient(45deg, #ff6b6b, #ff8e53);
+            color: white;
+            text-decoration: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-weight: bold;
+            text-align: center;
+            transition: transform 0.3s ease;
+            border: none;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .button:hover {
+            transform: translateY(-2px);
+            text-decoration: none;
+            color: white;
+        }
+        .status {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 10px 0;
+        }
+        .extension-section {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .warning {
+            background: linear-gradient(45deg, #ff9800, #f57c00);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 Natural Language Browser Automation</h1>
+        
+        <div class="extension-section">
+            <h2>🚀 Get Started with Full Functionality</h2>
+            <p>For the best experience with screenshots and real browser automation:</p>
+            <a href="/extension/download" class="button">📥 Download Browser Extension</a>
+            <a href="/extension/install-guide" class="button">📖 Installation Guide</a>
+        </div>
+
+        <div class="warning">
+            <h3>⚠️ Current Limitation</h3>
+            <p>The server-side browser (Puppeteer) may have issues in Docker environments. For full functionality including screenshots and real browser automation, please use the browser extension.</p>
+        </div>
+
+        <div class="feature-grid">
+            <div class="feature-card">
+                <h3>🧠 AI-Powered Tasks</h3>
+                <p>Give natural language instructions like "Go to google.com" or "Click the first link" and let Gemini 2.0 Flash analyze and execute them.</p>
+            </div>
+            
+            <div class="feature-card">
+                <h3>📸 Screenshot Analysis</h3>
+                <p>AI analyzes page screenshots to understand context and provide detailed descriptions of what it sees.</p>
+            </div>
+            
+            <div class="feature-card">
+                <h3>🔄 Smart Execution</h3>
+                <p>Automatically switches between browser extension and server-side execution based on availability.</p>
+            </div>
+        </div>
+
+        <div class="demo-section">
+            <h2>🎮 Try the API</h2>
+            
+            <h3>1. Create a Session</h3>
+            <div class="api-example">
+curl -X POST http://10.0.0.2:3010/api/sessions \
+  -H "Content-Type: application/json" \
+  -d '{"metadata": {"browser": "chrome"}}'
+            </div>
+
+            <h3>2. Execute Natural Language Task</h3>
+            <div class="api-example">
+curl -X POST http://10.0.0.2:3010/api/sessions/{SESSION_ID}/nl-tasks \
+  -H "Content-Type: application/json" \
+  -d '{"task": "Go to google.com"}'
+            </div>
+
+            <h3>3. Example Tasks You Can Try</h3>
+            <ul>
+                <li>"Go to tagesschau.de"</li>
+                <li>"Take a screenshot of the current page"</li>
+                <li>"What do you see on this page?"</li>
+                <li>"Click on the first news article"</li>
+                <li>"Search for 'AI news'"</li>
+            </ul>
+        </div>
+
+        <div class="demo-section">
+            <h2>📊 Current Service Status</h2>
+            <div id="serviceStatus" class="status">
+                Loading service status...
+            </div>
+            <button onclick="checkStatus()" class="button">🔄 Refresh Status</button>
+        </div>
+
+        <div class="demo-section">
+            <h2>🔗 Useful Links</h2>
+            <a href="/api/docs" class="button">📚 API Documentation</a>
+            <a href="/openapi.json" class="button">⚙️ OpenAPI Spec</a>
+            <a href="/health" class="button">🏥 Health Check</a>
+        </div>
+    </div>
+
+    <script>
+        async function checkStatus() {
+            try {
+                const response = await fetch('/health');
+                const data = await response.json();
+                
+                document.getElementById('serviceStatus').innerHTML = `
+                    <strong>Status:</strong> ${data.status}<br>
+                    <strong>Uptime:</strong> ${Math.round(data.uptime)} seconds<br>
+                    <strong>Active Sessions:</strong> ${data.activeSessions}<br>
+                    <strong>WebSocket Connections:</strong> ${data.wsConnections}<br>
+                    <strong>Version:</strong> ${data.version}
+                `;
+            } catch (error) {
+                document.getElementById('serviceStatus').innerHTML = `
+                    <strong>Error:</strong> Could not fetch status - ${error.message}
+                `;
+            }
+        }
+
+        // Check status on page load
+        checkStatus();
+
+        // Auto-refresh every 30 seconds
+        setInterval(checkStatus, 30000);
+    </script>
+</body>
+</html>

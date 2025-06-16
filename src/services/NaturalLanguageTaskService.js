@@ -71,7 +71,8 @@ class NaturalLanguageTaskService {
           executionResult,
           success: true,
           timestamp: new Date().toISOString(),
-          note: "Processed without screenshot due to browser limitations"
+          note: "Processed without screenshot due to browser limitations",
+          recommendation: "For full functionality with screenshots and actual browser automation, please install and connect the browser extension from: http://10.0.0.2:3010/extension/download"
         };
       }
       
