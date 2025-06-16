@@ -67,7 +67,17 @@ class ServerBrowserManager {
           // User data directory (temporary)
           `--user-data-dir=/tmp/puppeteer-${sessionId}`,
           
-          // Additional Docker fixes
+          // Crash handling (completely disable)
+          '--disable-crash-reporter',
+          '--disable-breakpad',
+          '--disable-client-side-phishing-detection',
+          '--disable-component-update',
+          '--disable-default-apps',
+          '--crash-dumps-dir=/tmp/crash-dumps',
+          '--no-crash-upload',
+          '--disable-crashpad',
+          
+          // Additional stability fixes
           '--disable-ipc-flooding-protection',
           '--disable-crash-reporter',
           '--disable-breakpad',
@@ -102,12 +112,12 @@ class ServerBrowserManager {
         waitForInitialPage: false
       };
 
-      // Try to find Chromium executable
+      // Try to find Chromium/Chrome executable
       const chromiumPaths = [
+        '/usr/bin/google-chrome-stable',
+        '/usr/bin/google-chrome',
         '/usr/bin/chromium',
         '/usr/bin/chromium-browser', 
-        '/usr/bin/google-chrome',
-        '/usr/bin/google-chrome-stable',
         '/snap/bin/chromium',
         process.env.PUPPETEER_EXECUTABLE_PATH,
         process.env.CHROME_BIN
