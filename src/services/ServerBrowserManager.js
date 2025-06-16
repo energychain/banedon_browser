@@ -25,6 +25,7 @@ class ServerBrowserManager {
         fs.mkdirSync(tmpDir, { recursive: true });
         fs.mkdirSync(userDataDir, { recursive: true });
         fs.mkdirSync(crashDir, { recursive: true });
+        fs.mkdirSync(path.join(userDataDir, 'crashpad-db'), { recursive: true });
         
         // Ensure directories are writable
         fs.chmodSync(tmpDir, 0o777);
@@ -65,7 +66,9 @@ class ServerBrowserManager {
           '--disable-crash-reporter',
           '--disable-breakpad',
           '--no-crash-upload',
-          '--disable-crashpad'
+          '--disable-crashpad',
+          // Explicitly set crashpad database path
+          `--crashpad-handler-database=${userDataDir}/crashpad-db`
         ],
         timeout: 10000, // 10 second timeout
         env: {
@@ -73,7 +76,8 @@ class ServerBrowserManager {
           NO_SANDBOX: '1',
           CHROME_CRASH_REPORTER_DISABLE: '1',
           BREAKPAD_DISABLE: '1',
-          CHROME_CRASHPAD_HANDLER_DISABLE: '1'
+          CHROME_CRASHPAD_HANDLER_DISABLE: '1',
+          TMPDIR: '/tmp'
         }
       };
 
