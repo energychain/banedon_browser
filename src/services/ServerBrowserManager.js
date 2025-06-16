@@ -72,7 +72,6 @@ class ServerBrowserManager {
       };
 
       // Try to find a working browser executable
-      const fs = require('fs');
       const executablePaths = [
         '/usr/bin/google-chrome-stable',
         '/usr/bin/google-chrome', 
