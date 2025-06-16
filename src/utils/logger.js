@@ -22,11 +22,11 @@ class Logger {
       const formattedMessage = this.formatMessage(level, message, meta);
       console.log(formattedMessage);
       
+      // Disable file logging for now to avoid permission issues in Docker
       // In production, you might want to write to files or external logging services
-      if (config.NODE_ENV === 'production' && level === 'error') {
-        // Write to error log file or send to monitoring service
-        this.writeToFile(formattedMessage);
-      }
+      // if (config.NODE_ENV === 'production' && level === 'error') {
+      //   this.writeToFile(formattedMessage);
+      // }
     }
   }
 
@@ -36,9 +36,18 @@ class Logger {
     const path = require('path');
     
     try {
-      const logFile = path.join(process.cwd(), 'logs', config.LOG_FILE);
+      // Use a safer log directory in the app root
+      const logDir = path.join(process.cwd(), 'logs');
+      
+      // Create logs directory if it doesn't exist
+      if (!fs.existsSync(logDir)) {
+        fs.mkdirSync(logDir, { recursive: true });
+      }
+      
+      const logFile = path.join(logDir, config.LOG_FILE);
       fs.appendFileSync(logFile, message + '\n');
     } catch (error) {
+      // Don't throw error, just log to console as fallback
       console.error('Failed to write to log file:', error.message);
     }
   }

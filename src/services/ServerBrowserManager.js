@@ -18,7 +18,7 @@ class ServerBrowserManager {
       await this.closeBrowser(sessionId);
 
       const browser = await puppeteer.launch({
-        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || process.env.CHROME_BIN,
+        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || process.env.CHROME_BIN || '/usr/bin/google-chrome-stable',
         headless: 'new', // Use new headless mode
         args: [
           '--no-sandbox',
@@ -31,7 +31,14 @@ class ServerBrowserManager {
           '--disable-gpu',
           '--disable-background-timer-throttling',
           '--disable-backgrounding-occluded-windows',
-          '--disable-renderer-backgrounding'
+          '--disable-renderer-backgrounding',
+          '--disable-web-security',
+          '--disable-features=VizDisplayCompositor',
+          '--disable-extensions',
+          '--disable-plugins',
+          '--disable-sync',
+          '--metrics-recording-only',
+          '--no-crash-upload'
         ]
       });
 

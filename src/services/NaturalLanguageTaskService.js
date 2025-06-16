@@ -40,8 +40,34 @@ class NaturalLanguageTaskService {
       // First, take a screenshot to see current state
       const screenshotResult = await this.takeScreenshot(sessionId);
       
-      // Analyze the task and current page state
-      const analysis = await this.analyzeTaskAndPage(taskDescription, screenshotResult.screenshot);
+      // If screenshot failed but we can still proceed with text-only analysis
+      if (screenshotResult.error) {
+        logger.warn(`Screenshot failed for session ${sessionId}, proceeding with text-only analysis`);
+        
+        // Analyze the task without screenshot
+        const textOnlyAnalysis = await this.analyzeTaskTextOnly(taskDescription);
+        
+        // Execute the task if it requires action
+        let executionResult = null;
+        if (textOnlyAnalysis.requiresAction) {
+          executionResult = await this.executeTaskActions(sessionId, textOnlyAnalysis.actions);
+        }
+        
+        return {
+          taskId: uuidv4(),
+          sessionId,
+          taskDescription,
+          screenshot: screenshotResult,
+          analysis: textOnlyAnalysis,
+          executionResult,
+          success: true,
+          timestamp: new Date().toISOString(),
+          note: "Processed without screenshot due to browser limitations"
+        };
+      }
+      
+      // Analyze the task and current page state with screenshot
+      const analysis = await this.analyzeTaskAndPage(taskDescription, screenshotResult.base64);
       
       // Execute the task if it requires action
       let executionResult = null;
@@ -52,11 +78,21 @@ class NaturalLanguageTaskService {
         const afterScreenshot = await this.takeScreenshot(sessionId);
         
         // Get final AI description of the result
-        const finalAnalysis = await this.analyzePageAfterAction(
-          taskDescription, 
-          analysis.description,
-          afterScreenshot.screenshot
-        );
+        let finalAnalysis;
+        if (afterScreenshot.base64) {
+          finalAnalysis = await this.analyzePageAfterAction(
+            taskDescription, 
+            analysis.description,
+            afterScreenshot.base64
+          );
+        } else {
+          finalAnalysis = {
+            description: "Task executed but unable to capture final screenshot",
+            taskCompleted: true,
+            changes: "Actions were executed",
+            nextSteps: "Continue with next task"
+          };
+        }
         
         return {
           taskId: uuidv4(),
@@ -135,7 +171,16 @@ class NaturalLanguageTaskService {
       };
     } catch (error) {
       logger.error('Failed to take screenshot:', error);
-      throw error;
+      
+      // Return a fallback response for when screenshots fail
+      const screenshotId = uuidv4();
+      return {
+        screenshotId,
+        url: null,
+        base64: null,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      };
     }
   }
 
@@ -194,6 +239,87 @@ Respond in this JSON format:
       }
     } catch (error) {
       logger.error('Error analyzing task with Gemini:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Analyze task without screenshot (text-only)
+   * @private
+   */
+  async analyzeTaskTextOnly(taskDescription) {
+    try {
+      const prompt = `
+You are an AI assistant that helps with browser automation tasks. 
+
+User's task: "${taskDescription}"
+
+Since no screenshot is available, analyze the task description and determine what actions are needed.
+
+Based on the task description, provide:
+1. A description of what the task involves
+2. Whether the task requires any actions to be performed
+3. If actions are needed, specify what actions should be taken
+
+If actions are needed, format them as a JSON array with objects containing:
+- type: The action type (navigate, click, type, scroll, etc.)
+- description: Human-readable description of the action
+- payload: The action parameters
+
+For common navigation tasks like "Go to [website]", suggest a navigate action.
+
+Respond in this JSON format:
+{
+  "description": "Description of what the task involves",
+  "requiresAction": true/false,
+  "actions": [array of action objects if needed],
+  "confidence": "high/medium/low"
+}
+`;
+
+      const result = await this.model.generateContent([prompt]);
+      const response = await result.response;
+      const text = response.text();
+      
+      try {
+        return JSON.parse(text);
+      } catch (parseError) {
+        // If JSON parsing fails, return a fallback response
+        logger.warn('Failed to parse Gemini text-only response as JSON, using fallback');
+        
+        // Try to extract a simple navigation task
+        const lowerTask = taskDescription.toLowerCase();
+        if (lowerTask.includes('go to') || lowerTask.includes('navigate to') || lowerTask.includes('visit')) {
+          // Extract URL or website name
+          const urlMatch = taskDescription.match(/(?:go to|navigate to|visit)\s+([^\s]+)/i);
+          if (urlMatch) {
+            let url = urlMatch[1];
+            if (!url.startsWith('http')) {
+              url = `https://${url}`;
+            }
+            
+            return {
+              description: `Navigate to ${url}`,
+              requiresAction: true,
+              actions: [{
+                type: 'navigate',
+                description: `Navigate to ${url}`,
+                payload: { url }
+              }],
+              confidence: 'medium'
+            };
+          }
+        }
+        
+        return {
+          description: text,
+          requiresAction: false,
+          actions: [],
+          confidence: 'low'
+        };
+      }
+    } catch (error) {
+      logger.error('Error analyzing task with text-only Gemini:', error);
       throw error;
     }
   }
