@@ -14,27 +14,36 @@ class ServerBrowserManager {
     try {
       logger.info(`Launching browser for session: ${sessionId}`);
       
-      // Create crash dumps directory for this session
+      // Create writable tmp directories for Chrome (solution from puppeteer/puppeteer#11023)
       const fs = require('fs');
       const path = require('path');
-      const crashDir = path.join('/tmp', 'crash-dumps', sessionId);
+      const tmpDir = path.join('/tmp', 'chrome-session', sessionId);
+      const userDataDir = path.join(tmpDir, 'user-data');
+      const crashDir = path.join(tmpDir, 'crash-dumps');
       
       try {
+        fs.mkdirSync(tmpDir, { recursive: true });
+        fs.mkdirSync(userDataDir, { recursive: true });
         fs.mkdirSync(crashDir, { recursive: true });
+        
+        // Ensure directories are writable
+        fs.chmodSync(tmpDir, 0o777);
+        fs.chmodSync(userDataDir, 0o777);
+        fs.chmodSync(crashDir, 0o777);
       } catch (e) {
-        logger.warn(`Could not create crash dir ${crashDir}: ${e.message}`);
+        logger.warn(`Could not create chrome directories ${tmpDir}: ${e.message}`);
       }
 
-      // Ultra-minimal configuration to avoid hanging
+      // Configuration with proper tmp directories for Docker
       const launchOptions = {
         headless: 'new',
+        userDataDir: userDataDir,
         args: [
           '--headless=new',
           '--no-sandbox',
           '--disable-setuid-sandbox',
           '--disable-dev-shm-usage',
           '--disable-gpu',
-          '--disable-crash-reporter',
           '--disable-extensions',
           '--disable-plugins',
           '--disable-default-apps',
@@ -51,15 +60,11 @@ class ServerBrowserManager {
           '--disable-web-security',
           '--disable-features=VizDisplayCompositor',
           '--mute-audio',
-          // Completely disable crash reporting
-          '--disable-crash-reporter',
-          '--disable-breakpad',
-          '--disable-crashpad',
-          '--no-crash-upload',
-          // Provide crash handler database to satisfy requirement
+          // Use writable tmp directory for crash handling
+          `--user-data-dir=${userDataDir}`,
           `--crash-dumps-dir=${crashDir}`,
-          '--enable-crashpad=false',
-          '--disable-crash-reporter-for-testing'
+          '--disable-crash-reporter',
+          '--disable-breakpad'
         ],
         timeout: 10000, // 10 second timeout
         env: {
