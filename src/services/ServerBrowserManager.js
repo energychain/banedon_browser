@@ -75,13 +75,14 @@ class ServerBrowserManager {
         logger.info('Using Puppeteer bundled browser');
       }
 
-      // Create crashes directory
-      const fs = require('fs');
+      // Create crashes directory before launching browser
       const crashesDir = `/tmp/crashes-${sessionId}`;
       try {
         fs.mkdirSync(crashesDir, { recursive: true });
-      } catch (e) {
-        // Directory might already exist, ignore
+        fs.chmodSync(crashesDir, 0o755);
+        logger.debug(`Created crashes directory: ${crashesDir}`);
+      } catch (dirError) {
+        logger.warn(`Failed to create crashes directory: ${dirError.message}`);
       }
 
       // Launch with aggressive timeout
