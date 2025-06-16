@@ -40,14 +40,18 @@ class ServerBrowserManager {
           '--disable-web-security',
           '--disable-features=VizDisplayCompositor',
           '--mute-audio',
-          // Fix for crashpad database requirement
-          `--crash-dumps-dir=/tmp/crashes-${sessionId}`,
-          '--enable-crash-reporter'
+          // Completely disable crash reporting
+          '--disable-crash-reporter',
+          '--disable-breakpad',
+          '--disable-crashpad',
+          '--no-crash-upload'
         ],
         timeout: 10000, // 10 second timeout
         env: {
           ...process.env,
-          NO_SANDBOX: '1'
+          NO_SANDBOX: '1',
+          CHROME_CRASH_REPORTER_DISABLE: '1',
+          BREAKPAD_DISABLE: '1'
         }
       };
 
@@ -73,16 +77,6 @@ class ServerBrowserManager {
         launchOptions.executablePath = executablePath;
       } else {
         logger.info('Using Puppeteer bundled browser');
-      }
-
-      // Create crashes directory before launching browser
-      const crashesDir = `/tmp/crashes-${sessionId}`;
-      try {
-        fs.mkdirSync(crashesDir, { recursive: true });
-        fs.chmodSync(crashesDir, 0o755);
-        logger.debug(`Created crashes directory: ${crashesDir}`);
-      } catch (dirError) {
-        logger.warn(`Failed to create crashes directory: ${dirError.message}`);
       }
 
       // Launch with aggressive timeout
