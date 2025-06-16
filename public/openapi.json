@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Browser Automation Service API",
-    "description": "A service for automating browser actions through two execution modes: Extension-based (WebSocket connected browser extension) and Server-side (headless Chromium). The service automatically chooses the appropriate mode based on connection availability.",
+    "description": "A service for automating browser actions through two execution modes: Extension-based (WebSocket connected browser extension) and Server-side (headless Chromium). The service automatically chooses the appropriate mode based on connection availability. Features natural language task processing powered by Google Gemini 2.0 Flash for AI-driven browser automation.",
     "version": "1.0.0",
     "contact": {
       "name": "Browser Automation Service",
@@ -34,11 +34,15 @@
     },
     {
       "name": "Natural Language Tasks",
-      "description": "AI-powered natural language task execution"
+      "description": "AI-powered natural language task execution using Google Gemini 2.0 Flash"
     },
     {
       "name": "Extension",
       "description": "Browser extension download and documentation"
+    },
+    {
+      "name": "Documentation",
+      "description": "API documentation and specifications"
     }
   ],
   "paths": {
@@ -616,7 +620,7 @@
         }
       }
     },
-    "/extension/install": {
+    "/extension/install-guide": {
       "get": {
         "tags": ["Extension"],
         "summary": "Extension installation guide",
@@ -629,6 +633,95 @@
               "text/html": {
                 "schema": {
                   "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/extension/files/{filename}": {
+      "get": {
+        "tags": ["Extension"],
+        "summary": "Access extension files",
+        "description": "Serves extension files directly for development purposes",
+        "operationId": "getExtensionFile",
+        "parameters": [
+          {
+            "name": "filename",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Extension file name (e.g., manifest.json, background.js)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Extension file content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              },
+              "application/javascript": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "text/css": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "File not found"
+          }
+        }
+      }
+    },
+    "/api/docs": {
+      "get": {
+        "tags": ["Documentation"],
+        "summary": "API documentation",
+        "description": "Returns an HTML page with interactive API documentation",
+        "operationId": "getApiDocs",
+        "responses": {
+          "200": {
+            "description": "API documentation HTML page",
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/openapi.json": {
+      "get": {
+        "tags": ["Documentation"],
+        "summary": "OpenAPI specification",
+        "description": "Returns the OpenAPI 3.0 specification in JSON format",
+        "operationId": "getOpenApiSpec",
+        "responses": {
+          "200": {
+            "description": "OpenAPI specification",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
                 }
               }
             }

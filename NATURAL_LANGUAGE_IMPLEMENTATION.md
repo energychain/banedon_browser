@@ -8,7 +8,7 @@ Successfully implemented natural language browsing tasks with Gemini LLM integra
 
 ### 1. Natural Language Task Processing
 - **Endpoint**: `POST /api/sessions/{sessionId}/nl-tasks`
-- **AI Model**: Google Gemini 1.5 Flash
+- **AI Model**: Google Gemini 2.0 Flash (Experimental)
 - **API Key**: Integrated and configured
 - **Input**: Natural language task descriptions
 - **Output**: Structured JSON with AI analysis and execution results
