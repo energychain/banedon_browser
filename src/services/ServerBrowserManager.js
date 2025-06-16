@@ -35,6 +35,14 @@ class ServerBrowserManager {
         logger.warn(`Could not create chrome directories ${tmpDir}: ${e.message}`);
       }
 
+      const crashpadDb = '/tmp/crashpad-db';
+      try {
+        fs.mkdirSync(crashpadDb, { recursive: true });
+        fs.chmodSync(crashpadDb, 0o777);
+      } catch (e) {
+        logger.warn(`Could not create crashpad db dir ${crashpadDb}: ${e.message}`);
+      }
+
       // Configuration with proper tmp directories for Docker
       const launchOptions = {
         headless: 'new',
@@ -61,14 +69,14 @@ class ServerBrowserManager {
           '--disable-web-security',
           '--disable-features=VizDisplayCompositor',
           '--mute-audio',
-          // Use writable tmp directory for crash handling
           `--user-data-dir=${userDataDir}`,
           '--disable-crash-reporter',
           '--disable-breakpad',
           '--no-crash-upload',
           '--disable-crashpad',
-          // Explicitly set crashpad database path
-          `--crashpad-handler-database=${userDataDir}/crashpad-db`
+          // Explicitly set crashpad handler and database path
+          '--crashpad-handler=/usr/lib/chromium/chrome_crashpad_handler',
+          `--database=${crashpadDb}`
         ],
         timeout: 10000, // 10 second timeout
         env: {
