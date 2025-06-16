@@ -62,9 +62,10 @@ class ServerBrowserManager {
           '--mute-audio',
           // Use writable tmp directory for crash handling
           `--user-data-dir=${userDataDir}`,
-          `--crash-dumps-dir=${crashDir}`,
           '--disable-crash-reporter',
-          '--disable-breakpad'
+          '--disable-breakpad',
+          '--no-crash-upload',
+          '--disable-crashpad'
         ],
         timeout: 10000, // 10 second timeout
         env: {
