@@ -54,31 +54,31 @@ class ServerBrowserManager {
           '--disable-dev-shm-usage',
           '--disable-gpu',
           '--disable-extensions',
-          '--disable-plugins',
+          // \'--disable-plugins\', // Might be needed for some sites, let's test without it first
           '--disable-default-apps',
           '--disable-translate',
           '--disable-sync',
           '--no-first-run',
           '--no-zygote',
-          '--single-process',
+          // \'--single-process\', // Removed for stability
           '--disable-background-networking',
           '--disable-background-timer-throttling',
           '--disable-renderer-backgrounding',
           '--disable-backgrounding-occluded-windows',
           '--window-size=1920,1080',
-          '--disable-web-security',
+          '--disable-web-security', // Consider if this is truly needed long-term
           '--disable-features=VizDisplayCompositor',
           '--mute-audio',
           `--user-data-dir=${userDataDir}`,
-          '--disable-crash-reporter',
+          '--disable-crash-reporter', // Disable Chrome\'s own crash reporting
           '--disable-breakpad',
           '--no-crash-upload',
-          '--disable-crashpad',
-          // Explicitly set crashpad handler and database path
-          '--crashpad-handler=/usr/lib/chromium/chrome_crashpad_handler',
-          `--database=${crashpadDb}`
+          // \'--disable-crashpad\', // Let Chrome manage its crashpad
+          // Removed hardcoded crashpad handler and database paths
+          // \'--crashpad-handler=/usr/lib/chromium/chrome_crashpad_handler\',
+          // `--database=${crashpadDb}`
         ],
-        timeout: 10000, // 10 second timeout
+        timeout: 15000, // Increased timeout to 15 seconds
         env: {
           ...process.env,
           NO_SANDBOX: '1',
@@ -91,6 +91,7 @@ class ServerBrowserManager {
 
       // Try to find a working browser executable
       const executablePaths = [
+        '/opt/google/chrome/chrome', // Priority for Google Chrome stable
         '/usr/bin/google-chrome-stable',
         '/usr/bin/google-chrome', 
         '/usr/bin/chromium',
@@ -116,11 +117,11 @@ class ServerBrowserManager {
       const browser = await Promise.race([
         puppeteer.launch(launchOptions),
         new Promise((_, reject) => {
-          setTimeout(() => reject(new Error('Browser launch timeout')), 10000);
+          setTimeout(() => reject(new Error('Browser launch timeout')), 15000); // Increased timeout
         })
       ]);
 
-      logger.info(`Browser launched for session: ${sessionId}`);
+      logger.info(`Browser launched for session: ${sessionId}, path: ${browser.process() ? browser.process().spawnfile : 'N/A'}`);
       
       // Create page
       const page = await browser.newPage();
