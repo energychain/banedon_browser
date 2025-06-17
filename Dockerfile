@@ -108,7 +108,11 @@ COPY --chown=appuser:nodejs package*.json ./
 # Create directories and set permissions
 RUN mkdir -p logs /tmp/puppeteer /app/screenshots && \
     chown -R appuser:nodejs logs /tmp/puppeteer /app/screenshots && \
-    chmod 755 /tmp/puppeteer
+    chmod 755 /tmp/puppeteer && \
+    # Create directories for Chrome user profile
+    mkdir -p /home/appuser/.config /home/appuser/.local/share/applications && \
+    chown -R appuser:nodejs /home/appuser/.config /home/appuser/.local/share/applications && \
+    chmod -R 700 /home/appuser/.config /home/appuser/.local/share/applications
 
 # Create enhanced startup script
 RUN echo '#!/bin/bash\n\
