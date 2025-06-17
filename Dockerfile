@@ -28,9 +28,12 @@ RUN chmod +x build.sh && ./build.sh
 FROM node:18-slim AS production
 
 # Install system dependencies for Puppeteer and Chrome
-RUN apt-get update && apt-get install -y \
-    # Browser dependencies
-    chromium \
+RUN apt-get update && \
+    apt-get install -y wget gnupg && \
+    echo "deb http://deb.debian.org/debian bookworm main" > /etc/apt/sources.list.d/debian.list && \
+    apt-get update && \
+    apt-get install -y \
+    chromium=122.* \
     # Display server for headless mode
     xvfb \
     x11-utils \
