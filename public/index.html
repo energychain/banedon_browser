@@ -302,6 +302,12 @@
             </div>
 
             <div class="card">
+                <h2><span class="icon">💬</span>Natural Language Control</h2>
+                <p>Control the browser using natural language commands.</p>
+                <button class="btn" onclick="showTab('nl-control')">Start Controlling</button>
+            </div>
+
+            <div class="card">
                 <h2><span class="icon">📊</span>Service Information</h2>
                 <p>View service configuration and endpoints.</p>
                 <div class="code-block" style="margin-top: 15px;">
@@ -319,6 +325,7 @@
                 <div class="tab" data-tab="getting-started">Getting Started</div>
                 <div class="tab" data-tab="api-test">API Testing</div>
                 <div class="tab" data-tab="websocket-test">WebSocket Testing</div>
+                <div class="tab" data-tab="nl-control">Natural Language</div>
             </div>
 
             <!-- Getting Started Tab -->
@@ -415,6 +422,21 @@ Content-Type: application/json
                 
                 <div class="response-area" id="wsResponse">WebSocket messages will appear here...</div>
             </div>
+
+            <!-- Natural Language Control Tab -->
+            <div class="tab-content" id="nl-control">
+                <h3>Natural Language Control</h3>
+                <div class="input-group">
+                    <label>Session ID:</label>
+                    <input type="text" id="nlSessionId" placeholder="Enter session ID to control">
+                </div>
+                <div class="input-group">
+                    <label for="nlPrompt">Your Command:</label>
+                    <textarea id="nlPrompt" rows="3" placeholder="e.g., 'Navigate to google.com and search for cats'"></textarea>
+                </div>
+                <button class="btn" onclick="sendNlCommand()">Execute Command</button>
+                <div class="response-area" id="nlResponse">Results will appear here...</div>
+            </div>
         </div>
     </div>
 
@@ -508,6 +530,7 @@ Content-Type: application/json
                 if (data.sessionId) {
                     document.getElementById('commandSessionId').value = data.sessionId;
                     document.getElementById('wsSessionId').value = data.sessionId;
+                    document.getElementById('nlSessionId').value = data.sessionId;
                 }
             } catch (error) {
                 document.getElementById('apiResponse').textContent = 'Error: ' + error.message;
@@ -538,6 +561,31 @@ Content-Type: application/json
                 document.getElementById('apiResponse').textContent = JSON.stringify(data, null, 2);
             } catch (error) {
                 document.getElementById('apiResponse').textContent = 'Error: ' + error.message;
+            }
+        }
+
+        async function sendNlCommand() {
+            try {
+                const sessionId = document.getElementById('nlSessionId').value;
+                if (!sessionId) {
+                    alert('Please enter a Session ID.');
+                    return;
+                }
+                const prompt = document.getElementById('nlPrompt').value;
+                if (!prompt) {
+                    alert('Please enter a command.');
+                    return;
+                }
+
+                const response = await fetch(`/api/sessions/${sessionId}/nl`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ task: prompt })
+                });
+                const data = await response.json();
+                document.getElementById('nlResponse').textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                document.getElementById('nlResponse').textContent = 'Error: ' + error.message;
             }
         }
 
