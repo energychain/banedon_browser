@@ -37,26 +37,29 @@ if [ ! -d ".git" ]; then
     exit 1
 fi
 
-# Check for uncommitted changes
-echo "🔍 Checking for uncommitted changes..."
+# Step 1: Handle git operations automatically
+echo "� Handling git operations..."
+
+# Check for uncommitted changes and auto-commit if any
 if ! git diff-index --quiet HEAD --; then
-    echo "❌ Error: You have uncommitted changes. Please commit them first:"
-    git status --porcelain
-    echo ""
-    echo "Run: git add . && git commit -m 'Your commit message'"
-    exit 1
+    echo "📝 Found uncommitted changes, staging and committing..."
+    git add .
+    
+    # Generate a commit message based on changed files
+    CHANGED_FILES=$(git diff --cached --name-only | head -5 | tr '\n' ' ')
+    COMMIT_MSG="Auto-commit before deployment: Updated ${CHANGED_FILES}"
+    
+    git commit -m "$COMMIT_MSG"
+    echo "✅ Changes committed: $COMMIT_MSG"
+else
+    echo "✅ No uncommitted changes found"
 fi
 
-# Check if local branch is ahead of remote
-echo "🔍 Checking if local changes are pushed..."
-LOCAL_COMMIT=$(git rev-parse HEAD)
-REMOTE_COMMIT=$(git rev-parse origin/$(git branch --show-current) 2>/dev/null || echo "")
-
-if [ "$LOCAL_COMMIT" != "$REMOTE_COMMIT" ]; then
-    echo "⚠️  Local branch is ahead of remote. Pushing changes..."
-    git push origin $(git branch --show-current)
-    echo "✅ Changes pushed to remote repository"
-fi
+# Step 2: Push changes to remote
+echo "📤 Pushing changes to remote repository..."
+CURRENT_BRANCH=$(git branch --show-current)
+git push origin "$CURRENT_BRANCH"
+echo "✅ Changes pushed to origin/$CURRENT_BRANCH"
 
 # Check SSH connectivity
 echo "🔍 Testing SSH connectivity to $SERVER_USER@$SERVER_IP..."
@@ -252,6 +255,35 @@ echo "  Path: $DEPLOY_PATH"
 echo "  URL: http://$SERVER_IP:3010"
 echo "  Health: http://$SERVER_IP:3010/health"
 echo ""
+
+# Step 3: Run local tests against deployed service
+echo "🧪 Running local tests against deployed service..."
+echo "=================================================="
+
+# Set test environment to point to remote server
+export TEST_SERVER_URL="http://$SERVER_IP:3010"
+export NODE_ENV=test
+
+# Wait a bit more for the service to fully stabilize
+echo "⏳ Waiting for service to stabilize..."
+sleep 10
+
+# Run the specific flight search test
+echo "� Running flight search test..."
+if npm test -- --testNamePattern="flight search" --testTimeout=180000; then
+    echo "✅ Flight search test passed! The automation system is working correctly."
+else
+    echo "❌ Flight search test failed. The deployed system may have issues."
+    echo ""
+    echo "�🔧 Troubleshooting steps:"
+    echo "  1. Check service logs: ssh $SERVER_USER@$SERVER_IP 'cd $DEPLOY_PATH && docker-compose logs'"
+    echo "  2. Verify service health: curl http://$SERVER_IP:3010/health"
+    echo "  3. Check browser extension is working"
+    echo ""
+    exit 1
+fi
+
+echo ""
 echo "🔧 Management Commands (run on server):"
 echo "  cd $DEPLOY_PATH"
 echo "  \$DOCKER_COMPOSE_CMD -f docker-compose.yml ps          # Check status"
@@ -259,5 +291,6 @@ echo "  \$DOCKER_COMPOSE_CMD -f docker-compose.yml logs        # View logs"
 echo "  \$DOCKER_COMPOSE_CMD -f docker-compose.yml restart     # Restart service"
 echo "  \$DOCKER_COMPOSE_CMD -f docker-compose.yml down        # Stop service"
 echo ""
-echo "🧪 Test the deployment:"
+echo "🧪 Manual test commands:"
 echo "  curl http://$SERVER_IP:3010/health"
+echo "  npm test -- --testNamePattern=\"flight search\" # Run against deployed service"
