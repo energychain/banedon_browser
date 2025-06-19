@@ -1931,6 +1931,7 @@ Respond ONLY with valid JSON in this exact format:
     const taskType = progressTracker.taskType;
     
     // Check navigation completion
+
     if (!progressTracker.completedMilestones.has('navigation_complete')) {
       if (lastResponse.includes('page') || lastResponse.includes('site') || lastResponse.includes('website')) {
         achieved.push('navigation_complete');
@@ -2018,6 +2019,76 @@ Respond ONLY with valid JSON in this exact format:
     }
     
     return { hasProgress: false, description: '' };
+  }
+
+  /**
+   * Build comprehensive execution analytics from the task history and results
+   * @private
+   */
+  buildExecutionAnalytics(finalHistory, executionResult, iterationCount) {
+    const analytics = {
+      subtasks: [],
+      fallbacks: [],
+      actionBreakdown: {
+        navigate: 0,
+        click: 0,
+        type: 0,
+        key_press: 0,
+        screenshot: 0,
+        other: 0
+      }
+    };
+
+    // Analyze subtasks from history
+    const subtaskPatterns = [
+      { name: 'Cookie Consent', keywords: ['cookie', 'accept', 'consent'] },
+      { name: 'Field Input', keywords: ['input', 'type', 'field', 'text'] },
+      { name: 'Navigation', keywords: ['navigate', 'goto', 'url'] },
+      { name: 'Form Submission', keywords: ['search', 'submit', 'button'] },
+      { name: 'Selection', keywords: ['select', 'choose', 'option'] },
+      { name: 'Date Setting', keywords: ['date', 'calendar', 'day'] }
+    ];
+
+    finalHistory.forEach(message => {
+      if (message.role === 'assistant') {
+        subtaskPatterns.forEach(pattern => {
+          if (pattern.keywords.some(keyword => 
+            message.content.toLowerCase().includes(keyword))) {
+            const existingSubtask = analytics.subtasks.find(s => s.name === pattern.name);
+            if (existingSubtask) {
+              existingSubtask.attempts++;
+            } else {
+              analytics.subtasks.push({
+                name: pattern.name,
+                attempts: 1,
+                completed: true
+              });
+            }
+          }
+        });
+
+        // Detect fallback usage
+        if (message.content.includes('rate limited') || 
+            message.content.includes('fallback')) {
+          analytics.fallbacks.push({
+            type: 'ai_rate_limit',
+            reason: 'AI service rate limit exceeded',
+            timestamp: new Date().toISOString()
+          });
+        }
+      }
+    });
+
+    // Analyze action breakdown from execution results
+    executionResult.forEach(action => {
+      if (action.type && analytics.actionBreakdown.hasOwnProperty(action.type)) {
+        analytics.actionBreakdown[action.type]++;
+      } else {
+        analytics.actionBreakdown.other++;
+      }
+    });
+
+    return analytics;
   }
 }
 
