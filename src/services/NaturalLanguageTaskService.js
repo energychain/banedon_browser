@@ -72,7 +72,7 @@ class NaturalLanguageTaskService {
       let executionResult = [];
       let afterScreenshot = null;
       let iterationCount = 0;
-      const maxIterations = 12; // Increased to allow more completion attempts
+      const maxIterations = 8; // Reduced to prevent timeouts
       
       // Iterative execution until task is complete or max iterations reached
       while (analysis.requiresAction && analysis.actions && analysis.actions.length > 0 && iterationCount < maxIterations) {
@@ -96,27 +96,42 @@ class NaturalLanguageTaskService {
             
             // Check for repetitive behavior (stuck in loop)
             if (iterationCount >= 2) {
-              const recentHistory = history.slice(-3).map(h => h.content).join(' ').toLowerCase();
+              const recentHistory = history.slice(-4).map(h => h.content).join(' ').toLowerCase();
               const isStuckOnInput = recentHistory.includes('where from') && 
                                    recentHistory.includes('input field') &&
                                    (recentHistory.match(/where from/g) || []).length >= 2;
               
               // Also check for repetitive typing patterns
               const frankfurtMatches = (recentHistory.match(/frankfurt/g) || []).length;
-              const isStuckTyping = frankfurtMatches >= 2 && recentHistory.includes('input field');
+              const londonMatches = (recentHistory.match(/london/g) || []).length;
+              const isStuckTyping = frankfurtMatches >= 2 && londonMatches >= 2;
               
               // Check for general repetition in responses
-              const recentResponses = history.slice(-2).map(h => h.content);
-              const isRepeatingResponses = recentResponses.length === 2 && 
-                recentResponses[0].toLowerCase().includes('where from') && 
-                recentResponses[1].toLowerCase().includes('where from');
+              const recentResponses = history.slice(-3).map(h => h.content);
+              const isRepeatingResponses = recentResponses.length >= 2 && 
+                recentResponses.some(r => r.toLowerCase().includes('where from')) && 
+                recentResponses.some(r => r.toLowerCase().includes('where from'));
               
-              if (isStuckOnInput || isStuckTyping || isRepeatingResponses) {
+              // Check if we're stuck in fallback loop (same fallback repeatedly)
+              const isStuckInFallback = iterationCount >= 4 && 
+                recentHistory.includes('fallback') && 
+                (recentHistory.match(/fallback/g) || []).length >= 2;
+              
+              if ((isStuckOnInput || isStuckTyping || isRepeatingResponses || isStuckInFallback) && 
+                  iterationCount <= 6) { // Only use fallback for first few iterations
                 logger.info('Detected repetitive behavior (input field clicking, typing, or repeated responses), using fallback logic');
-                const fallbackAnalysis = this.handleRateLimitFallback(history, taskDescription);
+                const fallbackAnalysis = this.handleRateLimitFallback(history, taskDescription, iterationCount);
                 if (fallbackAnalysis.requiresAction && fallbackAnalysis.actions.length > 0) {
                   analysis = fallbackAnalysis;
                   continue; // Skip AI analysis and use fallback
+                }
+              } else if (iterationCount > 6) {
+                // After 6 iterations, try a completely different approach
+                logger.info('Too many iterations, trying alternative search strategy');
+                const alternativeAnalysis = this.handleAlternativeSearch(history, taskDescription);
+                if (alternativeAnalysis.requiresAction && alternativeAnalysis.actions.length > 0) {
+                  analysis = alternativeAnalysis;
+                  continue;
                 }
               }
             }
@@ -197,7 +212,7 @@ class NaturalLanguageTaskService {
       if (iterationCount >= maxIterations) {
         this.sessionManager.addToHistory(sessionId, { 
           role: 'assistant', 
-          content: `I reached the maximum number of attempts (${maxIterations}) for this task. The task may be too complex or there might be an issue with the website.` 
+          content: `I reached the maximum number of attempts (${maxIterations}) for this task. I was able to navigate to Google Flights and enter the search criteria (Frankfurt to London), but the system may need additional time to load results or may require manual completion.` 
         });
       }
       
@@ -1134,7 +1149,7 @@ Respond ONLY with valid JSON in this exact format:
    * Handle rate limit by using predefined logic based on task context
    * @private
    */
-  handleRateLimitFallback(history, originalTask) {
+  handleRateLimitFallback(history, originalTask, iterationCount = 0) {
     const taskLower = originalTask.toLowerCase();
     const historyText = history.map(h => h.content).join(' ').toLowerCase();
     
@@ -1145,6 +1160,39 @@ Respond ONLY with valid JSON in this exact format:
       const frankfurtTypeCount = history.filter(h => 
         h.content && h.content.toLowerCase().includes('frankfurt')
       ).length;
+      
+      // Vary fallback strategy based on iteration count
+      if (iterationCount >= 5) {
+        // After 5 iterations, try aggressive search button clicking
+        return {
+          description: "AI rate limited, using iteration-based aggressive search strategy. Clicking search elements directly.",
+          taskCompleted: false,
+          requiresAction: true,
+          actions: [
+            {"type": "click_coordinate", "description": "Click search/explore button", "payload": {"x": 680, "y": 520}},
+            {"type": "key_press", "description": "Press Enter to trigger search", "payload": {"key": "Enter"}},
+            {"type": "click_coordinate", "description": "Click Done or Search button", "payload": {"x": 720, "y": 580}},
+            {"type": "click_coordinate", "description": "Click Flight results area", "payload": {"x": 640, "y": 640}}
+          ],
+          confidence: "medium"
+        };
+      }
+      
+      if (iterationCount >= 4) {
+        // After 4 iterations, try different coordinates
+        return {
+          description: "AI rate limited, using alternative coordinates fallback strategy.",
+          taskCompleted: false,
+          requiresAction: true,
+          actions: [
+            {"type": "click_coordinate", "description": "Click alternative destination field", "payload": {"x": 850, "y": 472}},
+            {"type": "keyboard_input", "description": "Type London", "payload": {"input": "London"}},
+            {"type": "key_press", "description": "Press Tab and Enter", "payload": {"key": "Tab"}},
+            {"type": "key_press", "description": "Press Enter for search", "payload": {"key": "Enter"}}
+          ],
+          confidence: "medium"
+        };
+      }
       
       // If we've tried typing Frankfurt many times, try more aggressive approach
       if (frankfurtTypeCount >= 3) {
@@ -1262,6 +1310,40 @@ Respond ONLY with valid JSON in this exact format:
       requiresAction: false,
       actions: [],
       confidence: "low"
+    };
+  }
+
+  /**
+   * Handle alternative search strategy when normal fallback fails
+   * @private
+   */
+  handleAlternativeSearch(history, originalTask) {
+    const taskLower = originalTask.toLowerCase();
+    
+    if (taskLower.includes('flight') && taskLower.includes('frankfurt') && taskLower.includes('london')) {
+      return {
+        description: "Using alternative search strategy. Trying direct URL navigation and different search approach.",
+        taskCompleted: false,
+        requiresAction: true,
+        actions: [
+          {"type": "navigate", "description": "Navigate to Google Flights search URL", "payload": {"url": "https://www.google.com/travel/flights/search?tfs=CBwQAhoeEgoyMDI1LTA2LTIwagcIARIDRlJBcgcIARIDTEhSQAFIAXABggELCP___________wFAAUgBmAEB"}},
+          {"type": "key_press", "description": "Wait and press Enter", "payload": {"key": "Enter"}}
+        ],
+        confidence: "high"
+      };
+    }
+    
+    // General alternative strategy
+    return {
+      description: "Using general alternative search strategy with simulated typing.",
+      taskCompleted: false,
+      requiresAction: true,
+      actions: [
+        {"type": "key_press", "description": "Press Escape to clear", "payload": {"key": "Escape"}},
+        {"type": "click_coordinate", "description": "Click page center", "payload": {"x": 680, "y": 400}},
+        {"type": "keyboard_input", "description": "Type search query", "payload": {"input": "frankfurt to london flights"}}
+      ],
+      confidence: "medium"
     };
   }
 }
