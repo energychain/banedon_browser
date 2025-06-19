@@ -791,7 +791,14 @@
 
             const nlResponseDiv = document.getElementById('nlResponse');
             const browserContentDiv = document.getElementById('browserContent');
-            browserContentDiv.innerHTML = '<p>Executing command...</p>';
+            const resultDiv = document.getElementById('nl-result');
+            
+            const placeholder = browserContentDiv.querySelector('.placeholder');
+            if (placeholder) {
+                placeholder.style.display = 'none';
+            }
+            
+            resultDiv.innerHTML = '<p>Executing command...</p>';
 
             try {
                 const response = await fetch(`/api/sessions/${sessionId}/nl-tasks`, {
@@ -806,13 +813,12 @@
 
                 if (!response.ok) {
                     const errorMsg = data.error || `HTTP error! status: ${response.status}`;
-                    browserContentDiv.innerHTML = `<p class="error">Error: ${errorMsg}</p>`;
+                    resultDiv.innerHTML = `<p class="error">Error: ${errorMsg}</p>`;
                     nlResponseDiv.textContent = JSON.stringify(data, null, 2);
                     return;
                 }
 
                 // Display the results
-                const resultDiv = document.getElementById('nl-result');
                 resultDiv.innerHTML = ''; // Clear previous results
 
                 if (data.success && data.task) {
@@ -879,8 +885,6 @@
                   }
                 }
 
-                browserContentDiv.innerHTML = ''; // Clear loading message
-
                 const llmAnswerDiv = document.createElement('div');
                 llmAnswerDiv.className = 'llm-answer';
 
@@ -915,7 +919,7 @@
 
             } catch (error) {
                 console.error('Error sending NL command:', error);
-                browserContentDiv.innerHTML = `<p class="error">Failed to send command. Check console for details.</p>`;
+                resultDiv.innerHTML = `<p class="error">Failed to send command. Check console for details.</p>`;
                 nlResponseDiv.textContent = `Error: ${error.message}`;
             }
         }
