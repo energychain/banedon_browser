@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Browser Automation Service - Dashboard</title>
+    <title>Natural Language Browser Control</title>
     <style>
         * {
             margin: 0;
@@ -211,6 +211,21 @@
             display: block;
         }
 
+        .main-app {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        .advanced-tools {
+            margin-top: 30px;
+        }
+        .advanced-tools-content {
+            display: none;
+            margin-top: 15px;
+        }
+
         .footer {
             text-align: center;
             color: white;
@@ -236,8 +251,19 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🤖 Browser Automation Service</h1>
-            <p>Control browsers remotely via API and WebSocket connections</p>
+            <h1>💬 Natural Language Browser Control</h1>
+            <p>Tell the browser what to do in plain English.</p>
+        </div>
+
+        <div class="main-app">
+            <h2><span class="icon">🤖</span>Your Command</h2>
+            <div class="input-group">
+                <label for="nlPrompt">What should the browser do?</label>
+                <textarea id="nlPrompt" rows="4" placeholder="e.g., 'Navigate to google.com and search for pictures of cute cats'"></textarea>
+            </div>
+            <button class="btn" onclick="sendNlCommand()">Execute Command</button>
+            <div class="response-area" id="nlResponse">Results will appear here...</div>
+            <input type="hidden" id="nlSessionId">
         </div>
 
         <div class="status-bar" id="statusBar">
@@ -259,183 +285,166 @@
             </div>
         </div>
 
-        <div class="extension-download">
-            <h2>🧩 Browser Extension</h2>
-            <p>Install the browser extension to enable remote browser automation</p>
-            <a href="/extension/download" class="btn" id="downloadBtn">📥 Download Extension</a>
-            <a href="/extension/install-guide" class="btn btn-secondary">📖 Installation Guide</a>
-        </div>
-
-        <div class="grid">
-            <div class="card">
-                <h2><span class="icon">🚀</span>Quick Start</h2>
-                <p>Get started with the Browser Automation Service in 3 simple steps:</p>
-                <ol style="margin: 15px 0; padding-left: 20px;">
-                    <li>Download and install the browser extension</li>
-                    <li>Create a session using the API</li>
-                    <li>Send commands via REST API or WebSocket</li>
-                </ol>
-                <button class="btn" onclick="showTab('getting-started')">Get Started</button>
-            </div>
-
-            <div class="card">
-                <h2><span class="icon">🔧</span>API Testing</h2>
-                <p>Test the REST API endpoints directly from this dashboard.</p>
-                <button class="btn" onclick="showTab('api-test')">Test API</button>
-                <button class="btn btn-secondary" onclick="loadApiDocs()">📚 View API Docs</button>
-            </div>
-
-            <div class="card">
-                <h2><span class="icon">📋</span>OpenAPI Specification</h2>
-                <p>Complete OpenAPI 3.0 specification for integration and development.</p>
-                <a href="/openapi.json" class="btn" target="_blank">📥 Download OpenAPI JSON</a>
-                <a href="https://editor.swagger.io/?url=http://10.0.0.2:3010/openapi.json" class="btn btn-secondary" target="_blank">🔧 Open in Swagger Editor</a>
-            </div>
-
-            <div class="card">
-                <h2><span class="icon">🌐</span>WebSocket Testing</h2>
-                <p>Test real-time WebSocket connections and messaging.</p>
-                <button class="btn" onclick="showTab('websocket-test')">Test WebSocket</button>
-                <div style="margin-top: 15px;">
-                    <small><strong>WebSocket URL:</strong> <code id="wsUrl">ws://localhost:3010/ws</code></small>
-                </div>
-            </div>
-
-            <div class="card">
-                <h2><span class="icon">💬</span>Natural Language Control</h2>
-                <p>Control the browser using natural language commands.</p>
-                <button class="btn" onclick="showTab('nl-control')">Start Controlling</button>
-            </div>
-
-            <div class="card">
-                <h2><span class="icon">📊</span>Service Information</h2>
-                <p>View service configuration and endpoints.</p>
-                <div class="code-block" style="margin-top: 15px;">
-                    <strong>Base URL:</strong> <span id="baseUrl">http://localhost:3010</span><br>
-                    <strong>Health Check:</strong> <span id="healthUrl">http://localhost:3010/health</span><br>
-                    <strong>API Base:</strong> <span id="apiUrl">http://localhost:3010/api</span>
-                </div>
-                <button class="btn btn-secondary" onclick="refreshStatus()">🔄 Refresh Status</button>
-            </div>
-        </div>
-
-        <!-- Tabbed Content -->
-        <div class="card" id="tabbedContent" style="display: none;">
-            <div class="tabs">
-                <div class="tab" data-tab="getting-started">Getting Started</div>
-                <div class="tab" data-tab="api-test">API Testing</div>
-                <div class="tab" data-tab="websocket-test">WebSocket Testing</div>
-                <div class="tab" data-tab="nl-control">Natural Language</div>
-            </div>
-
-            <!-- Getting Started Tab -->
-            <div class="tab-content" id="getting-started">
-                <h3>Getting Started Guide</h3>
-                <h4>1. Install Browser Extension</h4>
-                <p>Download the extension package and install it in your browser:</p>
-                <div class="code-block">
-1. Download extension from the button above
-2. Extract the ZIP file
-3. Open Chrome → Extensions (chrome://extensions/)
-4. Enable "Developer mode"
-5. Click "Load unpacked" and select the extracted folder
+        <div class="advanced-tools">
+            <button class="btn btn-secondary" onclick="toggleAdvancedTools()">Show/Hide Advanced Tools</button>
+            <div class="advanced-tools-content" id="advancedToolsContent">
+                <div class="extension-download">
+                    <h2>🧩 Browser Extension</h2>
+                    <p>Install the browser extension to enable remote browser automation</p>
+                    <a href="/extension/download" class="btn" id="downloadBtn">📥 Download Extension</a>
+                    <a href="/extension/install-guide" class="btn btn-secondary">📖 Installation Guide</a>
                 </div>
 
-                <h4>2. Create a Session</h4>
-                <p>First, create a session to get a session ID:</p>
-                <div class="code-block">
-POST /api/sessions
-Content-Type: application/json
+                <div class="grid">
+                    <div class="card">
+                        <h2><span class="icon">🚀</span>Quick Start</h2>
+                        <p>Get started with the Browser Automation Service in 3 simple steps:</p>
+                        <ol style="margin: 15px 0; padding-left: 20px;">
+                            <li>Download and install the browser extension</li>
+                            <li>Create a session using the API</li>
+                            <li>Send commands via REST API or WebSocket</li>
+                        </ol>
+                        <button class="btn" onclick="showTab('getting-started')">Get Started</button>
+                    </div>
 
-{
-  "metadata": {
-    "browser": "chrome",
-    "purpose": "testing"
-  }
-}
+                    <div class="card">
+                        <h2><span class="icon">🔧</span>API Testing</h2>
+                        <p>Test the REST API endpoints directly from this dashboard.</p>
+                        <button class="btn" onclick="showTab('api-test')">Test API</button>
+                        <button class="btn btn-secondary" onclick="loadApiDocs()">📚 View API Docs</button>
+                    </div>
+
+                    <div class="card">
+                        <h2><span class="icon">📋</span>OpenAPI Specification</h2>
+                        <p>Complete OpenAPI 3.0 specification for integration and development.</p>
+                        <a href="/openapi.json" class="btn" target="_blank">📥 Download OpenAPI JSON</a>
+                        <a href="https://editor.swagger.io/?url=http://10.0.0.2:3010/openapi.json" class="btn btn-secondary" target="_blank">🔧 Open in Swagger Editor</a>
+                    </div>
+
+                    <div class="card">
+                        <h2><span class="icon">🌐</span>WebSocket Testing</h2>
+                        <p>Test real-time WebSocket connections and messaging.</p>
+                        <button class="btn" onclick="showTab('websocket-test')">Test WebSocket</button>
+                        <div style="margin-top: 15px;">
+                            <small><strong>WebSocket URL:</strong> <code id="wsUrlAdvanced">ws://localhost:3010/ws</code></small>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h2><span class="icon">📊</span>Service Information</h2>
+                        <p>View service configuration and endpoints.</p>
+                        <div class="code-block" style="margin-top: 15px;">
+                            <strong>Base URL:</strong> <span id="baseUrlAdvanced">http://localhost:3010</span><br>
+                            <strong>Health Check:</strong> <span id="healthUrlAdvanced">http://localhost:3010/health</span><br>
+                            <strong>API Base:</strong> <span id="apiUrlAdvanced">http://localhost:3010/api</span>
+                        </div>
+                        <button class="btn btn-secondary" onclick="refreshStatus()">🔄 Refresh Status</button>
+                    </div>
                 </div>
 
-                <h4>3. Configure Extension</h4>
-                <p>Enter the session ID in the browser extension popup and connect.</p>
+                <!-- Tabbed Content -->
+                <div class="card" id="tabbedContent" style="display: none;">
+                    <div class="tabs">
+                        <div class="tab" data-tab="getting-started">Getting Started</div>
+                        <div class="tab" data-tab="api-test">API Testing</div>
+                        <div class="tab" data-tab="websocket-test">WebSocket Testing</div>
+                    </div>
 
-                <h4>4. Send Commands</h4>
-                <p>Use the session ID to send automation commands:</p>
-                <div class="code-block">
-POST /api/sessions/{sessionId}/commands
-Content-Type: application/json
+                    <!-- Getting Started Tab -->
+                    <div class="tab-content" id="getting-started">
+                        <h3>Getting Started Guide</h3>
+                        <h4>1. Install Browser Extension</h4>
+                        <p>Download the extension package and install it in your browser:</p>
+                        <div class="code-block">
+        1. Download extension from the button above
+        2. Extract the ZIP file
+        3. Open Chrome → Extensions (chrome://extensions/)
+        4. Enable "Developer mode"
+        5. Click "Load unpacked" and select the extracted folder
+                        </div>
 
-{
-  "action": "navigate",
-  "url": "https://example.com"
-}
-                </div>
-            </div>
+                        <h4>2. Create a Session</h4>
+                        <p>First, create a session to get a session ID:</p>
+                        <div class="code-block">
+        POST /api/sessions
+        Content-Type: application/json
 
-            <!-- API Testing Tab -->
-            <div class="tab-content" id="api-test">
-                <h3>API Testing Interface</h3>
-                
-                <h4>Create Session</h4>
-                <div class="input-group">
-                    <label>Session Metadata (JSON):</label>
-                    <textarea id="sessionMetadata" rows="3">{"browser": "chrome", "purpose": "testing", "user": "dashboard"}</textarea>
-                </div>
-                <button class="btn" onclick="createSession()">Create Session</button>
-                
-                <h4>Send Command</h4>
-                <div class="input-group">
-                    <label>Session ID:</label>
-                    <input type="text" id="commandSessionId" placeholder="Enter session ID">
-                </div>
-                <div class="input-group">
-                    <label>Command (JSON):</label>
-                    <textarea id="commandData" rows="4">{"action": "navigate", "url": "https://example.com"}</textarea>
-                </div>
-                <button class="btn" onclick="sendCommand()">Send Command</button>
-                
-                <h4>Get Sessions</h4>
-                <button class="btn btn-secondary" onclick="getSessions()">List All Sessions</button>
-                
-                <div class="response-area" id="apiResponse">API responses will appear here...</div>
-            </div>
+        {
+          "metadata": {
+            "browser": "chrome",
+            "purpose": "testing"
+          }
+        }
+                        </div>
 
-            <!-- WebSocket Testing Tab -->
-            <div class="tab-content" id="websocket-test">
-                <h3>WebSocket Testing Interface</h3>
-                
-                <div class="input-group">
-                    <label>Session ID:</label>
-                    <input type="text" id="wsSessionId" placeholder="Enter session ID for WebSocket connection">
-                </div>
-                
-                <div style="margin: 15px 0;">
-                    <button class="btn" onclick="connectWebSocket()">Connect WebSocket</button>
-                    <button class="btn btn-danger" onclick="disconnectWebSocket()">Disconnect</button>
-                    <span id="wsStatus" style="margin-left: 15px; font-weight: bold;">Disconnected</span>
-                </div>
-                
-                <div class="input-group">
-                    <label>Message to Send (JSON):</label>
-                    <textarea id="wsMessage" rows="3">{"action": "navigate", "url": "https://example.com"}</textarea>
-                </div>
-                <button class="btn btn-secondary" onclick="sendWebSocketMessage()">Send Message</button>
-                
-                <div class="response-area" id="wsResponse">WebSocket messages will appear here...</div>
-            </div>
+                        <h4>3. Configure Extension</h4>
+                        <p>Enter the session ID in the browser extension popup and connect.</p>
 
-            <!-- Natural Language Control Tab -->
-            <div class="tab-content" id="nl-control">
-                <h3>Natural Language Control</h3>
-                <div class="input-group">
-                    <label>Session ID:</label>
-                    <input type="text" id="nlSessionId" placeholder="Enter session ID to control">
+                        <h4>4. Send Commands</h4>
+                        <p>Use the session ID to send automation commands:</p>
+                        <div class="code-block">
+        POST /api/sessions/{sessionId}/commands
+        Content-Type: application/json
+
+        {
+          "action": "navigate",
+          "url": "https://example.com"
+        }
+                        </div>
+                    </div>
+
+                    <!-- API Testing Tab -->
+                    <div class="tab-content" id="api-test">
+                        <h3>API Testing Interface</h3>
+                        
+                        <h4>Create Session</h4>
+                        <div class="input-group">
+                            <label>Session Metadata (JSON):</label>
+                            <textarea id="sessionMetadata" rows="3">{"browser": "chrome", "purpose": "testing", "user": "dashboard"}</textarea>
+                        </div>
+                        <button class="btn" onclick="createSession()">Create Session</button>
+                        
+                        <h4>Send Command</h4>
+                        <div class="input-group">
+                            <label>Session ID:</label>
+                            <input type="text" id="commandSessionId" placeholder="Enter session ID">
+                        </div>
+                        <div class="input-group">
+                            <label>Command (JSON):</label>
+                            <textarea id="commandData" rows="4">{"action": "navigate", "url": "https://example.com"}</textarea>
+                        </div>
+                        <button class="btn" onclick="sendCommand()">Send Command</button>
+                        
+                        <h4>Get Sessions</h4>
+                        <button class="btn btn-secondary" onclick="getSessions()">List All Sessions</button>
+                        
+                        <div class="response-area" id="apiResponse">API responses will appear here...</div>
+                    </div>
+
+                    <!-- WebSocket Testing Tab -->
+                    <div class="tab-content" id="websocket-test">
+                        <h3>WebSocket Testing Interface</h3>
+                        
+                        <div class="input-group">
+                            <label>Session ID:</label>
+                            <input type="text" id="wsSessionId" placeholder="Enter session ID for WebSocket connection">
+                        </div>
+                        
+                        <div style="margin: 15px 0;">
+                            <button class="btn" onclick="connectWebSocket()">Connect WebSocket</button>
+                            <button class="btn btn-danger" onclick="disconnectWebSocket()">Disconnect</button>
+                            <span id="wsStatus" style="margin-left: 15px; font-weight: bold;">Disconnected</span>
+                        </div>
+                        
+                        <div class="input-group">
+                            <label>Message to Send (JSON):</label>
+                            <textarea id="wsMessage" rows="3">{"action": "navigate", "url": "https://example.com"}</textarea>
+                        </div>
+                        <button class="btn btn-secondary" onclick="sendWebSocketMessage()">Send Message</button>
+                        
+                        <div class="response-area" id="wsResponse">WebSocket messages will appear here...</div>
+                    </div>
                 </div>
-                <div class="input-group">
-                    <label for="nlPrompt">Your Command:</label>
-                    <textarea id="nlPrompt" rows="3" placeholder="e.g., 'Navigate to google.com and search for cats'"></textarea>
-                </div>
-                <button class="btn" onclick="sendNlCommand()">Execute Command</button>
-                <div class="response-area" id="nlResponse">Results will appear here...</div>
             </div>
         </div>
     </div>
@@ -446,19 +455,60 @@ Content-Type: application/json
 
     <script>
         let ws = null;
+        let sessionId = null;
         const baseUrl = window.location.origin;
         
         // Update URLs based on current location
-        document.getElementById('baseUrl').textContent = baseUrl;
-        document.getElementById('healthUrl').textContent = baseUrl + '/health';
-        document.getElementById('apiUrl').textContent = baseUrl + '/api';
-        document.getElementById('wsUrl').textContent = baseUrl.replace('http', 'ws') + '/ws';
+        // Note: These elements are now in the advanced section
+        function updateAdvancedUrls() {
+            if(document.getElementById('baseUrlAdvanced')) {
+                document.getElementById('baseUrlAdvanced').textContent = baseUrl;
+                document.getElementById('healthUrlAdvanced').textContent = baseUrl + '/health';
+                document.getElementById('apiUrlAdvanced').textContent = baseUrl + '/api';
+                document.getElementById('wsUrlAdvanced').textContent = baseUrl.replace('http', 'ws') + '/ws';
+            }
+        }
+
 
         // Load service status on page load
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', async function() {
+            await initializeSession();
             refreshStatus();
             setupTabs();
+            updateAdvancedUrls();
         });
+
+        async function initializeSession() {
+            try {
+                const response = await fetch('/api/sessions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ metadata: { "purpose": "nl-control", "user": "dashboard-direct" } })
+                });
+                const data = await response.json();
+                if (data.sessionId) {
+                    sessionId = data.sessionId;
+                    document.getElementById('nlSessionId').value = sessionId;
+                    
+                    // Also fill in other session ID fields in advanced tools
+                    if(document.getElementById('commandSessionId')) {
+                        document.getElementById('commandSessionId').value = sessionId;
+                    }
+                    if(document.getElementById('wsSessionId')) {
+                        document.getElementById('wsSessionId').value = sessionId;
+                    }
+                    console.log('Session initialized:', sessionId);
+                } else {
+                     throw new Error(data.message || 'Failed to get session ID from server.');
+                }
+            } catch (error) {
+                console.error('Failed to initialize session:', error);
+                const nlResponse = document.getElementById('nlResponse');
+                if(nlResponse) {
+                    nlResponse.textContent = 'Error: Could not initialize a session with the server. ' + error.message;
+                }
+            }
+        }
 
         function setupTabs() {
             const tabs = document.querySelectorAll('.tab');
@@ -568,7 +618,7 @@ Content-Type: application/json
             try {
                 const sessionId = document.getElementById('nlSessionId').value;
                 if (!sessionId) {
-                    alert('Please enter a Session ID.');
+                    alert('Session not initialized. Please wait or refresh the page.');
                     return;
                 }
                 const prompt = document.getElementById('nlPrompt').value;
@@ -577,7 +627,7 @@ Content-Type: application/json
                     return;
                 }
 
-                const response = await fetch(`/api/sessions/${sessionId}/nl`, {
+                const response = await fetch(`/api/sessions/${sessionId}/nl-task`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ task: prompt })
@@ -649,6 +699,15 @@ Content-Type: application/json
 
         function loadApiDocs() {
             window.open('/api/docs', '_blank');
+        }
+
+        function toggleAdvancedTools() {
+            const content = document.getElementById('advancedToolsContent');
+            if (content.style.display === 'none' || content.style.display === '') {
+                content.style.display = 'block';
+            } else {
+                content.style.display = 'none';
+            }
         }
 
         // Auto-refresh status every 30 seconds
