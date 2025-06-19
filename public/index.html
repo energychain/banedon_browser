@@ -627,7 +627,7 @@
                     return;
                 }
 
-                const response = await fetch(`/api/sessions/${sessionId}/nl-task`, {
+                const response = await fetch(`/api/sessions/${sessionId}/nl-tasks`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ task: prompt })
