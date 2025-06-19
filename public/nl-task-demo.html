@@ -226,11 +226,25 @@
                 
                 if (data.success) {
                     resultDiv.className = 'result success';
-                    let content = JSON.stringify(data, null, 2);
+                    let user_question = "";
+                    let assistant_response = "";
+
+                    if (data.answer && data.answer.history && Array.isArray(data.answer.history)) {
+                        const userMessage = data.answer.history.findLast(m => m.role === 'user');
+                        if (userMessage) {
+                            user_question = userMessage.content;
+                        }
+
+                        const assistantMessage = data.answer.history.findLast(m => m.role === 'assistant');
+                        if (assistantMessage) {
+                            assistant_response = assistantMessage.content;
+                        }
+                    }
+                    
+                    let content = `Question: ${user_question}\nAnswer: ${assistant_response}`;
                     
                     // Add screenshot if available
                     if (data.answer && data.answer.screenshot && data.answer.screenshot.base64) {
-                        content += '\n\n--- SCREENSHOT ---\n';
                         const img = document.createElement('img');
                         img.src = `data:image/png;base64,${data.answer.screenshot.base64}`;
                         img.className = 'screenshot';

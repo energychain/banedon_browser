@@ -838,17 +838,36 @@
                 const data = await response.json();
                 resultDiv.innerHTML = ''; // Clear thinking message
 
-                if (data.history) {
-                    renderChatHistory(data.history);
+                if (!response.ok) {
+                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
 
-                if (data.beforeScreenshot || data.afterScreenshot) {
-                    renderScreenshots(data.beforeScreenshot, data.afterScreenshot);
+                if (!data.success) {
+                    throw new Error(data.message || 'API returned an error');
+                }
+                
+                if (!data.task) {
+                    throw new Error('API response did not include a task object.');
+                }
+
+                const task = data.task;
+
+                if (task.history) {
+                    renderChatHistory(task.history);
+                }
+                
+                if (task.response) {
+                    addToChatHistory('assistant', task.response);
+                }
+
+                if (task.beforeScreenshot || task.afterScreenshot) {
+                    renderScreenshots(task.beforeScreenshot, task.afterScreenshot);
                 }
 
             } catch (error) {
                 console.error('Error sending NL command:', error);
                 addToChatHistory('assistant', `Sorry, I encountered an error: ${error.message}`);
+                resultDiv.innerHTML = ''; // Clear thinking message on error too
             }
         }
 
@@ -863,9 +882,11 @@
 
         function renderChatHistory(history) {
             const chatHistory = document.getElementById('chatHistory');
-            chatHistory.innerHTML = '';
+            chatHistory.innerHTML = ''; // Clear existing history
             history.forEach(message => {
-                addToChatHistory(message.role, message.content);
+                const role = message.role === 'user' ? 'user' : 'assistant';
+                const content = message.content;
+                addToChatHistory(role, content);
             });
         }
 
@@ -897,31 +918,6 @@
                 sendNlCommand();
             }
         });
-
-        async function initializeSession() {
-            const nlSessionIdInput = document.getElementById('nlSessionId');
-            const serviceStatusDiv = document.getElementById('serviceStatus');
-            try {
-                const response = await fetch('/api/sessions', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ metadata: { "purpose": "nl-control", "user": "dashboard-direct" } })
-                });
-                const data = await response.json();
-                if (data.success && data.session && data.session.id) {
-                    const sessionId = data.session.id;
-                    nlSessionIdInput.value = sessionId;
-                    document.getElementById('commandSessionId').value = sessionId;
-                    document.getElementById('wsSessionId').value = sessionId;
-                    console.log('Session initialized:', sessionId);
-                } else {
-                    throw new Error(data.message || 'Failed to initialize session.');
-                }
-            } catch (error) {
-                console.error('Error initializing session:', error);
-                nlSessionIdInput.value = '';
-            }
-        }
 
         function connectWebSocket() {
             const sessionId = document.getElementById('wsSessionId').value;
