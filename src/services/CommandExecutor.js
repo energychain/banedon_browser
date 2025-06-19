@@ -323,7 +323,7 @@ class CommandExecutor {
       // New server-side commands
       'getTitle', 'getUrl', 'getText', 'getAttribute', 'waitForElement', 'evaluate',
       // Human-like coordinate commands
-      'click_coordinate', 'hover_coordinate', 'get_text', 'get_page_elements', 'key_press', 'type_text'
+      'click_coordinate', 'hover_coordinate', 'get_text', 'get_page_elements', 'key_press', 'type_text', 'keyboard_input'
     ];
     if (!validTypes.includes(commandData.type)) {
       throw new Error(`Invalid command type: ${commandData.type}`);
@@ -389,6 +389,11 @@ class CommandExecutor {
       case 'type_text':
         if (!commandData.payload?.text) {
           throw new Error('Text is required for type_text command');
+        }
+        break;
+      case 'keyboard_input':
+        if (!commandData.payload?.input) {
+          throw new Error('Input text is required for keyboard_input command');
         }
         break;
     }

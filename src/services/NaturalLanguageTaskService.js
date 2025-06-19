@@ -72,7 +72,7 @@ class NaturalLanguageTaskService {
       let executionResult = [];
       let afterScreenshot = null;
       let iterationCount = 0;
-      const maxIterations = 10; // Prevent infinite loops
+      const maxIterations = 15; // Allow more iterations for complex tasks
       
       // Iterative execution until task is complete or max iterations reached
       while (analysis.requiresAction && analysis.actions && analysis.actions.length > 0 && iterationCount < maxIterations) {
@@ -536,7 +536,18 @@ ANALYSIS APPROACH:
 - Look at the screenshot to see what happened after the last action
 - Use the element list to identify what can be clicked at specific coordinates
 - For routine tasks (cookie consent), find and click appropriate buttons automatically
+- For input fields: first click to focus, then clear (Ctrl+A, Delete), then type
 - Determine if the original task is complete or needs more actions
+
+AVAILABLE ACTIONS:
+- click_coordinate: Click at specific coordinates {"x": 150, "y": 200}
+- keyboard_input: Type text {"input": "Frankfurt"}
+- key_press: Press special keys {"key": "Delete"} or {"key": "Backspace"} or {"key": "Control+a"}
+
+INPUT FIELD STRATEGY:
+1. Click the input field to focus it
+2. Clear existing content: key_press with "Control+a" then "Delete"
+3. Type new content: keyboard_input with desired text
 
 Key Questions:
 1. Did the last action succeed?

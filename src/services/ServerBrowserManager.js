@@ -368,6 +368,17 @@ class ServerBrowserManager {
             }
           };
 
+        case 'keyboard_input':
+          const inputText = command.payload.input;
+          await page.keyboard.type(inputText);
+          return {
+            success: true,
+            result: {
+              typed: inputText,
+              timestamp: new Date().toISOString()
+            }
+          };
+
         case 'get_page_elements':
           // Get interactive elements with their positions for AI analysis
           const elements = await page.evaluate(() => {
