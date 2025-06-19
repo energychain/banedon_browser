@@ -1,0 +1,158 @@
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    margin: 0;
+    background-color: #f4f7f9;
+    color: #333;
+}
+
+header {
+    background-color: #fff;
+    padding: 1rem 2rem;
+    border-bottom: 1px solid #ddd;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+header h1 {
+    margin: 0;
+    font-size: 1.5rem;
+}
+
+.container {
+    display: flex;
+    padding: 1rem;
+    gap: 1rem;
+    height: calc(100vh - 70px); /* Full height minus header */
+}
+
+#control-panel, #visualizer-panel {
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+}
+
+#control-panel {
+    flex: 1;
+    min-width: 300px;
+}
+
+#visualizer-panel {
+    flex: 2;
+}
+
+h2 {
+    margin-top: 0;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 0.5rem;
+    margin-bottom: 1rem;
+    color: #555;
+}
+
+#task-input-container {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+#task-input {
+    flex-grow: 1;
+    padding: 0.5rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+#add-task-btn, .receipt-actions button {
+    padding: 0.5rem 1rem;
+    border: none;
+    background-color: #007bff;
+    color: white;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+#add-task-btn:hover, .receipt-actions button:hover {
+    background-color: #0056b3;
+}
+
+#task-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    flex-grow: 1;
+    overflow-y: auto;
+}
+
+#task-list li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem;
+    border-bottom: 1px solid #eee;
+    background-color: #fdfdfd;
+}
+
+#task-list li:last-child {
+    border-bottom: none;
+}
+
+#task-list li .task-text {
+    flex-grow: 1;
+    cursor: grab; /* Indicate draggable */
+}
+
+/* Style for the input field when editing a task */
+#task-list li input.edit-input {
+    flex-grow: 1;
+    padding: 0.5rem;
+    border: 1px solid #007bff;
+    border-radius: 4px;
+    margin-right: 1rem;
+}
+
+#task-list li .task-actions button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.25rem;
+    margin-left: 0.5rem;
+    color: #888;
+}
+
+#task-list li .task-actions button:hover {
+    color: #333;
+}
+
+/* Class for the item being dragged */
+#task-list li.dragging {
+    opacity: 0.5;
+    background: #eef5ff;
+}
+
+/* Class for visual feedback when dragging over another item */
+#task-list li.drag-over {
+    border-top: 2px solid #007bff;
+}
+
+.receipt-actions {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #eee;
+}
+
+#visualizer-content {
+    flex-grow: 1;
+    overflow-y: auto;
+    background-color: #2d2d2d;
+    color: #f1f1f1;
+    padding: 1rem;
+    border-radius: 4px;
+    font-family: "Courier New", Courier, monospace;
+}
+
+#action-log .log-entry {
+    padding: 0.25rem 0;
+    border-bottom: 1px dashed #555;
+}
