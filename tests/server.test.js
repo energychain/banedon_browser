@@ -214,6 +214,19 @@ describe('Browser Automation Service', () => {
       // The response should contain actual flight information or at least indicate 
       // that it attempted to search for flights with specific details
       const responseText = task.response.toLowerCase();
+      
+      // Debug logging to see what we actually got
+      console.log('\n=== FLIGHT SEARCH RESPONSE DEBUG ===');
+      console.log('Full task response:', task.response);
+      console.log('Response text (lowercase):', responseText);
+      console.log('Contains "flight":', responseText.includes('flight'));
+      console.log('Contains Frankfurt:', responseText.includes('frankfurt') || responseText.includes('fra'));
+      console.log('Contains London:', responseText.includes('london') || responseText.includes('heathrow') || responseText.includes('lhr'));
+      console.log('Task iterations:', task.iterations);
+      console.log('Task history length:', task.history?.length);
+      console.log('Last few history entries:', task.history?.slice(-3));
+      console.log('=====================================\n');
+      
       const hasFlightInfo = 
         responseText.includes('flight') && 
         (responseText.includes('frankfurt') || responseText.includes('fra')) &&

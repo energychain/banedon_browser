@@ -41,8 +41,27 @@ class NaturalLanguageTaskService {
 
       logger.info(`Processing natural language task for session ${sessionId}: ${taskDescription}`);
 
-      let screenshotResult = await this.takeScreenshot(sessionId);
-      let analysis = await this.analyzeTaskWithElements(history, screenshotResult.base64, sessionId);
+      // First check if we need to navigate somewhere before analyzing the page
+      let analysis = await this.analyzeTaskForInitialNavigation(history, taskDescription);
+      let screenshotResult;
+      
+      // If initial analysis suggests navigation, do that first
+      if (analysis.requiresAction && analysis.actions && analysis.actions.length > 0 && 
+          analysis.actions[0].type === 'navigate') {
+        logger.info('Initial task requires navigation, performing navigation first');
+        const navResult = await this.executeTaskActions(sessionId, [analysis.actions[0]]);
+        
+        // Wait for page to load
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        
+        // Now take screenshot and analyze the loaded page
+        screenshotResult = await this.takeScreenshot(sessionId);
+        analysis = await this.analyzeTaskWithElements(history, screenshotResult.base64, sessionId);
+      } else {
+        // No navigation needed, analyze current page
+        screenshotResult = await this.takeScreenshot(sessionId);
+        analysis = await this.analyzeTaskWithElements(history, screenshotResult.base64, sessionId);
+      }
       
       // Add AI's initial response to history
       const initialResponse = (analysis.thought ? `Thinking: ${analysis.thought}\n\n` : '') + (analysis.response || '');
@@ -112,10 +131,11 @@ class NaturalLanguageTaskService {
                 history = this.sessionManager.getHistory(sessionId);
                 
                 // Re-analyze with focus on finding alternative approaches
-                const fallbackAnalysis = await this.analyzePageAfterActionForContinuation(
+                const fallbackAnalysis = await this.analyzePageAfterActionForContinuationWithElements(
                   history, 
                   currentScreenshot.base64, 
-                  taskDescription
+                  taskDescription,
+                  sessionId
                 );
                 
                 if (fallbackAnalysis.description) {
@@ -558,6 +578,15 @@ Respond ONLY with valid JSON in this exact format:
   }
 
   /**
+   * Simple continuation analysis without enhanced elements
+   * @private
+   */
+  async analyzePageAfterActionForContinuation(history, screenshotBase64, originalTask) {
+    // Fallback to the enhanced version with null sessionId
+    return this.analyzePageAfterActionForContinuationWithElements(history, screenshotBase64, originalTask, null);
+  }
+
+  /**
    * Execute the actions determined by AI analysis
    * @private
    */
@@ -886,6 +915,109 @@ Respond ONLY with valid JSON in this exact format:
     } catch (error) {
       logger.error('Error in enhanced task analysis:', error);
       return this.analyzeTaskAndPage(history, screenshotBase64);
+    }
+  }
+
+  /**
+   * Analyze task to determine if initial navigation is needed
+   * @private
+   */
+  async analyzeTaskForInitialNavigation(history, taskDescription) {
+    try {
+      const historyString = history.map(h => `${h.role}: ${h.content}`).join('\n');
+
+      const prompt = `
+You are a conversational AI agent analyzing a user's request to determine if navigation to a website is needed first.
+
+CONVERSATION HISTORY:
+---
+${historyString}
+---
+
+USER'S REQUEST: "${taskDescription}"
+
+Determine if this request requires navigating to a specific website first. Common scenarios:
+- Flight search → Navigate to Google Flights, Expedia, or airline websites
+- Shopping → Navigate to Amazon, shopping sites
+- News → Navigate to news websites  
+- Maps/directions → Navigate to Google Maps
+- General web search → Navigate to Google
+- Hotel booking → Navigate to Booking.com, Hotels.com
+
+If navigation is needed, provide the URL. If the user is already on the right page or this is a general question, no navigation is needed.
+
+Respond ONLY with valid JSON in this exact format:
+{
+  "thought": "The user wants to [describe task]. This requires navigating to [site] because [reason], OR this doesn't require navigation because [reason].",
+  "response": "I'll navigate to [site] to help you with [task]",
+  "requiresAction": true,
+  "actions": [{"type": "navigate", "description": "Navigate to Google Flights", "payload": {"url": "https://www.google.com/flights"}}],
+  "confidence": "high"
+}
+`;
+
+      const result = await this.model.generateContent([prompt]);
+      const response = await result.response;
+      const text = response.text().trim();
+      
+      const parsed = this._parseGeminiResponse(text);
+      if (parsed.error) {
+        // Fallback: detect common navigation patterns
+        const taskLower = taskDescription.toLowerCase();
+        if (taskLower.includes('flight') || taskLower.includes('airline')) {
+          return {
+            response: "I'll search for flights on Google Flights",
+            requiresAction: true,
+            actions: [{
+              type: 'navigate',
+              description: 'Navigate to Google Flights',
+              payload: { url: 'https://www.google.com/flights' }
+            }],
+            confidence: 'medium'
+          };
+        } else if (taskLower.includes('hotel') || taskLower.includes('booking')) {
+          return {
+            response: "I'll search for hotels on Booking.com",
+            requiresAction: true,
+            actions: [{
+              type: 'navigate', 
+              description: 'Navigate to Booking.com',
+              payload: { url: 'https://www.booking.com' }
+            }],
+            confidence: 'medium'
+          };
+        }
+        
+        return {
+          response: "I'll analyze the current page",
+          requiresAction: false,
+          actions: [],
+          confidence: 'low'
+        };
+      }
+      return parsed;
+    } catch (error) {
+      logger.error('Error analyzing task for navigation:', error);
+      // Simple fallback for flight searches
+      if (taskDescription.toLowerCase().includes('flight')) {
+        return {
+          response: "I'll search for flights on Google Flights",
+          requiresAction: true,
+          actions: [{
+            type: 'navigate',
+            description: 'Navigate to Google Flights',
+            payload: { url: 'https://www.google.com/flights' }
+          }],
+          confidence: 'medium'
+        };
+      }
+      
+      return {
+        response: "I'll analyze the current page",
+        requiresAction: false,
+        actions: [],
+        confidence: 'low'
+      };
     }
   }
 }
