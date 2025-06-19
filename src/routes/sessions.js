@@ -177,6 +177,163 @@ function createSessionRoutes(sessionManager) {
     }
   });
 
+  // Debug endpoint: Get screenshots for session (only if debug enabled)
+  router.get('/:sessionId/debug/screenshots', async (req, res) => {
+    try {
+      const { sessionId } = req.params;
+      const session = sessionManager.getSession(sessionId);
+      
+      if (!session) {
+        return res.status(404).json({
+          success: false,
+          error: 'Session not found'
+        });
+      }
+
+      if (!session.metadata.debug) {
+        return res.status(403).json({
+          success: false,
+          error: 'Debug mode not enabled for this session'
+        });
+      }
+
+      // Get screenshots from NaturalLanguageTaskService if available
+      const screenshots = [];
+      const screenshotDir = './public/screenshots';
+      const fs = require('fs');
+      const path = require('path');
+      
+      if (fs.existsSync(screenshotDir)) {
+        const files = fs.readdirSync(screenshotDir);
+        const sessionScreenshots = files
+          .filter(file => file.endsWith('.png'))
+          .map(file => {
+            const filepath = path.join(screenshotDir, file);
+            const stats = fs.statSync(filepath);
+            return {
+              filename: file,
+              url: `/screenshots/${file}`,
+              size: stats.size,
+              createdAt: stats.mtime,
+              sessionId: sessionId // For now, return all screenshots
+            };
+          })
+          .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+          .slice(0, 20); // Return last 20 screenshots
+        
+        screenshots.push(...sessionScreenshots);
+      }
+      
+      res.json({
+        success: true,
+        sessionId,
+        screenshots,
+        count: screenshots.length
+      });
+    } catch (error) {
+      logger.error('Failed to get session screenshots:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message
+      });
+    }
+  });
+
+  // Debug endpoint: Get logs for session (only if debug enabled)
+  router.get('/:sessionId/debug/logs', async (req, res) => {
+    try {
+      const { sessionId } = req.params;
+      const { lines = 100 } = req.query;
+      const session = sessionManager.getSession(sessionId);
+      
+      if (!session) {
+        return res.status(404).json({
+          success: false,
+          error: 'Session not found'
+        });
+      }
+
+      if (!session.metadata.debug) {
+        return res.status(403).json({
+          success: false,
+          error: 'Debug mode not enabled for this session'
+        });
+      }
+
+      // Get session history and logs
+      const history = sessionManager.getHistory(sessionId);
+      const sessionLogs = [];
+      
+      // For now, return the session history as logs
+      // In a real implementation, you'd want to capture actual log entries
+      history.forEach(entry => {
+        sessionLogs.push({
+          timestamp: new Date().toISOString(),
+          level: 'info',
+          message: `${entry.role}: ${entry.content}`,
+          sessionId: sessionId
+        });
+      });
+      
+      res.json({
+        success: true,
+        sessionId,
+        logs: sessionLogs.slice(-parseInt(lines)),
+        count: sessionLogs.length
+      });
+    } catch (error) {
+      logger.error('Failed to get session logs:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message
+      });
+    }
+  });
+
+  // Debug endpoint: Get session task status (only if debug enabled)
+  router.get('/:sessionId/debug/status', async (req, res) => {
+    try {
+      const { sessionId } = req.params;
+      const session = sessionManager.getSession(sessionId);
+      
+      if (!session) {
+        return res.status(404).json({
+          success: false,
+          error: 'Session not found'
+        });
+      }
+
+      if (!session.metadata.debug) {
+        return res.status(403).json({
+          success: false,
+          error: 'Debug mode not enabled for this session'
+        });
+      }
+
+      const history = sessionManager.getHistory(sessionId);
+      
+      res.json({
+        success: true,
+        sessionId,
+        session: {
+          id: session.id,
+          status: session.status,
+          createdAt: session.createdAt,
+          metadata: session.metadata,
+          isConnected: session.isConnected
+        },
+        history: history,
+        historyCount: history.length
+      });
+    } catch (error) {
+      logger.error('Failed to get session debug status:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message
+      });
+    }
+  });
+
   return router;
 }
 

@@ -165,12 +165,18 @@ describe('Browser Automation Service', () => {
     let sessionId;
 
     beforeAll(async () => {
-      // Create a session for NL tasks
+      // Create a session for NL tasks with debug mode enabled
       const response = await request(app)
         .post('/api/sessions')
-        .send({ metadata: { browser: 'test-nl', purpose: 'flight-search-test' } })
+        .send({ 
+          debug: true, // Enable debug mode
+          metadata: { browser: 'test-nl', purpose: 'flight-search-test' } 
+        })
         .expect(201);
       sessionId = response.body.session.id;
+      
+      // Verify debug mode is enabled
+      expect(response.body.session.debug).toBe(true);
     });
 
     afterAll(async () => {
@@ -225,6 +231,33 @@ describe('Browser Automation Service', () => {
       console.log('Task iterations:', task.iterations);
       console.log('Task history length:', task.history?.length);
       console.log('Last few history entries:', task.history?.slice(-3));
+      
+      // Get debug information from new endpoints
+      try {
+        const debugStatusResponse = await request(app)
+          .get(`/api/sessions/${sessionId}/debug/status`)
+          .expect(200);
+        console.log('Debug session status:', debugStatusResponse.body);
+        
+        const debugLogsResponse = await request(app)
+          .get(`/api/sessions/${sessionId}/debug/logs?lines=10`)
+          .expect(200);
+        console.log('Debug logs count:', debugLogsResponse.body.count);
+        console.log('Last few logs:', debugLogsResponse.body.logs?.slice(-3));
+        
+        const debugScreenshotsResponse = await request(app)
+          .get(`/api/sessions/${sessionId}/debug/screenshots`)
+          .expect(200);
+        console.log('Debug screenshots count:', debugScreenshotsResponse.body.count);
+        console.log('Latest screenshots:', debugScreenshotsResponse.body.screenshots?.slice(0, 3)?.map(s => ({
+          filename: s.filename,
+          size: s.size,
+          createdAt: s.createdAt
+        })));
+      } catch (debugError) {
+        console.log('Debug endpoints error:', debugError.message);
+      }
+      
       console.log('=====================================\n');
       
       const hasFlightInfo = 
@@ -244,5 +277,73 @@ describe('Browser Automation Service', () => {
       console.log('History steps:', task.history.length);
 
     }, 120000); // Increased timeout to 120 seconds for the complex flight search task that needs to complete fully
+  });
+
+  describe('Debug Endpoints', () => {
+    let sessionId;
+
+    beforeAll(async () => {
+      // Create a session with debug mode enabled
+      const response = await request(app)
+        .post('/api/sessions')
+        .send({ 
+          debug: true, // Enable debug mode
+          metadata: { browser: 'test-debug' } 
+        })
+        .expect(201);
+      sessionId = response.body.session.id;
+    });
+
+    afterAll(async () => {
+      // Clean up the session
+      await request(app).delete(`/api/sessions/${sessionId}`);
+    });
+
+    test('DEBUG: Debug endpoints should work for debug-enabled sessions', async () => {
+      // Test debug status endpoint
+      const statusResponse = await request(app)
+        .get(`/api/sessions/${sessionId}/debug/status`)
+        .expect(200);
+      
+      expect(statusResponse.body.success).toBe(true);
+      expect(statusResponse.body.sessionId).toBe(sessionId);
+      expect(statusResponse.body.session).toBeDefined();
+      expect(statusResponse.body.history).toBeDefined();
+      expect(Array.isArray(statusResponse.body.history)).toBe(true);
+      
+      // Test debug logs endpoint
+      const logsResponse = await request(app)
+        .get(`/api/sessions/${sessionId}/debug/logs`)
+        .expect(200);
+      
+      expect(logsResponse.body.success).toBe(true);
+      expect(logsResponse.body.sessionId).toBe(sessionId);
+      expect(Array.isArray(logsResponse.body.logs)).toBe(true);
+      
+      // Test debug screenshots endpoint
+      const screenshotsResponse = await request(app)
+        .get(`/api/sessions/${sessionId}/debug/screenshots`)
+        .expect(200);
+      
+      expect(screenshotsResponse.body.success).toBe(true);
+      expect(screenshotsResponse.body.sessionId).toBe(sessionId);
+      expect(Array.isArray(screenshotsResponse.body.screenshots)).toBe(true);
+      
+      // Test that non-debug session cannot access debug endpoints
+      const normalSessionResponse = await request(app)
+        .post('/api/sessions')
+        .send({ metadata: { browser: 'test-normal' } })
+        .expect(201);
+      
+      const normalSessionId = normalSessionResponse.body.session.id;
+      
+      // Should get 403 for non-debug session
+      await request(app)
+        .get(`/api/sessions/${normalSessionId}/debug/status`)
+        .expect(403);
+      
+      // Clean up
+      await request(app).delete(`/api/sessions/${normalSessionId}`);
+    });
   });
 });
