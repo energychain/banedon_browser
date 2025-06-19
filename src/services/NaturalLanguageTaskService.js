@@ -266,12 +266,21 @@ Your goal is to fulfill the user's latest request: "${lastUserTask}"
 
 IMPORTANT AUTOMATION RULES:
 - Handle routine website interactions automatically without asking the user
-- Cookie consent dialogs: Look for common consent elements like buttons with text "Accept", "OK", "I agree", "Allow all", etc. Use flexible selectors like button:contains("Accept"), [id*="accept"], [class*="accept"], or any clickable element with consent-related text
-- Newsletter signups, promotional popups: Dismiss automatically (click "No thanks", "X", "Close", etc.)
+- Cookie consent dialogs: Look for buttons containing consent-related text. Use simple selectors like "button", "[role='button']", "div[role='button']". Look for elements with IDs/classes containing "accept", "consent", "cookie", "agree"
+- For cookie consent, try these selector strategies in order:
+  1. Simple selectors: "button" (the system will automatically find buttons with accept-related text)
+  2. ID/class patterns: button[id*="accept"], [class*="accept"] 
+  3. Let the system try fallbacks automatically - just use "button" as selector
+- Use valid CSS selectors: button[id*="accept"], [class*="accept"], [data-*="accept"]
+- For popups: Look for close buttons, "X" symbols, "No thanks", "Dismiss", "Skip" 
 - Age verification, country selection: Choose reasonable defaults automatically
+- When a selector fails, try these fallback strategies:
+  1. Use "button" selector (system will auto-find consent buttons)
+  2. Try common patterns: button[id*="accept"], [class*="accept"]
+  3. Trust the system's built-in fallback mechanisms
+- For cookie consent, just use "button" as the selector - the system will automatically find the right button
 - Only ask the user for input when truly necessary (login credentials, specific preferences, etc.)
 - Your goal is to complete the user's task end-to-end, not stop at intermediate steps
-- If specific selectors fail, try alternative approaches: look for text content, use more general selectors, or try multiple button types
 
 Based on the conversation history, the user's request, and the provided screenshot of the current page, create a plan.
 - If the request is ambiguous, ask a clarifying question.
@@ -490,12 +499,16 @@ ${historyString}
 
 IMPORTANT AUTOMATION RULES:
 - Handle routine website interactions automatically without asking the user
-- Cookie consent dialogs: Look for common consent elements like buttons with text "Accept", "OK", "I agree", "Allow all", etc. Use flexible selectors like button:contains("Accept"), [id*="accept"], [class*="accept"], or any clickable element with consent-related text
-- Newsletter signups, promotional popups: Dismiss automatically (click "No thanks", "X", "Close", etc.)
+- Cookie consent dialogs: Look for buttons containing consent-related text. Use simple selectors like "button", "[role='button']", "div[role='button']". Look for elements with IDs/classes containing "accept", "consent", "cookie", "agree"
+- Use valid CSS selectors: button[id*="accept"], [class*="accept"], [data-*="accept"]
+- For popups: Look for close buttons, "X" symbols, "No thanks", "Dismiss", "Skip" 
 - Age verification, country selection: Choose reasonable defaults automatically
+- When a selector fails, try these fallback strategies:
+  1. Try broad selectors like "button" and look for text content in the description
+  2. Try common patterns: #accept, .accept, [aria-label*="accept"]
+  3. Look for the most prominent button on modal dialogs
 - Only ask the user for input when truly necessary (login credentials, specific preferences, etc.)
 - Your goal is to complete the user's task end-to-end, not stop at intermediate steps
-- If specific selectors fail, try alternative approaches: look for text content, use more general selectors, or try multiple button types
 
 Look at the current screenshot and determine:
 1. Did the last action succeed?

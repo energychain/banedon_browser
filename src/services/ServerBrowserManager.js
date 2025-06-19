@@ -204,12 +204,96 @@ class ServerBrowserManager {
 
         case 'click':
           const selector = command.payload.selector || command.payload.element;
-          await page.waitForSelector(selector, { timeout: 10000 });
-          await page.click(selector);
+          
+          // Try to click the element with fallback strategies
+          let clicked = false;
+          let clickedSelector = '';
+          
+          try {
+            // First try the exact selector
+            await page.waitForSelector(selector, { timeout: 5000 });
+            await page.click(selector);
+            clicked = true;
+            clickedSelector = selector;
+          } catch (error) {
+            // If exact selector fails, try fallback strategies for common cases
+            logger.warn(`Primary selector failed: ${selector}, trying fallbacks`);
+            
+            // Common fallback selectors for cookie consent
+            const fallbackSelectors = [
+              'button[id*="accept"]',
+              'button[class*="accept"]', 
+              'button[data-testid*="accept"]',
+              '[role="button"][aria-label*="accept"]',
+              '.cookie-consent button',
+              '#cookie-consent button',
+              '[class*="cookie"] button',
+              '[id*="cookie"] button',
+              'button' // Last resort: any button
+            ];
+            
+            for (const fallback of fallbackSelectors) {
+              try {
+                const elements = await page.$$(fallback);
+                if (elements.length > 0) {
+                  // Check if any button has consent-related text
+                  for (const element of elements) {
+                    const text = await page.evaluate(el => el.textContent, element);
+                    if (text && (
+                      text.toLowerCase().includes('accept') ||
+                      text.toLowerCase().includes('agree') ||
+                      text.toLowerCase().includes('allow') ||
+                      text.toLowerCase().includes('ok') ||
+                      text.toLowerCase().includes('continue')
+                    )) {
+                      await element.click();
+                      clicked = true;
+                      clickedSelector = `${fallback} (fallback: "${text.trim()}")`;
+                      break;
+                    }
+                  }
+                  if (clicked) break;
+                }
+              } catch (fallbackError) {
+                // Continue to next fallback
+                logger.debug(`Fallback selector failed: ${fallback}`);
+              }
+            }
+            
+            // If still not clicked, try evaluating xpath for text-based selection
+            if (!clicked) {
+              try {
+                const result = await page.evaluate(() => {
+                  // Look for buttons with accept-related text
+                  const buttons = Array.from(document.querySelectorAll('button, [role="button"], div[onclick], a[onclick]'));
+                  for (const button of buttons) {
+                    const text = button.textContent.toLowerCase();
+                    if (text.includes('accept') || text.includes('agree') || text.includes('allow') || text.includes('ok')) {
+                      button.click();
+                      return { success: true, text: button.textContent.trim() };
+                    }
+                  }
+                  return { success: false };
+                });
+                
+                if (result.success) {
+                  clicked = true;
+                  clickedSelector = `JavaScript fallback (clicked: "${result.text}")`;
+                }
+              } catch (jsError) {
+                logger.debug('JavaScript fallback also failed');
+              }
+            }
+          }
+          
+          if (!clicked) {
+            throw new Error(`Could not find clickable element with selector: ${selector}`);
+          }
+          
           return {
             success: true,
             result: {
-              clicked: selector,
+              clicked: clickedSelector,
               timestamp: new Date().toISOString()
             }
           };
