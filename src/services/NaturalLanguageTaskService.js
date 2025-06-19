@@ -233,9 +233,11 @@ class NaturalLanguageTaskService {
       // Add final completion message based on progress and stopping reason
       let completionMessage = '';
       if (iterationsSinceProgress >= maxIterationsWithoutProgress) {
-        completionMessage = `I completed ${progressTracker.completedMilestones.size} milestones but reached the limit of ${maxIterationsWithoutProgress} iterations without progress. Progress achieved: ${Array.from(progressTracker.completedMilestones).join(', ') || 'Initial navigation and setup'}. The task may need additional time or manual completion.`;
+        const userMilestones = this.filterUserFacingMilestones(progressTracker.completedMilestones);
+        completionMessage = `I completed ${userMilestones.length} key steps but reached the limit of ${maxIterationsWithoutProgress} iterations without progress. Progress achieved: ${userMilestones.join(', ') || 'Initial setup'}. The task may need additional time or manual completion.`;
       } else if (iterationCount >= absoluteMaxIterations) {
-        completionMessage = `I reached the absolute maximum of ${absoluteMaxIterations} iterations. I achieved ${progressTracker.completedMilestones.size} milestones: ${Array.from(progressTracker.completedMilestones).join(', ') || 'basic navigation'}. The system needs additional time or manual intervention.`;
+        const userMilestones = this.filterUserFacingMilestones(progressTracker.completedMilestones);
+        completionMessage = `I reached the absolute maximum of ${absoluteMaxIterations} iterations. I achieved ${userMilestones.length} key steps: ${userMilestones.join(', ') || 'basic setup'}. The system needs additional time or manual intervention.`;
       }
       
       if (completionMessage) {
@@ -284,7 +286,8 @@ class NaturalLanguageTaskService {
         },
 
         // Conversation History (condensed)
-        history: {
+        history: finalHistory, // Backward compatibility - keep as array
+        historyDetails: {
           full: finalHistory,
           condensed: this.buildCondensedHistory(finalHistory),
           messageCount: finalHistory.length
@@ -301,7 +304,11 @@ class NaturalLanguageTaskService {
 
         // Success Metrics
         success: true,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+
+        // Backward compatibility for tests
+        executionResult: executionResult,
+        iterations: iterationCount
       };
 
     } catch (error) {
@@ -1785,6 +1792,30 @@ Respond ONLY with valid JSON in this exact format:
     };
     
     return milestoneMap[taskType] || milestoneMap.general;
+  }
+
+  /**
+   * Filter milestones to show only user-relevant achievements
+   * @private
+   */
+  filterUserFacingMilestones(milestones) {
+    const technicalMilestones = ['cookies_handled', 'navigation_complete', 'initial_page_load'];
+    const userFacingMilestones = Array.from(milestones).filter(milestone => 
+      !technicalMilestones.includes(milestone)
+    );
+    
+    // Map some technical terms to user-friendly descriptions
+    const friendlyNames = {
+      'origin_field_filled': 'departure location set',
+      'destination_field_filled': 'destination set', 
+      'search_triggered': 'search initiated',
+      'results_displayed': 'results found',
+      'form_submission': 'search completed'
+    };
+    
+    return userFacingMilestones.map(milestone => 
+      friendlyNames[milestone] || milestone
+    );
   }
 
   /**
