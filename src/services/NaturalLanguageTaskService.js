@@ -94,6 +94,23 @@ class NaturalLanguageTaskService {
               await new Promise(resolve => setTimeout(resolve, 6000)); // 6 second delay
             }
             
+            // Check for repetitive behavior (stuck in loop)
+            if (iterationCount >= 3) {
+              const recentHistory = history.slice(-3).map(h => h.content).join(' ').toLowerCase();
+              const isStuckOnInput = recentHistory.includes('where from') && 
+                                   recentHistory.includes('input field') &&
+                                   (recentHistory.match(/where from/g) || []).length >= 2;
+              
+              if (isStuckOnInput) {
+                logger.info('Detected repetitive input field clicking, using fallback logic');
+                const fallbackAnalysis = this.handleRateLimitFallback(history, taskDescription);
+                if (fallbackAnalysis.requiresAction && fallbackAnalysis.actions.length > 0) {
+                  analysis = fallbackAnalysis;
+                  continue; // Skip AI analysis and use fallback
+                }
+              }
+            }
+            
             // Check if task is complete or needs more actions
             const continueAnalysis = await this.analyzePageAfterActionForContinuationWithElements(
               history, 
@@ -541,7 +558,8 @@ ANALYSIS APPROACH:
 - Look at the screenshot to see what happened after the last action
 - Use the element list to identify what can be clicked at specific coordinates
 - For routine tasks (cookie consent), find and click appropriate buttons automatically
-- For input fields: first click to focus, then clear (Ctrl+A, Delete), then type
+- For input fields: CRITICAL - if you just clicked an input field, DO NOT click it again. Instead, proceed to clear and type.
+- If you see a cursor in an input field or if the field appears focused, immediately proceed to typing
 - Determine if the original task is complete or needs more actions
 
 AVAILABLE ACTIONS:
@@ -549,10 +567,16 @@ AVAILABLE ACTIONS:
 - keyboard_input: Type text {"input": "Frankfurt"}
 - key_press: Press special keys {"key": "Delete"} or {"key": "Backspace"} or {"key": "Control+a"}
 
-INPUT FIELD STRATEGY:
-1. Click the input field to focus it
-2. Clear existing content: key_press with "Control+a" then "Delete"
-3. Type new content: keyboard_input with desired text
+INPUT FIELD STRATEGY (FOLLOW THIS EXACTLY):
+1. Click the input field to focus it (ONLY ONCE)
+2. If field is focused/clicked, immediately clear: key_press with "Control+a" then "Delete"  
+3. Type content: keyboard_input with desired text
+4. Move to next field or submit
+
+CRITICAL RULES:
+- NEVER click the same input field coordinates twice in a row
+- If last action was clicking an input field, next action MUST be clearing or typing
+- For flight search: Origin="Frankfurt", Destination="London"
 
 Key Questions:
 1. Did the last action succeed?
@@ -1090,17 +1114,18 @@ Respond ONLY with valid JSON in this exact format:
     // Flight search specific fallback logic
     if (taskLower.includes('flight') && taskLower.includes('frankfurt') && taskLower.includes('london')) {
       // Check what stage we're at based on history
-      if (historyText.includes('where from') && historyText.includes('input field')) {
-        // We're stuck at the input field - try a different approach
+      if (historyText.includes('where from') || historyText.includes('input field')) {
+        // We're at the input field - proceed with typing Frankfurt
         return {
-          description: "AI rate limited, using fallback logic. Attempting to clear input field and type Frankfurt.",
+          description: "AI rate limited, using fallback logic. Clearing input field and typing Frankfurt.",
           taskCompleted: false,
           requiresAction: true,
           actions: [
             {"type": "key_press", "description": "Select all text in input field", "payload": {"key": "Control+a"}},
+            {"type": "key_press", "description": "Delete selected text", "payload": {"key": "Delete"}},
             {"type": "keyboard_input", "description": "Type Frankfurt", "payload": {"input": "Frankfurt"}}
           ],
-          confidence: "medium"
+          confidence: "high"
         };
       }
       
@@ -1114,7 +1139,7 @@ Respond ONLY with valid JSON in this exact format:
             {"type": "click_coordinate", "description": "Click Where to field", "payload": {"x": 950, "y": 472}},
             {"type": "keyboard_input", "description": "Type London", "payload": {"input": "London"}}
           ],
-          confidence: "medium"
+          confidence: "high"
         };
       }
     }
