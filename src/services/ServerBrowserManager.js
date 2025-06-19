@@ -348,7 +348,41 @@ class ServerBrowserManager {
 
         case 'key_press':
           const key = command.payload.key;
-          await page.keyboard.press(key);
+          
+          // Handle key combinations like "Control+a", "Ctrl+a", etc.
+          if (key.includes('+')) {
+            const parts = key.split('+');
+            const modifiers = parts.slice(0, -1).map(mod => {
+              // Normalize modifier names
+              switch (mod.toLowerCase()) {
+                case 'ctrl':
+                case 'control': return 'Control';
+                case 'shift': return 'Shift';
+                case 'alt': return 'Alt';
+                case 'meta':
+                case 'cmd': return 'Meta';
+                default: return mod;
+              }
+            });
+            const mainKey = parts[parts.length - 1];
+            
+            // Press modifiers down
+            for (const modifier of modifiers) {
+              await page.keyboard.down(modifier);
+            }
+            
+            // Press main key
+            await page.keyboard.press(mainKey);
+            
+            // Release modifiers
+            for (const modifier of modifiers.reverse()) {
+              await page.keyboard.up(modifier);
+            }
+          } else {
+            // Single key press
+            await page.keyboard.press(key);
+          }
+          
           return {
             success: true,
             result: {

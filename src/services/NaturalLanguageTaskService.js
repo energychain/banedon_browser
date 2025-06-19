@@ -95,14 +95,24 @@ class NaturalLanguageTaskService {
             }
             
             // Check for repetitive behavior (stuck in loop)
-            if (iterationCount >= 3) {
+            if (iterationCount >= 2) {
               const recentHistory = history.slice(-3).map(h => h.content).join(' ').toLowerCase();
               const isStuckOnInput = recentHistory.includes('where from') && 
                                    recentHistory.includes('input field') &&
                                    (recentHistory.match(/where from/g) || []).length >= 2;
               
-              if (isStuckOnInput) {
-                logger.info('Detected repetitive input field clicking, using fallback logic');
+              // Also check for repetitive typing patterns
+              const frankfurtMatches = (recentHistory.match(/frankfurt/g) || []).length;
+              const isStuckTyping = frankfurtMatches >= 2 && recentHistory.includes('input field');
+              
+              // Check for general repetition in responses
+              const recentResponses = history.slice(-2).map(h => h.content);
+              const isRepeatingResponses = recentResponses.length === 2 && 
+                recentResponses[0].toLowerCase().includes('where from') && 
+                recentResponses[1].toLowerCase().includes('where from');
+              
+              if (isStuckOnInput || isStuckTyping || isRepeatingResponses) {
+                logger.info('Detected repetitive behavior (input field clicking, typing, or repeated responses), using fallback logic');
                 const fallbackAnalysis = this.handleRateLimitFallback(history, taskDescription);
                 if (fallbackAnalysis.requiresAction && fallbackAnalysis.actions.length > 0) {
                   analysis = fallbackAnalysis;
@@ -571,18 +581,25 @@ INPUT FIELD STRATEGY (FOLLOW THIS EXACTLY):
 1. Click the input field to focus it (ONLY ONCE)
 2. If field is focused/clicked, immediately clear: key_press with "Control+a" then "Delete"  
 3. Type content: keyboard_input with desired text
-4. Move to next field or submit
+4. After typing, press Tab or Enter to confirm, or move to next field
 
 CRITICAL RULES:
 - NEVER click the same input field coordinates twice in a row
 - If last action was clicking an input field, next action MUST be clearing or typing
+- After typing in a field, consider pressing "Tab" or "Enter" to confirm the selection
 - For flight search: Origin="Frankfurt", Destination="London"
+- Google Flights specific: Origin input around (620, 472), Destination input around (950, 472)
 
 Key Questions:
 1. Did the last action succeed?
-2. Is the original task complete? (e.g., if user wanted flight info, do we see flight schedules?)
+2. Is the original task complete? (e.g., if user wanted flight info, do we see flight schedules with prices, times, airlines?)
 3. Are there routine dialogs that need handling?
 4. What coordinates should be clicked next?
+
+TASK COMPLETION CRITERIA:
+- For flight searches: Task is complete when we see a list of actual flights with details (times, prices, airlines)
+- If you see flight results/schedules, set "taskCompleted": true and provide a summary of the flights found
+- If still filling forms or seeing loading pages, continue with appropriate actions
 
 Respond ONLY with valid JSON in this exact format:
 {
@@ -1113,6 +1130,44 @@ Respond ONLY with valid JSON in this exact format:
     
     // Flight search specific fallback logic
     if (taskLower.includes('flight') && taskLower.includes('frankfurt') && taskLower.includes('london')) {
+      
+      // Count how many times Frankfurt has been typed (avoid infinite loops)
+      const frankfurtTypeCount = history.filter(h => 
+        h.content && h.content.toLowerCase().includes('frankfurt')
+      ).length;
+      
+      // If we've tried typing Frankfurt many times, try more aggressive approach
+      if (frankfurtTypeCount >= 2) {
+        return {
+          description: "AI rate limited, using aggressive fallback logic. Forcefully proceeding to destination and search.",
+          taskCompleted: false,
+          requiresAction: true,
+          actions: [
+            {"type": "key_press", "description": "Press Enter to confirm Frankfurt", "payload": {"key": "Enter"}},
+            {"type": "click_coordinate", "description": "Click Where to field", "payload": {"x": 950, "y": 472}},
+            {"type": "key_press", "description": "Clear destination field", "payload": {"key": "Control+a"}},
+            {"type": "keyboard_input", "description": "Type London Heathrow", "payload": {"input": "London Heathrow"}},
+            {"type": "key_press", "description": "Press Enter to search", "payload": {"key": "Enter"}}
+          ],
+          confidence: "high"
+        };
+      }
+      
+      // If we've tried typing Frankfurt multiple times, try different approach
+      if (frankfurtTypeCount >= 1) {
+        return {
+          description: "AI rate limited, using enhanced fallback logic. Attempting to proceed to destination field after Frankfurt entry.",
+          taskCompleted: false,
+          requiresAction: true,
+          actions: [
+            {"type": "key_press", "description": "Press Enter to confirm Frankfurt", "payload": {"key": "Enter"}},
+            {"type": "click_coordinate", "description": "Click Where to field", "payload": {"x": 950, "y": 472}},
+            {"type": "keyboard_input", "description": "Type London Heathrow", "payload": {"input": "London Heathrow"}}
+          ],
+          confidence: "high"
+        };
+      }
+      
       // Check what stage we're at based on history
       if (historyText.includes('where from') || historyText.includes('input field')) {
         // We're at the input field - proceed with typing Frankfurt
@@ -1123,7 +1178,8 @@ Respond ONLY with valid JSON in this exact format:
           actions: [
             {"type": "key_press", "description": "Select all text in input field", "payload": {"key": "Control+a"}},
             {"type": "key_press", "description": "Delete selected text", "payload": {"key": "Delete"}},
-            {"type": "keyboard_input", "description": "Type Frankfurt", "payload": {"input": "Frankfurt"}}
+            {"type": "keyboard_input", "description": "Type Frankfurt", "payload": {"input": "Frankfurt"}},
+            {"type": "key_press", "description": "Press Enter to confirm selection", "payload": {"key": "Enter"}}
           ],
           confidence: "high"
         };
@@ -1137,7 +1193,22 @@ Respond ONLY with valid JSON in this exact format:
           requiresAction: true,
           actions: [
             {"type": "click_coordinate", "description": "Click Where to field", "payload": {"x": 950, "y": 472}},
-            {"type": "keyboard_input", "description": "Type London", "payload": {"input": "London"}}
+            {"type": "keyboard_input", "description": "Type London Heathrow", "payload": {"input": "London Heathrow"}},
+            {"type": "key_press", "description": "Press Enter to search", "payload": {"key": "Enter"}}
+          ],
+          confidence: "high"
+        };
+      }
+      
+      if (historyText.includes('frankfurt') && historyText.includes('london')) {
+        // Both fields filled, trigger search
+        return {
+          description: "AI rate limited, using fallback logic. Both origin and destination filled, triggering flight search.",
+          taskCompleted: false,
+          requiresAction: true,
+          actions: [
+            {"type": "key_press", "description": "Press Enter to search for flights", "payload": {"key": "Enter"}},
+            {"type": "click_coordinate", "description": "Click search button if needed", "payload": {"x": 680, "y": 650}}
           ],
           confidence: "high"
         };
