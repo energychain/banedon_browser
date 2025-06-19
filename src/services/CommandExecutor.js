@@ -321,7 +321,9 @@ class CommandExecutor {
       // Original extension commands
       'navigate', 'screenshot', 'extract', 'execute', 'click', 'type', 'scroll',
       // New server-side commands
-      'getTitle', 'getUrl', 'getText', 'getAttribute', 'waitForElement', 'evaluate'
+      'getTitle', 'getUrl', 'getText', 'getAttribute', 'waitForElement', 'evaluate',
+      // Human-like coordinate commands
+      'click_coordinate', 'hover_coordinate', 'get_text', 'get_page_elements', 'key_press', 'type_text'
     ];
     if (!validTypes.includes(commandData.type)) {
       throw new Error(`Invalid command type: ${commandData.type}`);
@@ -374,7 +376,21 @@ class CommandExecutor {
           throw new Error('Script is required for evaluate command');
         }
         break;
-      // getTitle, getUrl, scroll, navigate, screenshot don't require specific payload validation
+      case 'click_coordinate':
+        if (typeof commandData.payload?.x !== 'number' || typeof commandData.payload?.y !== 'number') {
+          throw new Error('Valid x and y coordinates are required for click_coordinate command');
+        }
+        break;
+      case 'hover_coordinate':
+        if (typeof commandData.payload?.x !== 'number' || typeof commandData.payload?.y !== 'number') {
+          throw new Error('Valid x and y coordinates are required for hover_coordinate command');
+        }
+        break;
+      case 'type_text':
+        if (!commandData.payload?.text) {
+          throw new Error('Text is required for type_text command');
+        }
+        break;
     }
   }
 
