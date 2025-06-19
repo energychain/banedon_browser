@@ -270,7 +270,7 @@ sleep 10
 
 # Run the specific flight search test
 echo "� Running flight search test..."
-if npm test -- --testNamePattern="flight search" --testTimeout=180000; then
+if npm test -- --testNamePattern="flight search" --testTimeout=90000; then
     echo "✅ Flight search test passed! The automation system is working correctly."
 else
     echo "❌ Flight search test failed. The deployed system may have issues."
