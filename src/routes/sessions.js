@@ -15,6 +15,7 @@ function createSessionRoutes(sessionManager) {
       const metadata = {
         userAgent: req.get('User-Agent'),
         ip: req.ip,
+        debug: req.body.debug || false, // Enable debug mode for this session
         ...req.body.metadata
       };
 
@@ -26,7 +27,8 @@ function createSessionRoutes(sessionManager) {
           id: session.id,
           createdAt: session.createdAt,
           status: session.status,
-          metadata: session.metadata
+          metadata: session.metadata,
+          debug: session.metadata.debug
         }
       });
     } catch (error) {
