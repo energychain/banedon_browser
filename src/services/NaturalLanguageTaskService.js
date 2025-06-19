@@ -35,161 +35,74 @@ class NaturalLanguageTaskService {
         throw new Error(`Session not found: ${sessionId}`);
       }
 
+      // Add user message to history and get the latest history
+      this.sessionManager.addToHistory(sessionId, { role: 'user', content: taskDescription });
+      const history = this.sessionManager.getHistory(sessionId);
+
       logger.info(`Processing natural language task for session ${sessionId}: ${taskDescription}`);
 
-      // First, try to take a screenshot to see current state
       const screenshotResult = await this.takeScreenshot(sessionId);
       
-      // If screenshot failed, proceed with text-only analysis
-      if (screenshotResult.error) {
-        logger.warn(`Screenshot failed for session ${sessionId}, proceeding with text-only analysis`);
-        
-        // Analyze the task without screenshot
-        const textOnlyAnalysis = await this.analyzeTextOnlyTask(taskDescription);
-        
-        // Execute the task if it requires action
-        let executionResult = null;
-        if (textOnlyAnalysis.requiresAction && textOnlyAnalysis.actions && textOnlyAnalysis.actions.length > 0) {
-          try {
-            executionResult = await this.executeTaskActions(sessionId, textOnlyAnalysis.actions);
-          } catch (executeError) {
-            logger.error('Failed to execute actions:', executeError);
-            executionResult = [{
-              action: textOnlyAnalysis.actions[0],
-              error: executeError.message,
-              success: false
-            }];
-          }
-        }
-
-        let summaryData = null;
-        const requiresSummary = taskDescription.toLowerCase().includes('summary') || taskDescription.toLowerCase().includes('zusammenfassung') || taskDescription.toLowerCase().includes('résumé');
-        if (requiresSummary) {
-            try {
-                summaryData = await this.summarizePageTextOnly(sessionId, taskDescription);
-            } catch (summaryError) {
-                logger.error('Failed to get summary:', summaryError);
-            }
-        }
-        
-        return {
-          taskId: uuidv4(),
-          sessionId,
-          taskDescription,
-          screenshot: screenshotResult,
-          analysis: textOnlyAnalysis,
-          executionResult,
-          summary: summaryData,
-          success: true,
-          timestamp: new Date().toISOString(),
-          note: "Processed without screenshot due to browser limitations",
-          recommendation: "For full functionality with screenshots and actual browser automation, please install and connect the browser extension from: http://10.0.0.2:3010/extension/download"
-        };
+      const analysis = await this.analyzeTaskAndPage(history, screenshotResult.base64);
+      
+      // Add AI's thought process and response to history
+      const assistantResponse = (analysis.thought ? `Thinking: ${analysis.thought}\n\n` : '') + (analysis.response || '');
+      if (assistantResponse) {
+        this.sessionManager.addToHistory(sessionId, { role: 'assistant', content: assistantResponse });
       }
       
-      // Analyze the task and current page state with screenshot
-      const analysis = await this.analyzeTaskAndPage(taskDescription, screenshotResult.base64);
-      
-      const requiresSummary = taskDescription.toLowerCase().includes('summary') || taskDescription.toLowerCase().includes('zusammenfassung') || taskDescription.toLowerCase().includes('résumé');
-      let summaryData = null;
-
-      // Execute the task if it requires action
       let executionResult = null;
+      let afterScreenshot = null;
+      let finalAnalysis = null;
+
       if (analysis.requiresAction && analysis.actions && analysis.actions.length > 0) {
         try {
           executionResult = await this.executeTaskActions(sessionId, analysis.actions);
+          afterScreenshot = await this.takeScreenshot(sessionId);
           
-          // Take another screenshot after execution
-          const afterScreenshot = await this.takeScreenshot(sessionId);
-          
-          // Get final AI description of the result
-          let finalAnalysis;
           if (afterScreenshot.base64 && !afterScreenshot.error) {
-            try {
-              finalAnalysis = await this.analyzePageAfterAction(
-                taskDescription, 
-                analysis.description,
-                afterScreenshot.base64
-              );
-              if (requiresSummary) {
-                  summaryData = await this.summarizePageWithScreenshot(sessionId, taskDescription, afterScreenshot.base64);
-              }
-            } catch (finalAnalysisError) {
-              logger.warn('Failed final analysis, using fallback');
-              finalAnalysis = {
-                description: "Task executed successfully",
-                taskCompleted: true,
-                changes: "Actions were executed",
-                nextSteps: "Continue with next task"
-              };
+            const updatedHistory = this.sessionManager.getHistory(sessionId);
+            finalAnalysis = await this.analyzePageAfterAction(updatedHistory, afterScreenshot.base64);
+            
+            if (finalAnalysis.description) {
+              this.sessionManager.addToHistory(sessionId, { role: 'assistant', content: finalAnalysis.description });
             }
-          } else {
-            finalAnalysis = {
-              description: "Task executed but unable to capture final screenshot",
-              taskCompleted: true,
-              changes: "Actions were executed",
-              nextSteps: "Continue with next task"
-            };
           }
-          
-          return {
-            taskId: uuidv4(),
-            sessionId,
-            taskDescription,
-            beforeScreenshot: screenshotResult,
-            afterScreenshot,
-            initialAnalysis: analysis.description,
-            finalDescription: finalAnalysis.description,
-            actionsExecuted: analysis.actions,
-            executionResult,
-            summary: summaryData,
-            success: true,
-            timestamp: new Date().toISOString()
-          };
         } catch (executeError) {
           logger.error('Failed to execute task actions:', executeError);
-          return {
-            taskId: uuidv4(),
-            sessionId,
-            taskDescription,
-            screenshot: screenshotResult,
-            analysis,
-            executionResult: null,
-            error: executeError.message,
-            success: false,
-            timestamp: new Date().toISOString()
-          };
+          this.sessionManager.addToHistory(sessionId, { role: 'assistant', content: `I failed to execute the action. Error: ${executeError.message}` });
         }
-      } else {
-        // Just observation task
-        if (requiresSummary) {
-            summaryData = await this.summarizePageWithScreenshot(sessionId, taskDescription, screenshotResult.base64);
-        }
-        return {
-          taskId: uuidv4(),
-          sessionId,
-          taskDescription,
-          screenshot: screenshotResult,
-          description: analysis.description,
-          analysis,
-          summary: summaryData,
-          requiresAction: false,
-          success: true,
-          timestamp: new Date().toISOString()
-        };
       }
-    } catch (error) {
-      logger.error('Error processing natural language task:', error);
       
-      // Return a graceful error response instead of throwing
+      const finalHistory = this.sessionManager.getHistory(sessionId);
+      const lastMessage = finalHistory[finalHistory.length - 1];
+
       return {
         taskId: uuidv4(),
         sessionId,
         taskDescription,
+        history: finalHistory,
+        response: lastMessage.content, // The last thing the assistant said
+        requiresAction: analysis.requiresAction,
+        actions: analysis.actions,
+        executionResult,
+        beforeScreenshot: screenshotResult,
+        afterScreenshot,
+        success: true,
+        timestamp: new Date().toISOString()
+      };
+
+    } catch (error) {
+      logger.error('Error processing natural language task:', error);
+      this.sessionManager.addToHistory(sessionId, { role: 'assistant', content: `I encountered an error: ${error.message}` });
+      return {
+        taskId: uuidv4(),
+        sessionId,
+        taskDescription,
+        history: this.sessionManager.getHistory(sessionId),
         error: error.message,
         success: false,
         timestamp: new Date().toISOString(),
-        fallbackResponse: true
       };
     }
   }
@@ -256,26 +169,36 @@ class NaturalLanguageTaskService {
    * Analyze task and current page state using Gemini
    * @private
    */
-  async analyzeTaskAndPage(taskDescription, screenshotBase64) {
+  async analyzeTaskAndPage(history, screenshotBase64) {
     try {
       // If no screenshot, use text-only analysis
       if (!screenshotBase64) {
-        return await this.analyzeTextOnlyTask(taskDescription);
+        return await this.analyzeTextOnlyTask(history);
       }
 
+      const historyString = history.map(h => `${h.role}: ${h.content}`).join('\n');
+      const lastUserTask = history.filter(h => h.role === 'user').pop()?.content || '';
+
       const prompt = `
-You are an AI assistant that helps with browser automation tasks. Analyze the current webpage screenshot and the user's task request.
+You are a conversational AI agent that helps users accomplish tasks in a web browser.
 
-User's task: "${taskDescription}"
+CONVERSATION HISTORY:
+---
+${historyString}
+---
 
-Based on the screenshot and the task description, provide a JSON response with:
-1. A clear description of what you see on the current page
-2. Whether the task requires any actions to be performed
-3. If actions are needed, specify what actions should be taken
+Your goal is to fulfill the user's latest request: "${lastUserTask}"
+
+Based on the conversation history, the user's request, and the provided screenshot of the current page, create a plan.
+- If the request is ambiguous, ask a clarifying question.
+- If the request is complex, break it down into simple steps.
+- If you have enough information, define the next action to take.
+- Always think step-by-step and explain your reasoning.
 
 Respond ONLY with valid JSON in this exact format:
 {
-  "description": "Detailed description of what you see on the page",
+  "thought": "Your step-by-step reasoning and plan. You are looking at the screenshot and deciding what to do next based on the user's request.",
+  "response": "A conversational response to the user. This can be a status update ('Okay, I will now go to the website...') or a clarifying question.",
   "requiresAction": true,
   "actions": [{"type": "navigate", "description": "Navigate to URL", "payload": {"url": "https://example.com"}}],
   "confidence": "high"
@@ -300,25 +223,15 @@ Respond ONLY with valid JSON in this exact format:
       const response = await result.response;
       const text = response.text().trim();
       
-      try {
-        // Clean up the response text
-        let cleanText = text;
-        if (cleanText.startsWith('```json')) {
-          cleanText = cleanText.replace(/```json\n?/, '').replace(/\n?```$/, '');
-        }
-        if (cleanText.startsWith('```')) {
-          cleanText = cleanText.replace(/```\n?/, '').replace(/\n?```$/, '');
-        }
-        
-        const parsed = JSON.parse(cleanText);
-        return parsed;
-      } catch (parseError) {
+      const parsed = this._parseGeminiResponse(text);
+      if (parsed.error) {
         logger.warn('Failed to parse Gemini response as JSON, using fallback');
-        return this.createFallbackAnalysis(taskDescription, text);
+        return this.createFallbackAnalysis(history, text);
       }
+      return parsed;
     } catch (error) {
       logger.error('Error analyzing task with Gemini:', error);
-      return this.createFallbackAnalysis(taskDescription, `Error: ${error.message}`);
+      return this.createFallbackAnalysis(history, `Error: ${error.message}`);
     }
   }
 
@@ -326,33 +239,33 @@ Respond ONLY with valid JSON in this exact format:
    * Analyze task without screenshot (text-only)
    * @private
    */
-  async analyzeTaskTextOnly(taskDescription) {
+  async analyzeTextOnlyTask(history) {
     try {
+      const historyString = history.map(h => `${h.role}: ${h.content}`).join('\n');
+      const lastUserTask = history.filter(h => h.role === 'user').pop()?.content || '';
+
       const prompt = `
-You are an AI assistant that helps with browser automation tasks. 
+You are a conversational AI agent that helps users accomplish tasks in a web browser. No screenshot is available.
 
-User's task: "${taskDescription}"
+CONVERSATION HISTORY:
+---
+${historyString}
+---
 
-Since no screenshot is available, analyze the task description and determine what actions are needed.
+Your goal is to fulfill the user's latest request: "${lastUserTask}"
 
-Based on the task description, provide:
-1. A description of what the task involves
-2. Whether the task requires any actions to be performed
-3. If actions are needed, specify what actions should be taken
+Based on the conversation history and the user's request, create a plan.
+- If the request is ambiguous, ask a clarifying question.
+- If the request requires visiting a website, the first step is always a 'navigate' action.
+- Always think step-by-step and explain your reasoning.
 
-If actions are needed, format them as a JSON array with objects containing:
-- type: The action type (navigate, click, type, scroll, etc.)
-- description: Human-readable description of the action
-- payload: The action parameters
-
-For common navigation tasks like "Go to [website]", suggest a navigate action.
-
-Respond in this JSON format:
+Respond ONLY with valid JSON in this exact format:
 {
-  "description": "Description of what the task involves",
-  "requiresAction": true/false,
-  "actions": [array of action objects if needed],
-  "confidence": "high/medium/low"
+  "thought": "Your step-by-step reasoning and plan. I don't have a screenshot, so I'm relying on the text of the request.",
+  "response": "A conversational response to the user. This can be a status update ('Okay, I will now go to the website...') or a clarifying question.",
+  "requiresAction": true,
+  "actions": [{"type": "navigate", "description": "Navigate to URL", "payload": {"url": "https://example.com"}}],
+  "confidence": "medium"
 }
 `;
 
@@ -360,9 +273,8 @@ Respond in this JSON format:
       const response = await result.response;
       const text = response.text();
       
-      try {
-        return JSON.parse(text);
-      } catch (parseError) {
+      const parsed = this._parseGeminiResponse(text);
+      if (parsed.error) {
         // If JSON parsing fails, return a fallback response
         logger.warn('Failed to parse Gemini text-only response as JSON, using fallback');
         
@@ -397,6 +309,7 @@ Respond in this JSON format:
           confidence: 'low'
         };
       }
+      return parsed;
     } catch (error) {
       logger.error('Error analyzing task with text-only Gemini:', error);
       throw error;
@@ -407,28 +320,32 @@ Respond in this JSON format:
    * Analyze page after action execution
    * @private
    */
-  async analyzePageAfterAction(originalTask, previousDescription, screenshotBase64) {
+  async analyzePageAfterAction(history, screenshotBase64) {
     try {
+      const historyString = history.map(h => `${h.role}: ${h.content}`).join('\n');
+      const lastUserTask = history.filter(h => h.role === 'user').pop()?.content || '';
+
       const prompt = `
-You are an AI assistant analyzing the result of a browser automation task. The user's request can be in any language.
+You are a conversational AI agent analyzing the result of a browser action.
 
-Original task: "${originalTask}"
-Previous page description: "${previousDescription}"
+CONVERSATION HISTORY:
+---
+${historyString}
+---
 
-Look at the new screenshot and describe:
-1. What has changed from the previous state.
-2. Whether the original task appears to have been completed successfully.
-3. A summary of the main content on the page, especially if the user asked for a summary or headlines.
-4. What the user should know about the current page state.
+The last action was just executed. Look at the new screenshot and determine the next step.
+- Did the last action succeed?
+- Is the original task "${lastUserTask}" complete?
+- If not complete, what is the next action?
+- If complete, provide a final summary to the user.
+- If something went wrong, describe the problem.
 
-Provide a clear, concise description of the current state and whether the task was successful.
-The response should be in the same language as the user's request.
-
-Respond in this JSON format:
+Respond ONLY with valid JSON in this exact format:
 {
-  "description": "Description of current page state and summary of content.",
-  "taskCompleted": true/false,
-  "changes": "What changed from the previous state",
+  "description": "Describe what you see on the page now and whether the task is complete. If the user wanted a summary, provide it here.",
+  "taskCompleted": true,
+  "requiresAction": false,
+  "actions": [],
   "nextSteps": "Suggested next steps if any"
 }
 `;
@@ -444,9 +361,8 @@ Respond in this JSON format:
       const response = await result.response;
       const text = response.text();
       
-      try {
-        return JSON.parse(text);
-      } catch (parseError) {
+      const parsed = this._parseGeminiResponse(text);
+      if (parsed.error) {
         return {
           description: text,
           taskCompleted: true,
@@ -454,6 +370,7 @@ Respond in this JSON format:
           nextSteps: "Continue with next task"
         };
       }
+      return parsed;
     } catch (error) {
       logger.error('Error analyzing result with Gemini:', error);
       throw error;
@@ -495,6 +412,27 @@ Respond in this JSON format:
     }
     
     return results;
+  }
+
+  /**
+   * Safely parse Gemini's JSON response
+   * @private
+   */
+  _parseGeminiResponse(text) {
+    try {
+      let cleanText = text.trim();
+      if (cleanText.startsWith('```json')) {
+        cleanText = cleanText.replace(/```json\n?/, '').replace(/\n?```$/, '');
+      }
+       if (cleanText.startsWith('```')) {
+        cleanText = cleanText.replace(/```\n?/, '').replace(/\n?```$/, '');
+      }
+      return JSON.parse(cleanText);
+    } catch (parseError) {
+      logger.warn('Failed to parse Gemini response as JSON:', { text, error: parseError.message });
+      // Return a structured error or a fallback object
+      return { error: "Failed to parse AI response", details: text };
+    }
   }
 
   /**
@@ -544,11 +482,7 @@ Respond with a JSON object in this format:
         const result = await this.model.generateContent([prompt, imagePart]);
         const response = await result.response;
         const text = response.text().trim();
-        let cleanText = text;
-        if (cleanText.startsWith('```json')) {
-          cleanText = cleanText.replace(/\`\`\`json\n?/, '').replace(/\n?\`\`\`$/, '');
-        }
-        return JSON.parse(cleanText);
+        return this._parseGeminiResponse(text);
     } catch (error) {
         logger.error('Error summarizing page (with screenshot):', error);
         return this.summarizePageTextOnly(sessionId, taskDescription); // Fallback to text only
@@ -593,11 +527,7 @@ Respond with a JSON object in this format:
         const result = await this.model.generateContent([prompt]);
         const response = await result.response;
         const text = response.text().trim();
-        let cleanText = text;
-        if (cleanText.startsWith('```json')) {
-          cleanText = cleanText.replace(/\`\`\`json\n?/, '').replace(/\n?\`\`\`$/, '');
-        }
-        return JSON.parse(cleanText);
+        return this._parseGeminiResponse(text);
     } catch (error) {
         logger.error('Error summarizing page (text-only):', error);
         return { summary: 'Could not summarize the page.', headlines: [] };
@@ -635,17 +565,18 @@ Respond with a JSON object in this format:
    * Create fallback analysis when Gemini fails
    * @private
    */
-  createFallbackAnalysis(taskDescription, aiResponse = '') {
+  createFallbackAnalysis(history, aiResponse = '') {
     // Determine if task requires action based on keywords
     const actionKeywords = ['go to', 'navigate', 'click', 'type', 'scroll', 'open', 'visit', 'find', 'search'];
+    const lastUserTask = history.filter(h => h.role === 'user').pop()?.content || '';
     const requiresAction = actionKeywords.some(keyword => 
-      taskDescription.toLowerCase().includes(keyword)
+      lastUserTask.toLowerCase().includes(keyword)
     );
 
     let actions = [];
     if (requiresAction) {
       // Try to extract URL or action from task description
-      const urlMatch = taskDescription.match(/(?:go to|visit|open)\s+([^\s]+)/i);
+      const urlMatch = lastUserTask.match(/(?:go to|visit|open)\s+([^\s]+)/i);
       if (urlMatch) {
         let url = urlMatch[1];
         if (!url.startsWith('http')) {
@@ -656,13 +587,13 @@ Respond with a JSON object in this format:
           description: `Navigate to ${url}`,
           payload: { url }
         }];
-      } else if (taskDescription.toLowerCase().includes('click')) {
+      } else if (lastUserTask.toLowerCase().includes('click')) {
         actions = [{
           type: 'click',
           description: 'Click on element (requires manual identification)',
           payload: { selector: 'button, a, [onclick]' }
         }];
-      } else if (taskDescription.toLowerCase().includes('screenshot')) {
+      } else if (lastUserTask.toLowerCase().includes('screenshot')) {
         actions = [{
           type: 'screenshot',
           description: 'Take a screenshot of the current page',
@@ -672,7 +603,7 @@ Respond with a JSON object in this format:
     }
 
     return {
-      description: aiResponse || `Task: ${taskDescription}. Unable to analyze page content due to technical limitations.`,
+      description: aiResponse || `Task: ${lastUserTask}. Unable to analyze page content due to technical limitations.`,
       requiresAction,
       actions,
       confidence: 'low',
@@ -712,19 +643,12 @@ Common action types: navigate, click, type, scroll, screenshot
       const response = await result.response;
       const text = response.text().trim();
       
-      try {
-        // Clean up the response text
-        let cleanText = text;
-        if (cleanText.startsWith('```json')) {
-          cleanText = cleanText.replace(/```json\n?/, '').replace(/\n?```$/, '');
-        }
-        
-        const parsed = JSON.parse(cleanText);
-        return parsed;
-      } catch (parseError) {
+      const parsed = this._parseGeminiResponse(text);
+      if (parsed.error) {
         logger.warn('Failed to parse Gemini text-only response as JSON, using fallback');
         return this.createFallbackAnalysis(taskDescription, text);
       }
+      return parsed;
     } catch (error) {
       logger.error('Error with text-only Gemini analysis:', error);
       return this.createFallbackAnalysis(taskDescription, `Error: ${error.message}`);

@@ -31,6 +31,7 @@ class SessionManager {
         ...metadata
       },
       commands: [],
+      history: [], // Add history array
       isConnected: false,
       connectionInfo: null
     };
@@ -166,9 +167,35 @@ class SessionManager {
     
     this.connections.delete(sessionId);
     this.sessions.delete(sessionId);
-    
+
     logger.info(`Session deleted: ${sessionId}`);
     return true;
+  }
+
+  /**
+   * Add a message to the session's history
+   * @param {string} sessionId - Session ID
+   * @param {Object} message - Message to add to history
+   */
+  addToHistory(sessionId, message) {
+    const session = this.sessions.get(sessionId);
+    if (session) {
+      if (!session.history) {
+        session.history = [];
+      }
+      session.history.push(message);
+      this.updateLastActivity(sessionId);
+    }
+  }
+
+  /**
+   * Get the session's history
+   * @param {string} sessionId - Session ID
+   * @returns {Array} History array
+   */
+  getHistory(sessionId) {
+    const session = this.sessions.get(sessionId);
+    return session ? session.history || [] : [];
   }
 
   /**

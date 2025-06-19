@@ -318,18 +318,48 @@
             color: #999;
         }
         
+        .chat-history {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .chat-message {
+            padding: 10px 15px;
+            border-radius: 15px;
+            max-width: 80%;
+            line-height: 1.5;
+        }
+
+        .chat-message.user {
+            background: #667eea;
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 3px;
+        }
+
+        .chat-message.assistant {
+            background: #f1f3f5;
+            color: #333;
+            align-self: flex-start;
+            border-bottom-left-radius: 3px;
+        }
+
+        .chat-message pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            background: #e9ecef;
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+
         .browser-content .error {
             color: #ff6b6b;
             font-weight: bold;
-        }
-
-        .llm-answer {
-            padding: 20px;
-            font-family: 'Georgia', serif;
-            font-size: 1.1rem;
-            line-height: 1.7;
-            flex-grow: 1;
-            white-space: pre-wrap;
         }
 
         .screenshot-container {
@@ -416,6 +446,7 @@
                     <div class="placeholder">
                         <p>The browser view will appear here after you execute a command.</p>
                     </div>
+                    <div class="chat-history" id="chatHistory"></div>
                     <div id="nl-result"></div>
                 </div>
             </div>
@@ -781,24 +812,19 @@
         }
 
         async function sendNlCommand() {
-            const nlPrompt = document.getElementById('nlPrompt').value;
+            const nlPrompt = document.getElementById('nlPrompt');
+            const promptText = nlPrompt.value;
             const sessionId = document.getElementById('nlSessionId').value;
 
-            if (!sessionId) {
-                alert('Session not initialized. Please wait or refresh.');
+            if (!sessionId || !promptText) {
                 return;
             }
 
-            const nlResponseDiv = document.getElementById('nlResponse');
-            const browserContentDiv = document.getElementById('browserContent');
+            nlPrompt.value = ''; // Clear input
+            addToChatHistory('user', promptText);
+
             const resultDiv = document.getElementById('nl-result');
-            
-            const placeholder = browserContentDiv.querySelector('.placeholder');
-            if (placeholder) {
-                placeholder.style.display = 'none';
-            }
-            
-            resultDiv.innerHTML = '<p>Executing command...</p>';
+            resultDiv.innerHTML = '<p><i>Thinking...</i></p>';
 
             try {
                 const response = await fetch(`/api/sessions/${sessionId}/nl-tasks`, {
@@ -806,109 +832,63 @@
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ task: nlPrompt }),
+                    body: JSON.stringify({ task: promptText }),
                 });
 
                 const data = await response.json();
-                nlResponseDiv.textContent = JSON.stringify(data, null, 2); // for debugging
+                resultDiv.innerHTML = ''; // Clear thinking message
 
-                if (!response.ok) {
-                    const errorMsg = data.error || `HTTP error! status: ${response.status}`;
-                    resultDiv.innerHTML = `<p class="error">Error: ${errorMsg}</p><pre>${JSON.stringify(data, null, 2)}</pre>`;
-                    return;
+                if (data.history) {
+                    renderChatHistory(data.history);
                 }
 
-                resultDiv.innerHTML = ''; // Clear loading message
-
-                if (data.success && data.task) {
-                    const task = data.task;
-                    let outputHtml = `<h3>Natural Language Task Result</h3>`;
-
-                    if (task.taskDescription) {
-                        outputHtml += `<p><strong>Task:</strong> ${task.taskDescription}</p>`;
-                    }
-
-                    // Summary and Headlines
-                    if (task.summary) {
-                        if (task.summary.summary) {
-                            outputHtml += `<h4>Summary</h4><p>${task.summary.summary.replace(/\n/g, '<br>')}</p>`;
-                        }
-                        if (task.summary.headlines && task.summary.headlines.length > 0) {
-                            outputHtml += '<h5>Headlines:</h5><ul>';
-                            task.summary.headlines.forEach(headline => {
-                                outputHtml += `<li>${headline}</li>`;
-                            });
-                            outputHtml += '</ul>';
-                        }
-                    }
-                    
-                    // Final Analysis from AI
-                    if (task.finalDescription) {
-                         outputHtml += `<h4>Analysis</h4><p>${task.finalDescription}</p>`;
-                    } else if (task.analysis && task.analysis.description) {
-                         outputHtml += `<h4>Analysis</h4><p>${task.analysis.description}</p>`;
-                    }
-
-                    // Screenshots
-                    if (task.beforeScreenshot && task.beforeScreenshot.url) {
-                        outputHtml += `<h4>Screenshots</h4>
-                        <div class="screenshot-container" style="display: flex; gap: 10px; justify-content: center;">
-                            <figure>
-                                <figcaption>Before</figcaption>
-                                <img src="${task.beforeScreenshot.url}" alt="Before execution" class="screenshot-preview">
-                            </figure>`;
-                        if (task.afterScreenshot && task.afterScreenshot.url) {
-                            outputHtml += `
-                            <figure>
-                                <figcaption>After</figcaption>
-                                <img src="${task.afterScreenshot.url}" alt="After execution" class="screenshot-preview">
-                            </figure>`;
-                        }
-                        outputHtml += `</div>`;
-                    } else if (task.screenshot && task.screenshot.url) { // Fallback for single screenshot
-                        outputHtml += `<h4>Screenshot</h4>
-                        <div class="screenshot-container">
-                            <figure>
-                                <img src="${task.screenshot.url}" alt="Browser state" class="screenshot-preview">
-                            </figure>
-                        </div>`;
-                    }
-
-                    // Execution Results
-                    if (task.executionResult && task.executionResult.length > 0) {
-                      outputHtml += '<h4>Execution Details</h4>';
-                      task.executionResult.forEach((res, index) => {
-                        const actionDetail = res.action.description ? res.action.description : JSON.stringify(res.action);
-                        outputHtml += `
-                          <div class="execution-result">
-                            <p><strong>Action ${index + 1}:</strong> ${actionDetail}</p>
-                            <p><strong>Success:</strong> ${res.success}</p>`;
-                        if (res.result && res.result.output) {
-                            outputHtml += `<p><strong>Output:</strong> <pre>${JSON.stringify(res.result.output, null, 2)}</pre></p>`;
-                        }
-                        if (res.error) {
-                            outputHtml += `<p><strong>Error:</strong> ${res.error}</p>`;
-                        }
-                        outputHtml += `</div>`;
-                      });
-                    }
-
-                    resultDiv.innerHTML = outputHtml;
-
-                } else {
-                  resultDiv.innerHTML = `<p class="error">Error: ${data.error || 'Failed to execute task.'}</p>`;
-                  if (data.task) {
-                    resultDiv.innerHTML += `<pre>${JSON.stringify(data.task, null, 2)}</pre>`;
-                  } else {
-                    resultDiv.innerHTML += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
-                  }
+                if (data.beforeScreenshot || data.afterScreenshot) {
+                    renderScreenshots(data.beforeScreenshot, data.afterScreenshot);
                 }
 
             } catch (error) {
                 console.error('Error sending NL command:', error);
-                resultDiv.innerHTML = `<p class="error">Failed to send command. Check console for details.</p>`;
-                nlResponseDiv.textContent = `Error: ${error.message}`;
+                addToChatHistory('assistant', `Sorry, I encountered an error: ${error.message}`);
             }
+        }
+
+        function addToChatHistory(role, content) {
+            const chatHistory = document.getElementById('chatHistory');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `chat-message ${role}`;
+            messageDiv.innerHTML = content.replace(/\n/g, '<br>');
+            chatHistory.appendChild(messageDiv);
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+        }
+
+        function renderChatHistory(history) {
+            const chatHistory = document.getElementById('chatHistory');
+            chatHistory.innerHTML = '';
+            history.forEach(message => {
+                addToChatHistory(message.role, message.content);
+            });
+        }
+
+        function renderScreenshots(before, after) {
+            const resultDiv = document.getElementById('nl-result');
+            let outputHtml = '<h4>Screenshots</h4>';
+            outputHtml += '<div class="screenshot-container" style="display: flex; gap: 10px; justify-content: center;">';
+            if (before && before.url) {
+                outputHtml += `
+                    <figure>
+                        <figcaption>Before</figcaption>
+                        <img src="${before.url}" alt="Before execution" class="screenshot-preview">
+                    </figure>`;
+            }
+            if (after && after.url) {
+                outputHtml += `
+                    <figure>
+                        <figcaption>After</figcaption>
+                        <img src="${after.url}" alt="After execution" class="screenshot-preview">
+                    </figure>`;
+            }
+            outputHtml += '</div>';
+            resultDiv.innerHTML = outputHtml;
         }
 
         document.getElementById('nlPrompt').addEventListener('keyup', function(event) {
