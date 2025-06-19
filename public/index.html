@@ -323,6 +323,40 @@
             font-weight: bold;
         }
 
+        .llm-answer {
+            padding: 20px;
+            font-family: 'Georgia', serif;
+            font-size: 1.1rem;
+            line-height: 1.7;
+            flex-grow: 1;
+            white-space: pre-wrap;
+        }
+
+        .screenshot-container {
+            padding: 10px;
+            text-align: center;
+            background: #f0f2f5;
+            border-top: 1px solid #ddd;
+        }
+
+        .screenshot-preview {
+            max-width: 200px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .screenshot-preview:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+        }
+
+        .screenshot-preview.expanded {
+            max-width: 100%;
+            cursor: zoom-out;
+        }
+
         #nlResponse {
             display: none;
         }
@@ -764,7 +798,7 @@
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ command: nlPrompt }),
+                    body: JSON.stringify({ task: nlPrompt }),
                 });
 
                 const data = await response.json();
@@ -779,15 +813,36 @@
                 nlResponseDiv.textContent = JSON.stringify(data, null, 2);
                 browserContentDiv.innerHTML = ''; // Clear loading message
 
-                if (data.result && data.result.screenshot) {
+                const llmAnswerDiv = document.createElement('div');
+                llmAnswerDiv.className = 'llm-answer';
+
+                let llmResponseText = "Task completed successfully.";
+                if (data.task && data.task.response) {
+                    llmResponseText = data.task.response;
+                } else if (data.task && data.task.summary) {
+                    llmResponseText = data.task.summary;
+                } else if (data.task && typeof data.task.result === 'string') {
+                    llmResponseText = data.task.result;
+                }
+
+                llmAnswerDiv.textContent = llmResponseText;
+                browserContentDiv.appendChild(llmAnswerDiv);
+
+                if (data.task && data.task.screenshot) {
+                    const screenshotContainer = document.createElement('div');
+                    screenshotContainer.className = 'screenshot-container';
+                    
                     const img = document.createElement('img');
-                    img.src = `data:image/png;base64,${data.result.screenshot}`;
-                    img.alt = 'Browser Screenshot';
-                    browserContentDiv.appendChild(img);
-                } else {
-                    const resultText = document.createElement('pre');
-                    resultText.textContent = JSON.stringify(data, null, 2);
-                    browserContentDiv.appendChild(resultText);
+                    img.src = `data:image/png;base64,${data.task.screenshot}`;
+                    img.alt = 'Browser Screenshot Preview';
+                    img.className = 'screenshot-preview';
+                    
+                    img.onclick = () => {
+                        img.classList.toggle('expanded');
+                    };
+
+                    screenshotContainer.appendChild(img);
+                    browserContentDiv.appendChild(screenshotContainer);
                 }
 
             } catch (error) {
