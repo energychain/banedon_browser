@@ -596,6 +596,16 @@ Key Questions:
 3. Are there routine dialogs that need handling?
 4. What coordinates should be clicked next?
 
+FLIGHT SEARCH COMPLETION CRITERIA:
+- If you see a page with flight times, prices, airline names, or "departing" information, the task is COMPLETE
+- Look for text like "9:45 AM", "$299", "Lufthansa", "British Airways", "departing", "arriving"
+- If you see flight results, set taskCompleted: true and describe the flights found
+
+TASK COMPLETION DETECTION:
+- For flight searches: Look for flight times, prices, airline logos/names
+- If page shows actual flight information (not just input fields), mark as complete
+- Include flight details in description if found
+
 TASK COMPLETION CRITERIA:
 - For flight searches: Task is complete when we see a list of actual flights with details (times, prices, airlines)
 - If you see flight results/schedules, set "taskCompleted": true and provide a summary of the flights found
@@ -1137,17 +1147,33 @@ Respond ONLY with valid JSON in this exact format:
       ).length;
       
       // If we've tried typing Frankfurt many times, try more aggressive approach
+      if (frankfurtTypeCount >= 3) {
+        return {
+          description: "AI rate limited, using super aggressive fallback logic. Trying multiple search strategies to trigger flight results.",
+          taskCompleted: false,
+          requiresAction: true,
+          actions: [
+            {"type": "key_press", "description": "Press Enter multiple times", "payload": {"key": "Enter"}},
+            {"type": "click_coordinate", "description": "Click center search area", "payload": {"x": 680, "y": 600}},
+            {"type": "key_press", "description": "Press Enter again", "payload": {"key": "Enter"}},
+            {"type": "click_coordinate", "description": "Click alternative search button", "payload": {"x": 650, "y": 550}},
+            {"type": "click_coordinate", "description": "Click bottom search area", "payload": {"x": 700, "y": 650}}
+          ],
+          confidence: "medium"
+        };
+      }
+      
       if (frankfurtTypeCount >= 2) {
         return {
           description: "AI rate limited, using aggressive fallback logic. Forcefully proceeding to destination and search.",
           taskCompleted: false,
           requiresAction: true,
           actions: [
-            {"type": "key_press", "description": "Press Enter to confirm Frankfurt", "payload": {"key": "Enter"}},
-            {"type": "click_coordinate", "description": "Click Where to field", "payload": {"x": 950, "y": 472}},
-            {"type": "key_press", "description": "Clear destination field", "payload": {"key": "Control+a"}},
-            {"type": "keyboard_input", "description": "Type London Heathrow", "payload": {"input": "London Heathrow"}},
-            {"type": "key_press", "description": "Press Enter to search", "payload": {"key": "Enter"}}
+            {"type": "key_press", "description": "Press Tab to move to destination", "payload": {"key": "Tab"}},
+            {"type": "keyboard_input", "description": "Type London", "payload": {"input": "London"}},
+            {"type": "key_press", "description": "Press Enter to search", "payload": {"key": "Enter"}},
+            {"type": "click_coordinate", "description": "Click search button", "payload": {"x": 680, "y": 650}},
+            {"type": "key_press", "description": "Press Enter again", "payload": {"key": "Enter"}}
           ],
           confidence: "high"
         };
@@ -1186,13 +1212,23 @@ Respond ONLY with valid JSON in this exact format:
       }
       
       if (historyText.includes('frankfurt') && !historyText.includes('london')) {
-        // We have origin, need destination
+        // We have origin, need destination - try different coordinate strategies
+        const coordinateStrategies = [
+          {"x": 950, "y": 472},  // Original
+          {"x": 850, "y": 472},  // Left alternative
+          {"x": 1050, "y": 472}, // Right alternative
+          {"x": 950, "y": 500},  // Lower alternative
+        ];
+        const strategyIndex = Math.min(frankfurtTypeCount, coordinateStrategies.length - 1);
+        const coords = coordinateStrategies[strategyIndex];
+        
         return {
-          description: "AI rate limited, using fallback logic. Clicking destination field and typing London.",
+          description: `AI rate limited, using fallback logic. Trying destination coordinates (${coords.x}, ${coords.y}) and typing London.`,
           taskCompleted: false,
           requiresAction: true,
           actions: [
-            {"type": "click_coordinate", "description": "Click Where to field", "payload": {"x": 950, "y": 472}},
+            {"type": "click_coordinate", "description": "Click Where to field", "payload": coords},
+            {"type": "key_press", "description": "Clear field", "payload": {"key": "Control+a"}},
             {"type": "keyboard_input", "description": "Type London Heathrow", "payload": {"input": "London Heathrow"}},
             {"type": "key_press", "description": "Press Enter to search", "payload": {"key": "Enter"}}
           ],
