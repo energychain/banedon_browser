@@ -486,8 +486,8 @@
                     body: JSON.stringify({ metadata: { "purpose": "nl-control", "user": "dashboard-direct" } })
                 });
                 const data = await response.json();
-                if (data.sessionId) {
-                    sessionId = data.sessionId;
+                if (data.success && data.session && data.session.id) {
+                    sessionId = data.session.id;
                     document.getElementById('nlSessionId').value = sessionId;
                     
                     // Also fill in other session ID fields in advanced tools
@@ -577,10 +577,10 @@
                 document.getElementById('apiResponse').textContent = JSON.stringify(data, null, 2);
                 
                 // Auto-fill session ID in command section
-                if (data.sessionId) {
-                    document.getElementById('commandSessionId').value = data.sessionId;
-                    document.getElementById('wsSessionId').value = data.sessionId;
-                    document.getElementById('nlSessionId').value = data.sessionId;
+                if (data.success && data.session && data.session.id) {
+                    document.getElementById('commandSessionId').value = data.session.id;
+                    document.getElementById('wsSessionId').value = data.session.id;
+                    document.getElementById('nlSessionId').value = data.session.id;
                 }
             } catch (error) {
                 document.getElementById('apiResponse').textContent = 'Error: ' + error.message;
