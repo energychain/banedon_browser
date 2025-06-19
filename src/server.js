@@ -108,6 +108,9 @@ class BrowserAutomationService {
     // Initialize natural language task service
     this.nlTaskService = new NaturalLanguageTaskService(this.sessionManager, this.commandExecutor);
     
+    // Make nlTaskService available to routes
+    this.app.set('nlTaskService', this.nlTaskService);
+    
     // Natural language task routes
     this.app.use('/api/sessions', nlTaskRoutes(this.sessionManager, this.nlTaskService));
     

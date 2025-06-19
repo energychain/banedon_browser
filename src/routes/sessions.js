@@ -334,6 +334,84 @@ function createSessionRoutes(sessionManager) {
     }
   });
 
+  // Get intervention requests for a session
+  router.get('/:sessionId/interventions', async (req, res) => {
+    try {
+      const { sessionId } = req.params;
+      const session = sessionManager.getSession(sessionId);
+      
+      if (!session) {
+        return res.status(404).json({
+          success: false,
+          error: 'Session not found'
+        });
+      }
+
+      const interventions = session.interventionRequests || [];
+      
+      res.json({
+        success: true,
+        sessionId,
+        interventions,
+        count: interventions.length
+      });
+    } catch (error) {
+      logger.error('Failed to get intervention requests:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message
+      });
+    }
+  });
+
+  // Respond to an intervention request
+  router.post('/:sessionId/interventions/:requestId/respond', async (req, res) => {
+    try {
+      const { sessionId, requestId } = req.params;
+      const { message, taskCompleted, result } = req.body;
+      
+      const session = sessionManager.getSession(sessionId);
+      if (!session) {
+        return res.status(404).json({
+          success: false,
+          error: 'Session not found'
+        });
+      }
+
+      const nlTaskService = req.app.get('nlTaskService');
+      if (!nlTaskService) {
+        return res.status(500).json({
+          success: false,
+          error: 'Natural language task service not available'
+        });
+      }
+
+      const success = await nlTaskService.handleManualInterventionResponse(sessionId, requestId, {
+        message,
+        taskCompleted: taskCompleted || false,
+        result
+      });
+
+      if (!success) {
+        return res.status(404).json({
+          success: false,
+          error: 'Intervention request not found'
+        });
+      }
+
+      res.json({
+        success: true,
+        message: 'Intervention response recorded'
+      });
+    } catch (error) {
+      logger.error('Failed to handle intervention response:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message
+      });
+    }
+  });
+
   return router;
 }
 

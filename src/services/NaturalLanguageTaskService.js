@@ -30,6 +30,9 @@ class NaturalLanguageTaskService {
    */
   async processTask(sessionId, taskDescription) {
     try {
+      // Set current session ID for context
+      this.setCurrentSessionId(sessionId);
+      
       const session = this.sessionManager.getSession(sessionId);
       if (!session) {
         throw new Error(`Session not found: ${sessionId}`);
@@ -232,12 +235,34 @@ class NaturalLanguageTaskService {
       
       // Add final completion message based on progress and stopping reason
       let completionMessage = '';
+      let interventionRequest = null;
+      
       if (iterationsSinceProgress >= maxIterationsWithoutProgress) {
         const userMilestones = this.filterUserFacingMilestones(progressTracker.completedMilestones);
         completionMessage = `I completed ${userMilestones.length} key steps but reached the limit of ${maxIterationsWithoutProgress} iterations without progress. Progress achieved: ${userMilestones.join(', ') || 'Initial setup'}. The task may need additional time or manual completion.`;
+        
+        // Request manual intervention
+        interventionRequest = await this.requestManualIntervention(sessionId, 
+          'Task stalled with no progress after multiple attempts',
+          {
+            currentState: `Completed ${userMilestones.length} steps: ${userMilestones.join(', ')}`,
+            iterationsWithoutProgress: iterationsSinceProgress,
+            totalIterations: iterationCount
+          }
+        );
       } else if (iterationCount >= absoluteMaxIterations) {
         const userMilestones = this.filterUserFacingMilestones(progressTracker.completedMilestones);
         completionMessage = `I reached the absolute maximum of ${absoluteMaxIterations} iterations. I achieved ${userMilestones.length} key steps: ${userMilestones.join(', ') || 'basic setup'}. The system needs additional time or manual intervention.`;
+        
+        // Request manual intervention
+        interventionRequest = await this.requestManualIntervention(sessionId,
+          'Maximum iteration limit reached',
+          {
+            currentState: `Completed ${userMilestones.length} steps: ${userMilestones.join(', ')}`,
+            totalIterations: iterationCount,
+            maxIterations: absoluteMaxIterations
+          }
+        );
       }
       
       if (completionMessage) {
@@ -592,7 +617,7 @@ The last action was just executed. Look at the new screenshot and determine the 
 
 Respond ONLY with valid JSON in this exact format:
 {
-  "description": "Describe what you see on the page now and whether the task is complete. If the user wanted a summary, do we see flight schedules with prices, times, airlines?",
+  "description": "Describe what you see on the page now and whether the task is complete. If the user asked for headlines, list the main headlines.",
   "taskCompleted": true,
   "requiresAction": false,
   "actions": [],
@@ -784,6 +809,22 @@ Respond ONLY with valid JSON in this exact format:
         confidence: "low"
       };
     }
+  }
+
+  /**
+   * Get current session ID from processing context
+   * @private
+   */
+  getCurrentSessionId() {
+    return this.currentSessionId || 'unknown';
+  }
+
+  /**
+   * Set current session ID for processing context
+   * @private
+   */
+  setCurrentSessionId(sessionId) {
+    this.currentSessionId = sessionId;
   }
 
   /**
@@ -1222,942 +1263,133 @@ Respond ONLY with valid JSON in this exact format:
   }
 
   /**
-   * Handle rate limit by using predefined logic based on task context
+   * Request manual intervention when AI/LLM cannot proceed
    * @private
    */
-  handleRateLimitFallback(history, originalTask, iterationCount = 0) {
-    const taskLower = originalTask.toLowerCase();
-    const historyText = history.map(h => h.content).join(' ').toLowerCase();
-    
-    // Flight search specific fallback logic
-    if (taskLower.includes('flight') && taskLower.includes('frankfurt') && taskLower.includes('london')) {
-      
-      // Count how many times Frankfurt has been typed (avoid infinite loops)
-      const frankfurtTypeCount = history.filter(h => 
-        h.content && h.content.toLowerCase().includes('frankfurt')
-      ).length;
-      
-      // Vary fallback strategy based on iteration count
-      if (iterationCount >= 5) {
-        // After 5 iterations, try aggressive search button clicking
-        return {
-          description: "AI rate limited, using iteration-based aggressive search strategy. Clicking search elements directly.",
-          taskCompleted: false,
-          requiresAction: true,
-          actions: [
-            {"type": "click_coordinate", "description": "Click search/explore button", "payload": {"x": 680, "y": 520}},
-            {"type": "key_press", "description": "Press Enter to trigger search", "payload": {"key": "Enter"}},
-            {"type": "click_coordinate", "description": "Click Done or Search button", "payload": {"x": 720, "y": 580}},
-            {"type": "click_coordinate", "description": "Click Flight results area", "payload": {"x": 640, "y": 640}}
-          ],
-          confidence: "medium"
-        };
-      }
-      
-      if (iterationCount >= 4) {
-        // After 4 iterations, try different coordinates
-        return {
-          description: "AI rate limited, using alternative coordinates fallback strategy.",
-          taskCompleted: false,
-          requiresAction: true,
-          actions: [
-            {"type": "click_coordinate", "description": "Click alternative destination field", "payload": {"x": 950, "y": 472}},
-            {"type": "keyboard_input", "description": "Type London", "payload": {"input": "London"}},
-            {"type": "key_press", "description": "Press Tab and Enter", "payload": {"key": "Tab"}},
-            {"type": "key_press", "description": "Press Enter for search", "payload": {"key": "Enter"}}
-          ],
-          confidence: "medium"
-        };
-      }
-      
-      // If we've tried typing Frankfurt many times, try more aggressive approach
-      if (frankfurtTypeCount >= 3) {
-        return {
-          description: "AI rate limited, using complete flight search fallback. Completing entire search flow programmatically.",
-          taskCompleted: false,
-          requiresAction: true,
-          actions: [
-            {"type": "key_press", "description": "Press Arrow Down to select Frankfurt suggestion", "payload": {"key": "ArrowDown"}},
-            {"type": "key_press", "description": "Press Enter to confirm Frankfurt", "payload": {"key": "Enter"}},
-            {"type": "key_press", "description": "Press Tab to move to destination", "payload": {"key": "Tab"}},
-            {"type": "keyboard_input", "description": "Type London Heathrow", "payload": {"input": "London Heathrow"}},
-            {"type": "key_press", "description": "Press Arrow Down to select London suggestion", "payload": {"key": "ArrowDown"}},
-            {"type": "key_press", "description": "Press Enter to confirm London", "payload": {"key": "Enter"}},
-            {"type": "click_coordinate", "description": "Click search button", "payload": {"x": 680, "y": 600}},
-            {"type": "key_press", "description": "Press Enter for final search", "payload": {"key": "Enter"}}
-          ],
-          confidence: "high"
-        };
-      }
-      
-      if (frankfurtTypeCount >= 2) {
-        return {
-          description: "AI rate limited, using systematic fallback logic. Proceeding step-by-step through flight search.",
-          taskCompleted: false,
-          requiresAction: true,
-          actions: [
-            {"type": "key_press", "description": "Press Arrow Down to select Frankfurt from dropdown", "payload": {"key": "ArrowDown"}},
-            {"type": "key_press", "description": "Press Enter to confirm Frankfurt selection", "payload": {"key": "Enter"}},
-            {"type": "click_coordinate", "description": "Click destination field (Where to)", "payload": {"x": 950, "y": 472}},
-            {"type": "keyboard_input", "description": "Type London Heathrow", "payload": {"input": "London Heathrow"}},
-            {"type": "key_press", "description": "Press Enter to search", "payload": {"key": "Enter"}}
-          ],
-          confidence: "high"
-        };
-      }
-      
-      // If we've tried typing Frankfurt multiple times, try different approach
-      if (frankfurtTypeCount >= 1) {
-        return {
-          description: "AI rate limited, using enhanced fallback logic. Selecting Frankfurt from dropdown and proceeding to destination.",
-          taskCompleted: false,
-          requiresAction: true,
-          actions: [
-            {"type": "key_press", "description": "Press Arrow Down to select Frankfurt from dropdown", "payload": {"key": "ArrowDown"}},
-            {"type": "key_press", "description": "Press Enter to confirm Frankfurt", "payload": {"key": "Enter"}},
-            {"type": "click_coordinate", "description": "Click Where to field", "payload": {"x": 950, "y": 472}},
-            {"type": "keyboard_input", "description": "Type London Heathrow", "payload": {"input": "London Heathrow"}}
-          ],
-          confidence: "high"
-        };
-      }
-      
-      // Check what stage we're at based on history
-      if (historyText.includes('where from') || historyText.includes('input field')) {
-        // We're at the input field - proceed with typing Frankfurt
-        return {
-          description: "AI rate limited, using fallback logic. Clearing input field and typing Frankfurt.",
-          taskCompleted: false,
-          requiresAction: true,
-          actions: [
-            {"type": "key_press", "description": "Select all text in input field", "payload": {"key": "Control+a"}},
-            {"type": "key_press", "description": "Delete selected text", "payload": {"key": "Delete"}},
-            {"type": "keyboard_input", "description": "Type Frankfurt", "payload": {"input": "Frankfurt"}},
-            {"type": "key_press", "description": "Press Enter to confirm selection", "payload": {"key": "Enter"}}
-          ],
-          confidence: "high"
-        };
-      }
-      
-      if (historyText.includes('frankfurt') && !historyText.includes('london')) {
-        // We have origin, need destination - try different coordinate strategies
-        const coordinateStrategies = [
-          {"x": 950, "y": 472},  // Original
-          {"x": 850, "y": 472},  // Left alternative
-          {"x": 1050, "y": 472}, // Right alternative
-          {"x": 950, "y": 500},  // Lower alternative
-        ];
-        const strategyIndex = Math.min(frankfurtTypeCount, coordinateStrategies.length - 1);
-        const coords = coordinateStrategies[strategyIndex];
-        
-        return {
-          description: `AI rate limited, using fallback logic. Trying destination coordinates (${coords.x}, ${coords.y}) and typing London.`,
-          taskCompleted: false,
-          requiresAction: true,
-          actions: [
-            {"type": "click_coordinate", "description": "Click Where to field", "payload": coords},
-            {"type": "key_press", "description": "Clear field", "payload": {"key": "Control+a"}},
-            {"type": "keyboard_input", "description": "Type London Heathrow", "payload": {"input": "London Heathrow"}},
-            {"type": "key_press", "description": "Press Enter to search", "payload": {"key": "Enter"}}
-          ],
-          confidence: "high"
-        };
-      }
-      
-      if (historyText.includes('frankfurt') && historyText.includes('london')) {
-        // Both fields filled, trigger search
-        return {
-          description: "AI rate limited, using fallback logic. Both origin and destination filled, triggering flight search.",
-          taskCompleted: false,
-          requiresAction: true,
-          actions: [
-            {"type": "key_press", "description": "Press Enter to search for flights", "payload": {"key": "Enter"}},
-            {"type": "click_coordinate", "description": "Click search button if needed", "payload": {"x": 680, "y": 650}}
-          ],
-          confidence: "high"
-        };
-      }
-    }
-    
-    // Generic fallback - mark task as incomplete due to rate limiting
-    return {
-      description: "AI service rate limited. Unable to continue automated task execution. Please try again in a few minutes.",
-      taskCompleted: false,
-      requiresAction: false,
-      actions: [],
-      confidence: "low"
-    };
-  }
-
-  /**
-   * Handle alternative search strategy when normal fallback fails
-   * @private
-   */
-  handleAlternativeSearch(history, originalTask) {
-    const taskLower = originalTask.toLowerCase();
-    
-    if (taskLower.includes('flight') && taskLower.includes('frankfurt') && taskLower.includes('london')) {
-      return {
-        description: "Using alternative search strategy. Trying direct URL navigation and different search approach.",
-        taskCompleted: false,
-        requiresAction: true,
-        actions: [
-          {"type": "navigate", "description": "Navigate to Google Flights search URL", "payload": {"url": "https://www.google.com/travel/flights/search?tfs=CBwQAhoeEgoyMDI1LTA2LTIwagcIARIDRlJBcgcIARIDTEhSQAFIAXABggELCP___________wFAAUgBmAEB"}},
-          {"type": "key_press", "description": "Wait and press Enter", "payload": {"key": "Enter"}}
-        ],
-        confidence: "high"
-      };
-    }
-    
-    // General alternative strategy
-    return {
-      description: "Using general alternative search strategy with simulated typing.",
-      taskCompleted: false,
-      requiresAction: true,
-      actions: [
-        {"type": "key_press", "description": "Press Escape to clear", "payload": {"key": "Escape"}},
-        {"type": "click_coordinate", "description": "Click page center", "payload": {"x": 680, "y": 400}},
-        {"type": "keyboard_input", "description": "Type search query", "payload": {"input": "frankfurt to london flights"}}
-      ],
-      confidence: "medium"
-    };
-  }
-
-  /**
-   * Detect repeated sub-tasks in conversation history
-   * @private
-   */
-  detectRepeatedSubtasks(history, iterationCount) {
-    const recentHistory = history.slice(-6).map(h => h.content.toLowerCase()).join(' ');
-    
-    // Define sub-task patterns to detect
-    const subtaskPatterns = {
-      fieldReplacement: {
-        pattern: /(replace|change|clear|update).*(from|origin|departure).*(field|input|value)/,
-        threshold: 2,
-        description: 'field replacement attempts'
-      },
-      strasbourg_to_frankfurt: {
-        pattern: /(strasbourg|strasb).*(frankfurt|frank)/,
-        threshold: 2, 
-        description: 'Strasbourg to Frankfurt replacement'
-      },
-      destination_entry: {
-        pattern: /(destination|where to|london|heathrow).*(field|input|type|enter)/,
-        threshold: 2,
-        description: 'destination field entry'
-      },
-      search_trigger: {
-        pattern: /(search|click search|trigger search|search button)/,
-        threshold: 3,
-        description: 'search triggering attempts'
-      },
-      form_navigation: {
-        pattern: /(tab|next field|move to|navigate to).*(field|input)/,
-        threshold: 2,
-        description: 'form field navigation'
-      }
+  async requestManualIntervention(sessionId, reason, context) {
+    const interventionRequest = {
+      sessionId,
+      timestamp: new Date().toISOString(),
+      reason,
+      context,
+      status: 'pending',
+      requestId: uuidv4()
     };
 
-    const detectedPatterns = [];
-    let hasRepeatedSubtask = false;
-    
-    for (const [key, config] of Object.entries(subtaskPatterns)) {
-      const matches = (recentHistory.match(config.pattern) || []).length;
-      if (matches >= config.threshold) {
-        detectedPatterns.push({
-          type: key,
-          count: matches,
-          description: config.description
-        });
-        hasRepeatedSubtask = true;
+    // Store the intervention request
+    const session = this.sessionManager.getSession(sessionId);
+    if (session) {
+      if (!session.interventionRequests) {
+        session.interventionRequests = [];
       }
-    }
-
-    // Special case: detect if same action type is repeated too often
-    const actionWords = ['click', 'type', 'press', 'enter', 'select'];
-    for (const action of actionWords) {
-      const actionCount = (recentHistory.match(new RegExp(action, 'g')) || []).length;
-      if (actionCount >= 4) {
-        detectedPatterns.push({
-          type: 'repeated_action',
-          action: action,
-          count: actionCount,
-          description: `repeated ${action} actions`
-        });
-        hasRepeatedSubtask = true;
-      }
-    }
-
-    return {
-      hasRepeatedSubtask,
-      patterns: detectedPatterns,
-      description: detectedPatterns.map(p => p.description).join(', ') || 'general repetitive behavior',
-      iterationCount
-    };
-  }
-
-  /**
-   * Advanced fallback handler that varies strategy based on detected sub-task patterns
-   * @private
-   */
-  handleAdvancedFallback(history, originalTask, iterationCount, subtaskPatterns) {
-    const taskLower = originalTask.toLowerCase();
-    
-    // Handle specific repeated sub-task patterns
-    for (const pattern of subtaskPatterns.patterns) {
-      if (pattern.type === 'strasbourg_to_frankfurt' || pattern.type === 'fieldReplacement') {
-        return this.handleFieldReplacementFallback(history, iterationCount, pattern.count);
-      }
+      session.interventionRequests.push(interventionRequest);
       
-      if (pattern.type === 'destination_entry') {
-        return this.handleDestinationEntryFallback(history, iterationCount);
+      // Add chat message requesting help
+      this.sessionManager.addToHistory(sessionId, {
+        role: 'assistant',
+        content: `I need human assistance to proceed. ${reason}. Current situation: ${context.currentState || 'Complex web interaction required'}. Please provide guidance or complete the task manually.`,
+        interventionRequest: interventionRequest.requestId
+      });
+
+      // Emit via WebSocket if connected
+      if (session.wsConnection) {
+        session.wsConnection.send(JSON.stringify({
+          type: 'intervention_request',
+          data: interventionRequest
+        }));
       }
+
+      logger.warn(`Manual intervention requested for session ${sessionId}: ${reason}`);
       
-      if (pattern.type === 'search_trigger') {
-        return this.handleSearchTriggerFallback(history, iterationCount);
-      }
-      
-      if (pattern.type === 'repeated_action') {
-        return this.handleRepeatedActionFallback(history, iterationCount, pattern.action);
-      }
+      return interventionRequest;
     }
     
-    // Fall back to original rate limit fallback for general cases
-    return this.handleRateLimitFallback(history, originalTask, iterationCount);
+    return null;
   }
 
   /**
-   * Specialized fallback for field replacement issues (like Strasbourg -> Frankfurt)
-   * @private 
-   */
-  handleFieldReplacementFallback(history, iterationCount, patternCount) {
-    logger.info(`Handling field replacement fallback, iteration ${iterationCount}, pattern count ${patternCount}`);
-    
-    // Progressive strategy escalation for field replacement
-    if (iterationCount >= 5) {
-      // Aggressive field clearing and replacement
-      return {
-        description: "Advanced field replacement: aggressive clear and replace strategy",
-        taskCompleted: false,
-        requiresAction: true,
-        actions: [
-          {"type": "click_coordinate", "description": "Click origin field center", "payload": {"x": 620, "y": 472}},
-          {"type": "key_press", "description": "Select all text", "payload": {"key": "Control+a"}},
-          {"type": "key_press", "description": "Delete selected text", "payload": {"key": "Delete"}},
-          {"type": "keyboard_input", "description": "Type Frankfurt directly", "payload": {"input": "Frankfurt"}},
-          {"type": "key_press", "description": "Wait for suggestions", "payload": {"key": "ArrowDown"}},
-          {"type": "key_press", "description": "Select suggestion", "payload": {"key": "Enter"}},
-          {"type": "key_press", "description": "Move to next field", "payload": {"key": "Tab"}}
-        ],
-        confidence: "high"
-      };
-    }
-    
-    if (iterationCount >= 3) {
-      // Try different coordinates and escape first
-      return {
-        description: "Advanced field replacement: escape and retry with different coordinates",
-        taskCompleted: false,
-        requiresAction: true,
-        actions: [
-          {"type": "key_press", "description": "Escape any dropdowns", "payload": {"key": "Escape"}},
-          {"type": "click_coordinate", "description": "Click alternative origin field location", "payload": {"x": 580, "y": 472}},
-          {"type": "key_press", "description": "Triple click to select all", "payload": {"key": "Control+a"}},
-          {"type": "keyboard_input", "description": "Replace with Frankfurt", "payload": {"input": "Frankfurt"}},
-          {"type": "key_press", "description": "Confirm with Tab", "payload": {"key": "Tab"}}
-        ],
-        confidence: "medium"
-      };
-    }
-    
-    // Initial attempt with backspace approach
-    return {
-      description: "Advanced field replacement: backspace and clear approach",
-      taskCompleted: false,
-      requiresAction: true,
-      actions: [
-        {"type": "click_coordinate", "description": "Focus origin field", "payload": {"x": 621, "y": 472}},
-        {"type": "key_press", "description": "Go to end of field", "payload": {"key": "End"}},
-        {"type": "key_press", "description": "Select all backwards", "payload": {"key": "Control+Shift+Home"}},
-        {"type": "key_press", "description": "Delete selection", "payload": {"key": "Backspace"}},
-        {"type": "keyboard_input", "description": "Type Frankfurt", "payload": {"input": "Frankfurt"}}
-      ],
-      confidence: "medium"
-    };
-  }
-
-  /**
-   * Specialized fallback for destination entry issues
+   * Handle manual intervention response
    * @private
    */
-  handleDestinationEntryFallback(history, iterationCount) {
-    logger.info(`Handling destination entry fallback, iteration ${iterationCount}`);
-    
-    return {
-      description: "Advanced destination entry: multiple coordinate attempts",
-      taskCompleted: false,
-      requiresAction: true,
-      actions: [
-        {"type": "click_coordinate", "description": "Try destination field variant 1", "payload": {"x": 950, "y": 472}},
-        {"type": "keyboard_input", "description": "Type London Heathrow", "payload": {"input": "London Heathrow"}},
-        {"type": "key_press", "description": "Press Arrow Down", "payload": {"key": "ArrowDown"}},
-        {"type": "key_press", "description": "Press Enter", "payload": {"key": "Enter"}}
-      ],
-      confidence: "medium"
-    };
-  }
+  async handleManualInterventionResponse(sessionId, requestId, response) {
+    const session = this.sessionManager.getSession(sessionId);
+    if (!session || !session.interventionRequests) {
+      return false;
+    }
 
-  /**
-   * Specialized fallback for search trigger issues  
-   * @private
-   */
-  handleSearchTriggerFallback(history, iterationCount) {
-    logger.info(`Handling search trigger fallback, iteration ${iterationCount}`);
-    
-    if (iterationCount >= 4) {
-      return {
-        description: "Advanced search trigger: multiple search methods",
-        taskCompleted: false,
-        requiresAction: true,
-        actions: [
-          {"type": "key_press", "description": "Try Enter key", "payload": {"key": "Enter"}},
-          {"type": "click_coordinate", "description": "Try search button area 1", "payload": {"x": 680, "y": 520}},
-          {"type": "click_coordinate", "description": "Try search button area 2", "payload": {"x": 720, "y": 580}},
-          {"type": "key_press", "description": "Try Enter again", "payload": {"key": "Enter"}}
-        ],
-        confidence: "medium"
-      };
+    const request = session.interventionRequests.find(r => r.requestId === requestId);
+    if (!request) {
+      return false;
     }
-    
-    return {
-      description: "Advanced search trigger: keyboard focus approach",
-      taskCompleted: false,
-      requiresAction: true,
-      actions: [
-        {"type": "key_press", "description": "Tab to search button", "payload": {"key": "Tab"}},
-        {"type": "key_press", "description": "Trigger with Enter", "payload": {"key": "Enter"}},
-        {"type": "key_press", "description": "Alternative Space trigger", "payload": {"key": "Space"}}
-      ],
-      confidence: "medium"
-    };
-  }
 
-  /**
-   * Specialized fallback for repeated actions
-   * @private
-   */
-  handleRepeatedActionFallback(history, iterationCount, repeatedAction) {
-    logger.info(`Handling repeated action fallback for '${repeatedAction}', iteration ${iterationCount}`);
-    
-    // If we're repeating clicks, try keyboard navigation
-    if (repeatedAction === 'click') {
-      return {
-        description: "Switch from clicking to keyboard navigation",
-        taskCompleted: false,
-        requiresAction: true,
-        actions: [
-          {"type": "key_press", "description": "Tab to navigate", "payload": {"key": "Tab"}},
-          {"type": "key_press", "description": "Enter to activate", "payload": {"key": "Enter"}},
-          {"type": "key_press", "description": "Tab again", "payload": {"key": "Tab"}}
-        ],
-        confidence: "medium"
-      };
-    }
-    
-    // If we're repeating typing, try clicking
-    if (repeatedAction === 'type') {
-      return {
-        description: "Switch from typing to clicking elements",
-        taskCompleted: false,
-        requiresAction: true,
-        actions: [
-          {"type": "click_coordinate", "description": "Click to focus", "payload": {"x": 640, "y": 400}},
-          {"type": "key_press", "description": "Navigate with arrows", "payload": {"key": "ArrowDown"}},
-          {"type": "key_press", "description": "Select with Enter", "payload": {"key": "Enter"}}
-        ],
-        confidence: "medium"
-      };
-    }
-    
-    // Generic fallback for other repeated actions
-    return {
-      description: `Fallback for repeated ${repeatedAction} actions`,
-      taskCompleted: false,
-      requiresAction: true,
-      actions: [
-        {"type": "key_press", "description": "Escape any modals", "payload": {"key": "Escape"}},
-        {"type": "click_coordinate", "description": "Click somewhere neutral", "payload": {"x": 640, "y": 300}},
-        {"type": "key_press", "description": "Tab to navigate", "payload": {"key": "Tab"}}
-      ],
-      confidence: "low"
-    };
-  }
+    request.status = 'resolved';
+    request.response = response;
+    request.resolvedAt = new Date().toISOString();
 
-  /**
-   * Initialize progress tracker for a task
-   * @private
-   */
-  initializeProgressTracker(taskDescription, history) {
-    const taskLower = taskDescription.toLowerCase();
-    
-    return {
-      taskType: this.identifyTaskType(taskDescription),
-      milestones: this.defineMilestones(taskDescription),
-      completedMilestones: new Set(),
-      lastScreenshotHash: null,
-      lastSignificantAction: null,
-      actionHistory: [],
-      fieldsInteractedWith: new Set(),
-      pagesVisited: new Set(),
-      progressMarkers: {
-        navigationCompleted: false,
-        cookiesHandled: false,
-        formFieldsInteractedWith: 0,
-        searchTriggered: false,
-        resultsPageReached: false
-      },
-      startTime: Date.now()
-    };
-  }
-
-  /**
-   * Identify the type of task to set appropriate progress markers
-   * @private
-   */
-  identifyTaskType(taskDescription) {
-    const taskLower = taskDescription.toLowerCase();
-    
-    if (taskLower.includes('flight') && (taskLower.includes('search') || taskLower.includes('find'))) {
-      return 'flight_search';
-    }
-    if (taskLower.includes('hotel') && (taskLower.includes('search') || taskLower.includes('find'))) {
-      return 'hotel_search';
-    }
-    if (taskLower.includes('form') && taskLower.includes('fill')) {
-      return 'form_filling';
-    }
-    if (taskLower.includes('login') || taskLower.includes('sign in')) {
-      return 'login';
-    }
-    if (taskLower.includes('purchase') || taskLower.includes('buy')) {
-      return 'purchase';
-    }
-    
-    return 'general';
-  }
-
-  /**
-   * Define milestone markers for different task types
-   * @private
-   */
-  defineMilestones(taskDescription) {
-    const taskType = this.identifyTaskType(taskDescription);
-    
-    const milestoneMap = {
-      flight_search: [
-        'navigation_complete',
-        'cookies_handled', 
-        'origin_field_filled',
-        'destination_field_filled',
-        'search_triggered',
-        'results_displayed'
-      ],
-      hotel_search: [
-        'navigation_complete',
-        'cookies_handled',
-        'location_field_filled', 
-        'dates_selected',
-        'search_triggered',
-        'results_displayed'
-      ],
-      form_filling: [
-        'navigation_complete',
-        'form_identified',
-        'fields_filled',
-        'form_submitted'
-      ],
-      login: [
-        'navigation_complete',
-        'username_entered',
-        'password_entered', 
-        'login_submitted',
-        'login_successful'
-      ],
-      general: [
-        'navigation_complete',
-        'interaction_started',
-        'action_completed'
-      ]
-    };
-    
-    return milestoneMap[taskType] || milestoneMap.general;
-  }
-
-  /**
-   * Filter milestones to show only user-relevant achievements
-   * @private
-   */
-  filterUserFacingMilestones(milestones) {
-    const technicalMilestones = ['cookies_handled', 'navigation_complete', 'initial_page_load'];
-    const userFacingMilestones = Array.from(milestones).filter(milestone => 
-      !technicalMilestones.includes(milestone)
-    );
-    
-    // Map some technical terms to user-friendly descriptions
-    const friendlyNames = {
-      'origin_field_filled': 'departure location set',
-      'destination_field_filled': 'destination set', 
-      'search_triggered': 'search initiated',
-      'results_displayed': 'results found',
-      'form_submission': 'search completed'
-    };
-    
-    return userFacingMilestones.map(milestone => 
-      friendlyNames[milestone] || milestone
-    );
-  }
-
-  /**
-   * Detect if meaningful progress has been made
-   * @private
-   */
-  detectProgress(progressTracker, history, iterationCount, screenshotBase64) {
-    const recentHistory = history.slice(-3);
-    const lastResponse = recentHistory[recentHistory.length - 1]?.content?.toLowerCase() || '';
-    
-    // Calculate screenshot similarity to detect page changes
-    const screenshotHash = this.calculateScreenshotHash(screenshotBase64);
-    const pageChanged = progressTracker.lastScreenshotHash && 
-                       screenshotHash !== progressTracker.lastScreenshotHash;
-    
-    // Track actions taken
-    const newActions = this.extractActionsFromHistory(recentHistory);
-    const actionDiversity = this.calculateActionDiversity(progressTracker.actionHistory, newActions);
-    
-    let hasProgress = false;
-    let progressDescription = '';
-    const newMilestones = new Set(progressTracker.completedMilestones);
-    const updatedMarkers = { ...progressTracker.progressMarkers };
-    
-    // Check for various types of progress
-    
-    // 1. Page/Navigation Progress
-    if (pageChanged) {
-      hasProgress = true;
-      progressDescription += 'Page changed (navigation/form submission/search results). ';
-      
-      if (lastResponse.includes('search') || lastResponse.includes('result')) {
-        newMilestones.add('search_triggered');
-        updatedMarkers.resultsPageReached = true;
-      }
-    }
-    
-    // 2. Milestone Progress (task-specific)
-    const milestoneProgress = this.checkMilestoneProgress(progressTracker, lastResponse, recentHistory);
-    if (milestoneProgress.achieved.length > 0) {
-      hasProgress = true;
-      progressDescription += `Milestones achieved: ${milestoneProgress.achieved.join(', ')}. `;
-      milestoneProgress.achieved.forEach(m => newMilestones.add(m));
-    }
-    
-    // 3. Form Interaction Progress
-    const formProgress = this.detectFormProgress(lastResponse, progressTracker);
-    if (formProgress.newFieldsInteracted > 0) {
-      hasProgress = true;
-      progressDescription += `New form fields interacted: ${formProgress.newFieldsInteracted}. `;
-      updatedMarkers.formFieldsInteractedWith += formProgress.newFieldsInteracted;
-    }
-    
-    // 4. Error Recovery Progress
-    if (lastResponse.includes('error') && recentHistory.some(h => h.content.toLowerCase().includes('trying') || h.content.toLowerCase().includes('attempt'))) {
-      hasProgress = true;
-      progressDescription += 'Error recovery attempt made. ';
-    }
-    
-    // 5. New Strategy Progress
-    if (actionDiversity.isNewStrategy) {
-      hasProgress = true;
-      progressDescription += 'New interaction strategy detected. ';
-    }
-    
-    // 6. Task-specific Progress Detection
-    const taskSpecificProgress = this.detectTaskSpecificProgress(progressTracker, lastResponse, recentHistory);
-    if (taskSpecificProgress.hasProgress) {
-      hasProgress = true;
-      progressDescription += taskSpecificProgress.description + '. ';
-    }
-    
-    return {
-      hasProgress,
-      progressDescription: progressDescription.trim(),
-      updatedTracker: {
-        ...progressTracker,
-        completedMilestones: newMilestones,
-        lastScreenshotHash: screenshotHash,
-        progressMarkers: updatedMarkers,
-        actionHistory: [...progressTracker.actionHistory, ...newActions].slice(-10), // Keep last 10 actions
-        fieldsInteractedWith: new Set([...progressTracker.fieldsInteractedWith, ...formProgress.newFields])
-      }
-    };
-  }
-
-  /**
-   * Calculate a simple hash of screenshot for change detection
-   * @private
-   */
-  calculateScreenshotHash(screenshotBase64) {
-    if (!screenshotBase64) return null;
-    
-    // Simple hash based on length and sample characters
-    const sample = screenshotBase64.slice(0, 100) + screenshotBase64.slice(-100);
-    let hash = 0;
-    for (let i = 0; i < sample.length; i++) {
-      const char = sample.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash; // Convert to 32-bit integer
-    }
-    return hash.toString();
-  }
-
-  /**
-   * Extract actions from recent history
-   * @private
-   */
-  extractActionsFromHistory(recentHistory) {
-    const actions = [];
-    for (const entry of recentHistory) {
-      const content = entry.content.toLowerCase();
-      if (content.includes('click')) actions.push('click');
-      if (content.includes('type') || content.includes('enter')) actions.push('type');
-      if (content.includes('navigate')) actions.push('navigate');
-      if (content.includes('press') || content.includes('key')) actions.push('key_press');
-      if (content.includes('scroll')) actions.push('scroll');
-    }
-    return actions;
-  }
-
-  /**
-   * Calculate diversity of actions to detect new strategies
-   * @private
-   */
-  calculateActionDiversity(oldActions, newActions) {
-    const oldSet = new Set(oldActions);
-    const newSet = new Set(newActions);
-    const intersection = new Set([...oldSet].filter(x => newSet.has(x)));
-    
-    return {
-      diversity: newSet.size,
-      isNewStrategy: newActions.some(action => !oldSet.has(action)),
-      actionTypes: Array.from(newSet)
-    };
-  }
-
-  /**
-   * Check for milestone-specific progress
-   * @private
-   */
-  checkMilestoneProgress(progressTracker, lastResponse, recentHistory) {
-    const achieved = [];
-    const taskType = progressTracker.taskType;
-    
-    // Check navigation completion
-
-    if (!progressTracker.completedMilestones.has('navigation_complete')) {
-      if (lastResponse.includes('page') || lastResponse.includes('site') || lastResponse.includes('website')) {
-        achieved.push('navigation_complete');
-      }
-    }
-    
-    // Check cookie handling
-    if (!progressTracker.completedMilestones.has('cookies_handled')) {
-      if (lastResponse.includes('cookie') || lastResponse.includes('accept') || lastResponse.includes('consent')) {
-        achieved.push('cookies_handled');
-      }
-    }
-    
-    // Task-specific milestones
-    if (taskType === 'flight_search') {
-      if (!progressTracker.completedMilestones.has('origin_field_filled') && 
-          (lastResponse.includes('frankfurt') || lastResponse.includes('origin') || lastResponse.includes('from'))) {
-        achieved.push('origin_field_filled');
-      }
-      
-      if (!progressTracker.completedMilestones.has('destination_field_filled') && 
-          (lastResponse.includes('london') || lastResponse.includes('heathrow') || lastResponse.includes('destination') || lastResponse.includes('to'))) {
-        achieved.push('destination_field_filled');
-      }
-      
-      if (!progressTracker.completedMilestones.has('search_triggered') && 
-          (lastResponse.includes('search') || lastResponse.includes('find flights'))) {
-        achieved.push('search_triggered');
-      }
-    }
-    
-    return { achieved };
-  }
-
-  /**
-   * Detect form interaction progress
-   * @private
-   */
-  detectFormProgress(lastResponse, progressTracker) {
-    const formFieldKeywords = ['input', 'field', 'form', 'text box', 'dropdown', 'select'];
-    const newFields = new Set();
-    
-    // Detect new form fields mentioned
-    for (const keyword of formFieldKeywords) {
-      if (lastResponse.includes(keyword)) {
-        const context = lastResponse.substring(
-          Math.max(0, lastResponse.indexOf(keyword) - 20),
-          lastResponse.indexOf(keyword) + 20
-        );
-        
-        if (!progressTracker.fieldsInteractedWith.has(context)) {
-          newFields.add(context);
-        }
-      }
-    }
-    
-    return {
-      newFieldsInteracted: newFields.size,
-      newFields: Array.from(newFields)
-    };
-  }
-
-  /**
-   * Detect task-specific progress indicators
-   * @private
-   */
-  detectTaskSpecificProgress(progressTracker, lastResponse, recentHistory) {
-    const taskType = progressTracker.taskType;
-    
-    if (taskType === 'flight_search') {
-      // Progress indicators for flight search
-      if (lastResponse.includes('flight') && (lastResponse.includes('result') || lastResponse.includes('available'))) {
-        return { hasProgress: true, description: 'Flight results or availability mentioned' };
-      }
-      
-      if (lastResponse.includes('price') || lastResponse.includes('time') || lastResponse.includes('airline')) {
-        return { hasProgress: true, description: 'Flight details (price/time/airline) detected' };
-      }
-      
-      // Progress through form steps
-      if (recentHistory.some(h => h.content.toLowerCase().includes('where from')) && 
-          lastResponse.includes('where to')) {
-        return { hasProgress: true, description: 'Progressed from origin to destination field' };
-      }
-    }
-    
-    return { hasProgress: false, description: '' };
-  }
-
-  /**
-   * Build comprehensive execution analytics from the task history and results
-   * @private
-   */
-  buildExecutionAnalytics(finalHistory, executionResult, iterationCount) {
-    const analytics = {
-      subtasks: [],
-      fallbacks: [],
-      actionBreakdown: {
-        navigate: 0,
-        click: 0,
-        type: 0,
-        key_press: 0,
-        screenshot: 0,
-        other: 0
-      }
-    };
-
-    // Analyze subtasks from history
-    const subtaskPatterns = [
-      { name: 'Cookie Consent', keywords: ['cookie', 'accept', 'consent'] },
-      { name: 'Field Input', keywords: ['input', 'type', 'field', 'text'] },
-      { name: 'Navigation', keywords: ['navigate', 'goto', 'url'] },
-      { name: 'Form Submission', keywords: ['search', 'submit', 'button'] },
-      { name: 'Selection', keywords: ['select', 'choose', 'option'] },
-      { name: 'Date Setting', keywords: ['date', 'calendar', 'day'] }
-    ];
-
-    finalHistory.forEach(message => {
-      if (message.role === 'assistant') {
-        subtaskPatterns.forEach(pattern => {
-          if (pattern.keywords.some(keyword => 
-            message.content.toLowerCase().includes(keyword))) {
-            const existingSubtask = analytics.subtasks.find(s => s.name === pattern.name);
-            if (existingSubtask) {
-              existingSubtask.attempts++;
-            } else {
-              analytics.subtasks.push({
-                name: pattern.name,
-                attempts: 1,
-                completed: true
-              });
-            }
-          }
-        });
-
-        // Detect fallback usage
-        if (message.content.includes('rate limited') || 
-            message.content.includes('fallback')) {
-          analytics.fallbacks.push({
-            type: 'ai_rate_limit',
-            reason: 'AI service rate limit exceeded',
-            timestamp: new Date().toISOString()
-          });
-        }
-      }
+    // Add the human response to history
+    this.sessionManager.addToHistory(sessionId, {
+      role: 'user',
+      content: response.message || 'Task completed manually',
+      interventionResponse: requestId
     });
 
-    // Analyze action breakdown from execution results
-    executionResult.forEach(action => {
-      if (action.type && analytics.actionBreakdown.hasOwnProperty(action.type)) {
-        analytics.actionBreakdown[action.type]++;
+    // If task was completed manually, add success message
+    if (response.taskCompleted) {
+      this.sessionManager.addToHistory(sessionId, {
+        role: 'assistant',
+        content: response.result || 'Task has been completed with human assistance. Thank you for your help!'
+      });
+    }
+
+    logger.info(`Manual intervention resolved for session ${sessionId}: ${response.message || 'Completed'}`);
+    
+    return true;
+  }
+
+  /**
+   * Handle rate limit fallback with potential manual intervention
+   * @private
+   */
+  async handleRateLimitFallback(history, originalTask) {
+    // Extract sessionId from history
+    const sessionId = history.length > 0 && history[0].sessionId 
+      ? history[0].sessionId 
+      : this.getCurrentSessionId();
+    
+    // Check if we've been rate limited multiple times recently
+    const session = this.sessionManager.sessions.get(sessionId);
+    if (session) {
+      if (!session.rateLimitCount) {
+        session.rateLimitCount = 1;
+        session.lastRateLimit = Date.now();
       } else {
-        analytics.actionBreakdown.other++;
+        session.rateLimitCount++;
+        
+        // If we've hit rate limits multiple times in a short period, request manual intervention
+        if (session.rateLimitCount >= 3 && (Date.now() - session.lastRateLimit) < 300000) { // 5 minutes
+          await this.requestManualIntervention(sessionId,
+            'AI service repeatedly rate limited, preventing automatic task completion',
+            {
+              currentState: 'Automatic task execution blocked by API rate limits',
+              rateLimitCount: session.rateLimitCount,
+              taskType: originalTask.includes('flight') ? 'flight search' : 'web automation'
+            }
+          );
+          
+          return {
+            description: "AI service unavailable due to rate limiting. Manual intervention requested.",
+            requiresAction: true,
+            actions: [],
+            reason: 'rate_limited_manual_intervention'
+          };
+        }
+        
+        session.lastRateLimit = Date.now();
       }
-    });
-
-    return analytics;
-  }
-
-  /**
-   * Build a condensed version of the conversation history for reporting
-   * @private
-   */
-  buildCondensedHistory(fullHistory) {
-    return fullHistory.map((message, index) => ({
-      index: index + 1,
-      role: message.role,
-      timestamp: message.timestamp || new Date().toISOString(),
-      contentSummary: message.content.length > 100 
-        ? message.content.substring(0, 100) + '...'
-        : message.content,
-      type: this.categorizeMessage(message.content)
-    }));
-  }
-
-  /**
-   * Categorize a message for analytics
-   * @private
-   */
-  categorizeMessage(content) {
-    const lowerContent = content.toLowerCase();
-    
-    if (lowerContent.includes('thinking:') || lowerContent.includes('I see')) {
-      return 'analysis';
-    } else if (lowerContent.includes('click') || lowerContent.includes('type') || lowerContent.includes('input')) {
-      return 'action';
-    } else if (lowerContent.includes('search') || lowerContent.includes('flight')) {
-      return 'task_progress';
-    } else if (lowerContent.includes('error') || lowerContent.includes('failed')) {
-      return 'error';
-    } else if (lowerContent.includes('completed') || lowerContent.includes('done')) {
-      return 'completion';
-    } else {
-      return 'general';
     }
+
+    // Use basic fallback logic
+    return this.analyzePageAfterActionForContinuation(history, null, originalTask);
   }
 }
 
