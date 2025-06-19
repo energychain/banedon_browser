@@ -96,6 +96,43 @@ class NaturalLanguageTaskService {
           }
         } catch (executeError) {
           logger.error('Failed to execute task actions:', executeError);
+          
+          // If the error is about a selector not being found, try to continue with a modified approach
+          if (executeError.message.includes('Waiting for selector') && executeError.message.includes('failed')) {
+            this.sessionManager.addToHistory(sessionId, { 
+              role: 'assistant', 
+              content: `I encountered an issue finding an element on the page. Let me try a different approach to continue with the task.` 
+            });
+            
+            // Take a screenshot to analyze the current state
+            try {
+              const currentScreenshot = await this.takeScreenshot(sessionId);
+              if (currentScreenshot.base64) {
+                history = this.sessionManager.getHistory(sessionId);
+                
+                // Re-analyze with focus on finding alternative approaches
+                const fallbackAnalysis = await this.analyzePageAfterActionForContinuation(
+                  history, 
+                  currentScreenshot.base64, 
+                  taskDescription
+                );
+                
+                if (fallbackAnalysis.description) {
+                  this.sessionManager.addToHistory(sessionId, { role: 'assistant', content: fallbackAnalysis.description });
+                }
+                
+                // Continue with fallback analysis if it provides new actions
+                if (fallbackAnalysis.requiresAction && fallbackAnalysis.actions && fallbackAnalysis.actions.length > 0) {
+                  analysis = fallbackAnalysis;
+                  screenshotResult = currentScreenshot;
+                  continue; // Try again with new approach
+                }
+              }
+            } catch (fallbackError) {
+              logger.warn('Fallback analysis failed:', fallbackError);
+            }
+          }
+          
           this.sessionManager.addToHistory(sessionId, { 
             role: 'assistant', 
             content: `I encountered an error while trying to complete the task: ${executeError.message}` 
@@ -229,11 +266,12 @@ Your goal is to fulfill the user's latest request: "${lastUserTask}"
 
 IMPORTANT AUTOMATION RULES:
 - Handle routine website interactions automatically without asking the user
-- Cookie consent dialogs: Always accept/dismiss automatically (click "Accept", "OK", "I agree", etc.)
+- Cookie consent dialogs: Look for common consent elements like buttons with text "Accept", "OK", "I agree", "Allow all", etc. Use flexible selectors like button:contains("Accept"), [id*="accept"], [class*="accept"], or any clickable element with consent-related text
 - Newsletter signups, promotional popups: Dismiss automatically (click "No thanks", "X", "Close", etc.)
 - Age verification, country selection: Choose reasonable defaults automatically
 - Only ask the user for input when truly necessary (login credentials, specific preferences, etc.)
 - Your goal is to complete the user's task end-to-end, not stop at intermediate steps
+- If specific selectors fail, try alternative approaches: look for text content, use more general selectors, or try multiple button types
 
 Based on the conversation history, the user's request, and the provided screenshot of the current page, create a plan.
 - If the request is ambiguous, ask a clarifying question.
@@ -452,11 +490,12 @@ ${historyString}
 
 IMPORTANT AUTOMATION RULES:
 - Handle routine website interactions automatically without asking the user
-- Cookie consent dialogs: Always accept/dismiss automatically (click "Accept", "OK", "I agree", etc.)
+- Cookie consent dialogs: Look for common consent elements like buttons with text "Accept", "OK", "I agree", "Allow all", etc. Use flexible selectors like button:contains("Accept"), [id*="accept"], [class*="accept"], or any clickable element with consent-related text
 - Newsletter signups, promotional popups: Dismiss automatically (click "No thanks", "X", "Close", etc.)
 - Age verification, country selection: Choose reasonable defaults automatically
 - Only ask the user for input when truly necessary (login credentials, specific preferences, etc.)
 - Your goal is to complete the user's task end-to-end, not stop at intermediate steps
+- If specific selectors fail, try alternative approaches: look for text content, use more general selectors, or try multiple button types
 
 Look at the current screenshot and determine:
 1. Did the last action succeed?
