@@ -1120,7 +1120,7 @@ Respond ONLY with valid JSON in this exact format:
       const historyString = history.map(h => `${h.role}: ${h.content}`).join('\n');
 
       const prompt = `
-You are a conversational AI agent analyzing a user's request to determine if navigation to a website is needed first.
+You are a conversational AI agent analyzing a user's request to determine if navigation to a specific website is needed first.
 
 CONVERSATION HISTORY:
 ---
@@ -2089,6 +2089,44 @@ Respond ONLY with valid JSON in this exact format:
     });
 
     return analytics;
+  }
+
+  /**
+   * Build a condensed version of the conversation history for reporting
+   * @private
+   */
+  buildCondensedHistory(fullHistory) {
+    return fullHistory.map((message, index) => ({
+      index: index + 1,
+      role: message.role,
+      timestamp: message.timestamp || new Date().toISOString(),
+      contentSummary: message.content.length > 100 
+        ? message.content.substring(0, 100) + '...'
+        : message.content,
+      type: this.categorizeMessage(message.content)
+    }));
+  }
+
+  /**
+   * Categorize a message for analytics
+   * @private
+   */
+  categorizeMessage(content) {
+    const lowerContent = content.toLowerCase();
+    
+    if (lowerContent.includes('thinking:') || lowerContent.includes('I see')) {
+      return 'analysis';
+    } else if (lowerContent.includes('click') || lowerContent.includes('type') || lowerContent.includes('input')) {
+      return 'action';
+    } else if (lowerContent.includes('search') || lowerContent.includes('flight')) {
+      return 'task_progress';
+    } else if (lowerContent.includes('error') || lowerContent.includes('failed')) {
+      return 'error';
+    } else if (lowerContent.includes('completed') || lowerContent.includes('done')) {
+      return 'completion';
+    } else {
+      return 'general';
+    }
   }
 }
 
