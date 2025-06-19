@@ -6,6 +6,7 @@ class SessionManager {
   constructor() {
     this.sessions = new Map();
     this.connections = new Map(); // sessionId -> WebSocket connection
+    this.cleanupIntervalId = null;
     this.startCleanupInterval();
   }
 
@@ -199,51 +200,7 @@ class SessionManager {
   }
 
   /**
-   * Add command to session
-   * @param {string} sessionId - Session ID
-   * @param {Object} command - Command object
-   */
-  addCommand(sessionId, command) {
-    const session = this.sessions.get(sessionId);
-    if (session) {
-      session.commands.push({
-        ...command,
-        addedAt: new Date()
-      });
-      this.updateLastActivity(sessionId);
-    }
-  }
-
-  /**
-   * Get session statistics
-   * @returns {Object} Statistics object
-   */
-  getStatistics() {
-    const totalSessions = this.sessions.size;
-    const activeSessions = this.listActiveSessions().length;
-    const connectedSessions = Array.from(this.sessions.values())
-      .filter(session => session.isConnected).length;
-    
-    return {
-      totalSessions,
-      activeSessions,
-      connectedSessions,
-      expiredSessions: totalSessions - activeSessions,
-      totalConnections: this.connections.size,
-      uptime: process.uptime()
-    };
-  }
-
-  /**
-   * Get active session count
-   * @returns {number} Number of active sessions
-   */
-  getActiveSessionCount() {
-    return this.listActiveSessions().length;
-  }
-
-  /**
-   * Update last activity timestamp
+   * Update last activity timestamp for a session
    * @param {string} sessionId - Session ID
    */
   updateLastActivity(sessionId) {
@@ -254,65 +211,111 @@ class SessionManager {
   }
 
   /**
-   * Check if session is expired
+   * Check if a session is expired
    * @param {Object} session - Session object
    * @returns {boolean} True if session is expired
    */
   isExpired(session) {
-    const now = Date.now();
-    const lastActivity = new Date(session.lastActivity).getTime();
-    return (now - lastActivity) > config.SESSION_TIMEOUT;
+    const timeout = (session.isConnected ? config.ACTIVE_SESSION_TIMEOUT : config.INACTIVE_SESSION_TIMEOUT) * 1000;
+    return (new Date() - session.lastActivity) > timeout;
   }
 
   /**
-   * Clean up expired sessions
-   */
-  cleanupExpiredSessions() {
-    const expiredSessions = [];
-    
-    for (const [sessionId, session] of this.sessions.entries()) {
-      if (this.isExpired(session)) {
-        expiredSessions.push(sessionId);
-      }
-    }
-
-    expiredSessions.forEach(sessionId => {
-      this.deleteSession(sessionId);
-    });
-
-    if (expiredSessions.length > 0) {
-      logger.info(`Cleaned up ${expiredSessions.length} expired sessions`);
-    }
-  }
-
-  /**
-   * Start automatic cleanup interval
+   * Start periodic cleanup of expired sessions
    */
   startCleanupInterval() {
-    setInterval(() => {
-      this.cleanupExpiredSessions();
-    }, config.SESSION_CLEANUP_INTERVAL);
-    
-    logger.info(`Session cleanup interval started: ${config.SESSION_CLEANUP_INTERVAL}ms`);
+    this.cleanupIntervalId = setInterval(() => {
+      logger.info('Starting SessionManager cleanup...');
+      let cleanedCount = 0;
+      for (const session of this.sessions.values()) {
+        if (this.isExpired(session)) {
+          logger.info(`Session expired: ${session.id}, cleaning up.`);
+          this.deleteSession(session.id);
+          cleanedCount++;
+        }
+      }
+      if (cleanedCount > 0) {
+        logger.info(`SessionManager cleanup completed. Removed ${cleanedCount} expired sessions.`);
+      } else {
+        logger.info('SessionManager cleanup completed. No expired sessions found.');
+      }
+    }, config.SESSION_CLEANUP_INTERVAL * 1000);
+    logger.info(`Session cleanup interval started: ${config.SESSION_CLEANUP_INTERVAL}s`);
   }
 
   /**
-   * Cleanup all sessions and connections
+   * Stop periodic cleanup of expired sessions
+   */
+  stopCleanupInterval() {
+    if (this.cleanupIntervalId) {
+      clearInterval(this.cleanupIntervalId);
+      this.cleanupIntervalId = null;
+      logger.info('Session cleanup interval stopped.');
+    }
+  }
+
+  /**
+   * Cleanup all sessions and intervals
    */
   async cleanup() {
-    logger.info('Starting SessionManager cleanup...');
-    
-    // Close all WebSocket connections
-    for (const connection of this.connections.values()) {
-      if (connection.readyState === 1) {
-        connection.close(1000, 'Service shutdown');
+    this.stopCleanupInterval();
+    for (const sessionId of this.sessions.keys()) {
+      await this.deleteSession(sessionId);
+    }
+    this.sessions.clear();
+    this.connections.clear();
+    logger.info('SessionManager fully cleaned up.');
+  }
+
+  /**
+   * Get the count of active sessions
+   * @returns {number} Number of active sessions
+   */
+  getActiveSessionCount() {
+    return this.sessions.size;
+  }
+
+  /**
+   * Add a command to a session
+   * @param {string} sessionId - Session ID
+   * @param {Object} command - Command object
+   */
+  addCommand(sessionId, command) {
+    const session = this.sessions.get(sessionId);
+    if (session) {
+      if (!session.commands) {
+        session.commands = [];
+      }
+      session.commands.push(command);
+      this.updateLastActivity(sessionId);
+    }
+  }
+
+  /**
+   * Check and process expired sessions
+   */
+  checkExpiredSessions() {
+    for (const session of this.sessions.values()) {
+      if (this.isExpired(session)) {
+        session.status = 'expired';
+        logger.info(`Session expired: ${session.id}`);
       }
     }
-    
-    this.connections.clear();
-    this.sessions.clear();
-    
-    logger.info('SessionManager cleanup completed');
+  }
+
+  /**
+   * Get session statistics
+   * @returns {Object} Session statistics
+   */
+  getStatistics() {
+    const sessions = Array.from(this.sessions.values());
+    return {
+      total: sessions.length,
+      connected: sessions.filter(s => s.isConnected).length,
+      active: sessions.filter(s => s.status === 'active' || s.status === 'connected').length,
+      created: sessions.filter(s => s.status === 'created').length,
+      expired: sessions.filter(s => s.status === 'expired').length
+    };
   }
 }
 

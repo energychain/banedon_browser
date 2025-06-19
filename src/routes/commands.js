@@ -30,9 +30,18 @@ function createCommandRoutes(sessionManager) {
         }
       });
     } catch (error) {
-      logger.error('Failed to execute command:', error);
+      logger.error(`Failed to execute command for session ${req.params.sessionId}:`, error);
+
+      if (error.message.includes('No active browser connection')) {
+        return res.status(400).json({
+          success: false,
+          message: 'No active browser connection for this session'
+        });
+      }
+
       res.status(500).json({
         success: false,
+        message: 'Internal Server Error',
         error: error.message
       });
     }

@@ -23,7 +23,7 @@ class NaturalLanguageTaskService {
   }
 
   /**
-   * Process a natural language task
+   * Process a natural language task with iterative execution
    * @param {string} sessionId - Session ID
    * @param {string} taskDescription - Natural language description of the task
    * @returns {Promise<Object>} Task execution result with AI analysis
@@ -37,41 +37,78 @@ class NaturalLanguageTaskService {
 
       // Add user message to history and get the latest history
       this.sessionManager.addToHistory(sessionId, { role: 'user', content: taskDescription });
-      const history = this.sessionManager.getHistory(sessionId);
+      let history = this.sessionManager.getHistory(sessionId);
 
       logger.info(`Processing natural language task for session ${sessionId}: ${taskDescription}`);
 
-      const screenshotResult = await this.takeScreenshot(sessionId);
+      let screenshotResult = await this.takeScreenshot(sessionId);
+      let analysis = await this.analyzeTaskAndPage(history, screenshotResult.base64);
       
-      const analysis = await this.analyzeTaskAndPage(history, screenshotResult.base64);
-      
-      // Add AI's thought process and response to history
-      const assistantResponse = (analysis.thought ? `Thinking: ${analysis.thought}\n\n` : '') + (analysis.response || '');
-      if (assistantResponse) {
-        this.sessionManager.addToHistory(sessionId, { role: 'assistant', content: assistantResponse });
+      // Add AI's initial response to history
+      const initialResponse = (analysis.thought ? `Thinking: ${analysis.thought}\n\n` : '') + (analysis.response || '');
+      if (initialResponse) {
+        this.sessionManager.addToHistory(sessionId, { role: 'assistant', content: initialResponse });
       }
       
-      let executionResult = null;
+      let executionResult = [];
       let afterScreenshot = null;
-      let finalAnalysis = null;
-
-      if (analysis.requiresAction && analysis.actions && analysis.actions.length > 0) {
+      let iterationCount = 0;
+      const maxIterations = 10; // Prevent infinite loops
+      
+      // Iterative execution until task is complete or max iterations reached
+      while (analysis.requiresAction && analysis.actions && analysis.actions.length > 0 && iterationCount < maxIterations) {
+        iterationCount++;
+        logger.info(`Iteration ${iterationCount}: Executing ${analysis.actions.length} actions`);
+        
         try {
-          executionResult = await this.executeTaskActions(sessionId, analysis.actions);
+          const iterationResult = await this.executeTaskActions(sessionId, analysis.actions);
+          executionResult.push(...iterationResult);
+          
+          // Take screenshot after actions
           afterScreenshot = await this.takeScreenshot(sessionId);
           
           if (afterScreenshot.base64 && !afterScreenshot.error) {
-            const updatedHistory = this.sessionManager.getHistory(sessionId);
-            finalAnalysis = await this.analyzePageAfterAction(updatedHistory, afterScreenshot.base64);
+            history = this.sessionManager.getHistory(sessionId);
             
-            if (finalAnalysis.description) {
-              this.sessionManager.addToHistory(sessionId, { role: 'assistant', content: finalAnalysis.description });
+            // Check if task is complete or needs more actions
+            const continueAnalysis = await this.analyzePageAfterActionForContinuation(
+              history, 
+              afterScreenshot.base64, 
+              taskDescription
+            );
+            
+            if (continueAnalysis.description) {
+              this.sessionManager.addToHistory(sessionId, { role: 'assistant', content: continueAnalysis.description });
             }
+            
+            // If task is complete or no more actions needed, break the loop
+            if (continueAnalysis.taskCompleted || !continueAnalysis.requiresAction || !continueAnalysis.actions || continueAnalysis.actions.length === 0) {
+              break;
+            }
+            
+            // Update analysis for next iteration
+            analysis = continueAnalysis;
+            screenshotResult = afterScreenshot;
+          } else {
+            // If we can't take a screenshot, break to avoid infinite loop
+            logger.warn('Cannot take screenshot for next iteration, stopping');
+            break;
           }
         } catch (executeError) {
           logger.error('Failed to execute task actions:', executeError);
-          this.sessionManager.addToHistory(sessionId, { role: 'assistant', content: `I failed to execute the action. Error: ${executeError.message}` });
+          this.sessionManager.addToHistory(sessionId, { 
+            role: 'assistant', 
+            content: `I encountered an error while trying to complete the task: ${executeError.message}` 
+          });
+          break;
         }
+      }
+      
+      if (iterationCount >= maxIterations) {
+        this.sessionManager.addToHistory(sessionId, { 
+          role: 'assistant', 
+          content: `I reached the maximum number of attempts (${maxIterations}) for this task. The task may be too complex or there might be an issue with the website.` 
+        });
       }
       
       const finalHistory = this.sessionManager.getHistory(sessionId);
@@ -88,6 +125,7 @@ class NaturalLanguageTaskService {
         executionResult,
         beforeScreenshot: screenshotResult,
         afterScreenshot,
+        iterations: iterationCount,
         success: true,
         timestamp: new Date().toISOString()
       };
@@ -189,9 +227,18 @@ ${historyString}
 
 Your goal is to fulfill the user's latest request: "${lastUserTask}"
 
+IMPORTANT AUTOMATION RULES:
+- Handle routine website interactions automatically without asking the user
+- Cookie consent dialogs: Always accept/dismiss automatically (click "Accept", "OK", "I agree", etc.)
+- Newsletter signups, promotional popups: Dismiss automatically (click "No thanks", "X", "Close", etc.)
+- Age verification, country selection: Choose reasonable defaults automatically
+- Only ask the user for input when truly necessary (login credentials, specific preferences, etc.)
+- Your goal is to complete the user's task end-to-end, not stop at intermediate steps
+
 Based on the conversation history, the user's request, and the provided screenshot of the current page, create a plan.
 - If the request is ambiguous, ask a clarifying question.
 - If the request is complex, break it down into simple steps.
+- If you see routine dialogs (cookies, popups), handle them automatically in your actions.
 - If you have enough information, define the next action to take.
 - Always think step-by-step and explain your reasoning.
 
@@ -253,6 +300,14 @@ ${historyString}
 ---
 
 Your goal is to fulfill the user's latest request: "${lastUserTask}"
+
+IMPORTANT AUTOMATION RULES:
+- Handle routine website interactions automatically without asking the user
+- Cookie consent dialogs: Always accept/dismiss automatically
+- Newsletter signups, promotional popups: Dismiss automatically  
+- Age verification, country selection: Choose reasonable defaults automatically
+- Only ask the user for input when truly necessary (login credentials, specific preferences, etc.)
+- Your goal is to complete the user's task end-to-end, not stop at intermediate steps
 
 Based on the conversation history and the user's request, create a plan.
 - If the request is ambiguous, ask a clarifying question.
@@ -374,6 +429,83 @@ Respond ONLY with valid JSON in this exact format:
     } catch (error) {
       logger.error('Error analyzing result with Gemini:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Analyze page after action execution for continuation
+   * @private
+   */
+  async analyzePageAfterActionForContinuation(history, screenshotBase64, originalTask) {
+    try {
+      const historyString = history.map(h => `${h.role}: ${h.content}`).join('\n');
+
+      const prompt = `
+You are a conversational AI agent analyzing the result of a browser action to determine if more actions are needed.
+
+ORIGINAL USER TASK: "${originalTask}"
+
+CONVERSATION HISTORY:
+---
+${historyString}
+---
+
+IMPORTANT AUTOMATION RULES:
+- Handle routine website interactions automatically without asking the user
+- Cookie consent dialogs: Always accept/dismiss automatically (click "Accept", "OK", "I agree", etc.)
+- Newsletter signups, promotional popups: Dismiss automatically (click "No thanks", "X", "Close", etc.)
+- Age verification, country selection: Choose reasonable defaults automatically
+- Only ask the user for input when truly necessary (login credentials, specific preferences, etc.)
+- Your goal is to complete the user's task end-to-end, not stop at intermediate steps
+
+Look at the current screenshot and determine:
+1. Did the last action succeed?
+2. Is the original task complete? (e.g., if user wanted flight info, do we have actual flight schedules displayed?)
+3. Are there routine dialogs/popups that need to be handled automatically?
+4. What is the next action needed to complete the original task?
+
+Respond ONLY with valid JSON in this exact format:
+{
+  "description": "Describe what you see on the page now and the current status of the task.",
+  "taskCompleted": false,
+  "requiresAction": true,
+  "actions": [{"type": "click", "description": "Accept cookies", "payload": {"selector": "[data-testid='accept-cookies']"}}],
+  "confidence": "high"
+}
+`;
+
+      const imagePart = {
+        inlineData: {
+          data: screenshotBase64,
+          mimeType: 'image/png'
+        }
+      };
+
+      const result = await this.model.generateContent([prompt, imagePart]);
+      const response = await result.response;
+      const text = response.text().trim();
+      
+      const parsed = this._parseGeminiResponse(text);
+      if (parsed.error) {
+        logger.warn('Failed to parse continuation analysis response, assuming task incomplete');
+        return {
+          description: text,
+          taskCompleted: false,
+          requiresAction: false,
+          actions: [],
+          confidence: 'low'
+        };
+      }
+      return parsed;
+    } catch (error) {
+      logger.error('Error analyzing page for continuation:', error);
+      return {
+        description: `Error analyzing page: ${error.message}`,
+        taskCompleted: false,
+        requiresAction: false,
+        actions: [],
+        confidence: 'low'
+      };
     }
   }
 
