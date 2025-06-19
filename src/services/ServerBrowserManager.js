@@ -67,7 +67,7 @@ class ServerBrowserManager {
           '--disable-backgrounding-occluded-windows',
           '--window-size=1920,1080',
           '--disable-web-security', // Consider if this is truly needed long-term
-          '--disable-features=VizDisplayCompositor',
+          //'--disable-features=VizDisplayCompositor', // This can cause issues with screenshots
           '--mute-audio',
           `--user-data-dir=${userDataDir}`,
           '--disable-crash-reporter', // Disable Chrome\'s own crash reporting
@@ -226,6 +226,16 @@ class ServerBrowserManager {
               into: typeSelector,
               timestamp: new Date().toISOString()
             }
+          };
+
+        case 'get_text':
+          const bodyText = await page.evaluate(() => document.body.innerText);
+          return {
+              success: true,
+              result: {
+                  text: bodyText,
+                  timestamp: new Date().toISOString()
+              }
           };
 
         default:

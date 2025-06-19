@@ -61,6 +61,16 @@ class NaturalLanguageTaskService {
             }];
           }
         }
+
+        let summaryData = null;
+        const requiresSummary = taskDescription.toLowerCase().includes('summary') || taskDescription.toLowerCase().includes('zusammenfassung') || taskDescription.toLowerCase().includes('résumé');
+        if (requiresSummary) {
+            try {
+                summaryData = await this.summarizePageTextOnly(sessionId, taskDescription);
+            } catch (summaryError) {
+                logger.error('Failed to get summary:', summaryError);
+            }
+        }
         
         return {
           taskId: uuidv4(),
@@ -69,6 +79,7 @@ class NaturalLanguageTaskService {
           screenshot: screenshotResult,
           analysis: textOnlyAnalysis,
           executionResult,
+          summary: summaryData,
           success: true,
           timestamp: new Date().toISOString(),
           note: "Processed without screenshot due to browser limitations",
@@ -79,6 +90,9 @@ class NaturalLanguageTaskService {
       // Analyze the task and current page state with screenshot
       const analysis = await this.analyzeTaskAndPage(taskDescription, screenshotResult.base64);
       
+      const requiresSummary = taskDescription.toLowerCase().includes('summary') || taskDescription.toLowerCase().includes('zusammenfassung') || taskDescription.toLowerCase().includes('résumé');
+      let summaryData = null;
+
       // Execute the task if it requires action
       let executionResult = null;
       if (analysis.requiresAction && analysis.actions && analysis.actions.length > 0) {
@@ -97,6 +111,9 @@ class NaturalLanguageTaskService {
                 analysis.description,
                 afterScreenshot.base64
               );
+              if (requiresSummary) {
+                  summaryData = await this.summarizePageWithScreenshot(sessionId, taskDescription, afterScreenshot.base64);
+              }
             } catch (finalAnalysisError) {
               logger.warn('Failed final analysis, using fallback');
               finalAnalysis = {
@@ -125,6 +142,7 @@ class NaturalLanguageTaskService {
             finalDescription: finalAnalysis.description,
             actionsExecuted: analysis.actions,
             executionResult,
+            summary: summaryData,
             success: true,
             timestamp: new Date().toISOString()
           };
@@ -144,6 +162,9 @@ class NaturalLanguageTaskService {
         }
       } else {
         // Just observation task
+        if (requiresSummary) {
+            summaryData = await this.summarizePageWithScreenshot(sessionId, taskDescription, screenshotResult.base64);
+        }
         return {
           taskId: uuidv4(),
           sessionId,
@@ -151,6 +172,7 @@ class NaturalLanguageTaskService {
           screenshot: screenshotResult,
           description: analysis.description,
           analysis,
+          summary: summaryData,
           requiresAction: false,
           success: true,
           timestamp: new Date().toISOString()
@@ -388,21 +410,23 @@ Respond in this JSON format:
   async analyzePageAfterAction(originalTask, previousDescription, screenshotBase64) {
     try {
       const prompt = `
-You are an AI assistant analyzing the result of a browser automation task.
+You are an AI assistant analyzing the result of a browser automation task. The user's request can be in any language.
 
 Original task: "${originalTask}"
 Previous page description: "${previousDescription}"
 
 Look at the new screenshot and describe:
-1. What has changed from the previous state
-2. Whether the original task appears to have been completed successfully
-3. What the user should know about the current page state
+1. What has changed from the previous state.
+2. Whether the original task appears to have been completed successfully.
+3. A summary of the main content on the page, especially if the user asked for a summary or headlines.
+4. What the user should know about the current page state.
 
 Provide a clear, concise description of the current state and whether the task was successful.
+The response should be in the same language as the user's request.
 
 Respond in this JSON format:
 {
-  "description": "Description of current page state",
+  "description": "Description of current page state and summary of content.",
   "taskCompleted": true/false,
   "changes": "What changed from the previous state",
   "nextSteps": "Suggested next steps if any"
@@ -471,6 +495,113 @@ Respond in this JSON format:
     }
     
     return results;
+  }
+
+  /**
+   * Summarize page content with screenshot
+   * @private
+   */
+  async summarizePageWithScreenshot(sessionId, taskDescription, screenshotBase64) {
+    try {
+        const contentResult = await this.commandExecutor.executeCommand(sessionId, {
+            type: 'get_text',
+            payload: {}
+        });
+
+        if (!contentResult.result || !contentResult.result.text) {
+            throw new Error('Could not get page content.');
+        }
+
+        const pageText = contentResult.result.text;
+
+        const prompt = `
+You are an AI assistant. The user wants a summary of the current page.
+User's request: "${taskDescription}"
+
+Here is a screenshot of the page and the extracted text content.
+Page content:
+---
+${pageText.substring(0, 8000)}
+---
+
+Based on the user's request, the screenshot, and the page content, provide a concise summary of the main points.
+If the user asks for headlines, list the main headlines.
+The response should be in the same language as the user's request.
+
+Respond with a JSON object in this format:
+{
+  "summary": "Your summary here.",
+  "headlines": ["Headline 1", "Headline 2", ...]
+}
+`;
+        const imagePart = {
+            inlineData: {
+              data: screenshotBase64,
+              mimeType: 'image/png'
+            }
+        };
+
+        const result = await this.model.generateContent([prompt, imagePart]);
+        const response = await result.response;
+        const text = response.text().trim();
+        let cleanText = text;
+        if (cleanText.startsWith('```json')) {
+          cleanText = cleanText.replace(/\`\`\`json\n?/, '').replace(/\n?\`\`\`$/, '');
+        }
+        return JSON.parse(cleanText);
+    } catch (error) {
+        logger.error('Error summarizing page (with screenshot):', error);
+        return this.summarizePageTextOnly(sessionId, taskDescription); // Fallback to text only
+    }
+  }
+
+  /**
+   * Summarize page content without screenshot
+   * @private
+   */
+  async summarizePageTextOnly(sessionId, taskDescription) {
+    try {
+        const contentResult = await this.commandExecutor.executeCommand(sessionId, {
+            type: 'get_text',
+            payload: {}
+        });
+
+        if (!contentResult.result || !contentResult.result.text) {
+            throw new Error('Could not get page content.');
+        }
+
+        const pageText = contentResult.result.text;
+
+        const prompt = `
+You are an AI assistant. The user wants a summary of the current page.
+User's request: "${taskDescription}"
+Page content:
+---
+${pageText.substring(0, 8000)}
+---
+
+Based on the user's request and the page content, provide a concise summary of the main points.
+If the user asks for headlines, list the main headlines.
+The response should be in the same language as the user's request.
+
+Respond with a JSON object in this format:
+{
+  "summary": "Your summary here.",
+  "headlines": ["Headline 1", "Headline 2", ...]
+}
+`;
+        const result = await this.model.generateContent([prompt]);
+        const response = await result.response;
+        const text = response.text().trim();
+        let cleanText = text;
+        if (cleanText.startsWith('```json')) {
+          cleanText = cleanText.replace(/\`\`\`json\n?/, '').replace(/\n?\`\`\`$/, '');
+        }
+        return JSON.parse(cleanText);
+    } catch (error) {
+        logger.error('Error summarizing page (text-only):', error);
+        return { summary: 'Could not summarize the page.', headlines: [] };
+    }
   }
 
   /**

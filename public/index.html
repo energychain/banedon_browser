@@ -810,111 +810,98 @@
                 });
 
                 const data = await response.json();
+                nlResponseDiv.textContent = JSON.stringify(data, null, 2); // for debugging
 
                 if (!response.ok) {
                     const errorMsg = data.error || `HTTP error! status: ${response.status}`;
-                    resultDiv.innerHTML = `<p class="error">Error: ${errorMsg}</p>`;
-                    nlResponseDiv.textContent = JSON.stringify(data, null, 2);
+                    resultDiv.innerHTML = `<p class="error">Error: ${errorMsg}</p><pre>${JSON.stringify(data, null, 2)}</pre>`;
                     return;
                 }
 
-                // Display the results
-                resultDiv.innerHTML = ''; // Clear previous results
+                resultDiv.innerHTML = ''; // Clear loading message
 
                 if (data.success && data.task) {
                     const task = data.task;
-                    let outputHtml = `
-                      <h3>Natural Language Task Result</h3>
-                      <p><strong>Task ID:</strong> ${task.taskId}</p>
-                      <p><strong>Timestamp:</strong> ${new Date(task.timestamp).toLocaleString()}</p>
-                      <p><strong>Description:</strong> ${task.taskDescription}</p>
-                    `;
+                    let outputHtml = `<h3>Natural Language Task Result</h3>`;
 
-                    if (task.analysis) {
-                      outputHtml += `
-                        <h4>Analysis</h4>
-                        <p>${task.analysis.description || 'No analysis description available.'}</p>
-                        <p><strong>Requires Action:</strong> ${task.analysis.requiresAction ? 'Yes' : 'No'}</p>
-                      `;
+                    if (task.taskDescription) {
+                        outputHtml += `<p><strong>Task:</strong> ${task.taskDescription}</p>`;
                     }
 
-                    if (task.executionResult && task.executionResult.length > 0) {
-                      outputHtml += '<h4>Execution Results</h4>';
-                      task.executionResult.forEach((res, index) => {
-                        outputHtml += `
-                          <div class="execution-result">
-                            <p><strong>Action ${index + 1}:</strong> ${res.action}</p>
-                            <p><strong>Success:</strong> ${res.success}</p>
-                            ${res.result ? `<p><strong>Output:</strong> <pre>${JSON.stringify(res.result.output, null, 2)}</pre></p>` : ''}
-                            ${res.error ? `<p><strong>Error:</strong> ${res.error}</p>` : ''}
-                          </div>
-                        `;
-                      });
+                    // Summary and Headlines
+                    if (task.summary) {
+                        if (task.summary.summary) {
+                            outputHtml += `<h4>Summary</h4><p>${task.summary.summary.replace(/\n/g, '<br>')}</p>`;
+                        }
+                        if (task.summary.headlines && task.summary.headlines.length > 0) {
+                            outputHtml += '<h5>Headlines:</h5><ul>';
+                            task.summary.headlines.forEach(headline => {
+                                outputHtml += `<li>${headline}</li>`;
+                            });
+                            outputHtml += '</ul>';
+                        }
                     }
                     
-                    if (task.screenshot && task.screenshot.path) {
+                    // Final Analysis from AI
+                    if (task.finalDescription) {
+                         outputHtml += `<h4>Analysis</h4><p>${task.finalDescription}</p>`;
+                    } else if (task.analysis && task.analysis.description) {
+                         outputHtml += `<h4>Analysis</h4><p>${task.analysis.description}</p>`;
+                    }
+
+                    // Screenshots
+                    if (task.beforeScreenshot && task.beforeScreenshot.url) {
                         outputHtml += `<h4>Screenshots</h4>
-                        <div class="screenshot-container">
+                        <div class="screenshot-container" style="display: flex; gap: 10px; justify-content: center;">
                             <figure>
                                 <figcaption>Before</figcaption>
-                                <img src="${task.screenshot.path}" alt="Before execution">
+                                <img src="${task.beforeScreenshot.url}" alt="Before execution" class="screenshot-preview">
                             </figure>`;
-                        if (task.afterScreenshot && task.afterScreenshot.path) {
+                        if (task.afterScreenshot && task.afterScreenshot.url) {
                             outputHtml += `
                             <figure>
                                 <figcaption>After</figcaption>
-                                <img src="${task.afterScreenshot.path}" alt="After execution">
+                                <img src="${task.afterScreenshot.url}" alt="After execution" class="screenshot-preview">
                             </figure>`;
                         }
                         outputHtml += `</div>`;
+                    } else if (task.screenshot && task.screenshot.url) { // Fallback for single screenshot
+                        outputHtml += `<h4>Screenshot</h4>
+                        <div class="screenshot-container">
+                            <figure>
+                                <img src="${task.screenshot.url}" alt="Browser state" class="screenshot-preview">
+                            </figure>
+                        </div>`;
                     }
 
-
-                    if (task.finalAnalysis) {
-                      outputHtml += `
-                        <h4>Final Analysis</h4>
-                        <p>${task.finalAnalysis.description || 'No final analysis available.'}</p>
-                      `;
+                    // Execution Results
+                    if (task.executionResult && task.executionResult.length > 0) {
+                      outputHtml += '<h4>Execution Details</h4>';
+                      task.executionResult.forEach((res, index) => {
+                        const actionDetail = res.action.description ? res.action.description : JSON.stringify(res.action);
+                        outputHtml += `
+                          <div class="execution-result">
+                            <p><strong>Action ${index + 1}:</strong> ${actionDetail}</p>
+                            <p><strong>Success:</strong> ${res.success}</p>`;
+                        if (res.result && res.result.output) {
+                            outputHtml += `<p><strong>Output:</strong> <pre>${JSON.stringify(res.result.output, null, 2)}</pre></p>`;
+                        }
+                        if (res.error) {
+                            outputHtml += `<p><strong>Error:</strong> ${res.error}</p>`;
+                        }
+                        outputHtml += `</div>`;
+                      });
                     }
 
                     resultDiv.innerHTML = outputHtml;
+
                 } else {
-                  resultDiv.innerHTML = `<p>Error: ${data.error || 'Failed to execute task.'}</p>`;
+                  resultDiv.innerHTML = `<p class="error">Error: ${data.error || 'Failed to execute task.'}</p>`;
                   if (data.task) {
                     resultDiv.innerHTML += `<pre>${JSON.stringify(data.task, null, 2)}</pre>`;
+                  } else {
+                    resultDiv.innerHTML += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
                   }
-                }
-
-                const llmAnswerDiv = document.createElement('div');
-                llmAnswerDiv.className = 'llm-answer';
-
-                let llmResponseText = "Task completed successfully.";
-                if (data.task && data.task.response) {
-                    llmResponseText = data.task.response;
-                } else if (data.task && data.task.summary) {
-                    llmResponseText = data.task.summary;
-                } else if (data.task && typeof data.task.result === 'string') {
-                    llmResponseText = data.task.result;
-                }
-
-                llmAnswerDiv.textContent = llmResponseText;
-                browserContentDiv.appendChild(llmAnswerDiv);
-
-                if (data.task && data.task.screenshot) {
-                    const screenshotContainer = document.createElement('div');
-                    screenshotContainer.className = 'screenshot-container';
-                    
-                    const img = document.createElement('img');
-                    img.src = `data:image/png;base64,${data.task.screenshot}`;
-                    img.alt = 'Browser Screenshot Preview';
-                    img.className = 'screenshot-preview';
-                    
-                    img.onclick = () => {
-                        img.classList.toggle('expanded');
-                    };
-
-                    screenshotContainer.appendChild(img);
-                    browserContentDiv.appendChild(screenshotContainer);
                 }
 
             } catch (error) {
