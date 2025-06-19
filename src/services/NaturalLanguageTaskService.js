@@ -42,7 +42,7 @@ class NaturalLanguageTaskService {
       logger.info(`Processing natural language task for session ${sessionId}: ${taskDescription}`);
 
       let screenshotResult = await this.takeScreenshot(sessionId);
-      let analysis = await this.analyzeTaskAndPage(history, screenshotResult.base64);
+      let analysis = await this.analyzeTaskWithElements(history, screenshotResult.base64, sessionId);
       
       // Add AI's initial response to history
       const initialResponse = (analysis.thought ? `Thinking: ${analysis.thought}\n\n` : '') + (analysis.response || '');
@@ -71,10 +71,11 @@ class NaturalLanguageTaskService {
             history = this.sessionManager.getHistory(sessionId);
             
             // Check if task is complete or needs more actions
-            const continueAnalysis = await this.analyzePageAfterActionForContinuation(
+            const continueAnalysis = await this.analyzePageAfterActionForContinuationWithElements(
               history, 
               afterScreenshot.base64, 
-              taskDescription
+              taskDescription,
+              sessionId
             );
             
             if (continueAnalysis.description) {
@@ -255,7 +256,7 @@ class NaturalLanguageTaskService {
       const lastUserTask = history.filter(h => h.role === 'user').pop()?.content || '';
 
       const prompt = `
-You are a conversational AI agent that helps users accomplish tasks in a web browser.
+You are a conversational AI agent that controls a web browser like a human user would.
 
 CONVERSATION HISTORY:
 ---
@@ -264,37 +265,41 @@ ${historyString}
 
 Your goal is to fulfill the user's latest request: "${lastUserTask}"
 
-IMPORTANT AUTOMATION RULES:
-- Handle routine website interactions automatically without asking the user
-- Cookie consent dialogs: Look for buttons containing consent-related text. Use simple selectors like "button", "[role='button']", "div[role='button']". Look for elements with IDs/classes containing "accept", "consent", "cookie", "agree"
-- For cookie consent, try these selector strategies in order:
-  1. Simple selectors: "button" (the system will automatically find buttons with accept-related text)
-  2. ID/class patterns: button[id*="accept"], [class*="accept"] 
-  3. Let the system try fallbacks automatically - just use "button" as selector
-- Use valid CSS selectors: button[id*="accept"], [class*="accept"], [data-*="accept"]
-- For popups: Look for close buttons, "X" symbols, "No thanks", "Dismiss", "Skip" 
-- Age verification, country selection: Choose reasonable defaults automatically
-- When a selector fails, try these fallback strategies:
-  1. Use "button" selector (system will auto-find consent buttons)
-  2. Try common patterns: button[id*="accept"], [class*="accept"]
-  3. Trust the system's built-in fallback mechanisms
-- For cookie consent, just use "button" as the selector - the system will automatically find the right button
-- Only ask the user for input when truly necessary (login credentials, specific preferences, etc.)
-- Your goal is to complete the user's task end-to-end, not stop at intermediate steps
+HUMAN-LIKE INTERACTION RULES:
+- You see the page through screenshots, just like a human
+- You interact using mouse clicks at specific coordinates (x, y positions)
+- You can scroll the page to see more content
+- You can type text using the keyboard
+- You can press specific keys (Enter, Tab, Escape, etc.)
+- Handle routine interactions automatically (cookie consent, popups) without asking the user
+- Use visual cues to find elements rather than CSS selectors
 
-Based on the conversation history, the user's request, and the provided screenshot of the current page, create a plan.
-- If the request is ambiguous, ask a clarifying question.
-- If the request is complex, break it down into simple steps.
-- If you see routine dialogs (cookies, popups), handle them automatically in your actions.
-- If you have enough information, define the next action to take.
-- Always think step-by-step and explain your reasoning.
+AVAILABLE ACTIONS:
+- navigate: Go to a URL
+- click_coordinate: Click at specific x,y coordinates  
+- scroll: Scroll the page (deltaY: positive=down, negative=up)
+- type_text: Type text at the current cursor position
+- key_press: Press a specific key (Enter, Tab, Escape, etc.)
+- hover_coordinate: Hover mouse at x,y coordinates
+- get_page_elements: Get list of clickable elements with their positions
+- screenshot: Take a screenshot to see current page state
+
+INTERACTION STRATEGY:
+1. Look at the screenshot to see what's currently visible
+2. If you need element positions, first use get_page_elements to get a list of clickable elements with coordinates
+3. Use click_coordinate with the x,y position to click on buttons, links, etc.
+4. Scroll down/up to see more content if needed
+5. Type text and press keys as a human would
+6. For routine tasks (cookie consent), just click the appropriate coordinates
+
+Based on the screenshot and user request, decide what to do next. Think like a human user would.
 
 Respond ONLY with valid JSON in this exact format:
 {
-  "thought": "Your step-by-step reasoning and plan. You are looking at the screenshot and deciding what to do next based on the user's request.",
-  "response": "A conversational response to the user. This can be a status update ('Okay, I will now go to the website...') or a clarifying question.",
+  "thought": "I can see [describe what you see in the screenshot]. I need to [describe your plan step by step].",
+  "response": "A conversational response to the user about what you're doing.",
   "requiresAction": true,
-  "actions": [{"type": "navigate", "description": "Navigate to URL", "payload": {"url": "https://example.com"}}],
+  "actions": [{"type": "get_page_elements", "description": "Get clickable elements to find cookie consent button", "payload": {}}],
   "confidence": "high"
 }
 `;
@@ -480,15 +485,23 @@ Respond ONLY with valid JSON in this exact format:
   }
 
   /**
-   * Analyze page after action execution for continuation
+   * Enhanced continuation analysis with element coordinates
    * @private
    */
-  async analyzePageAfterActionForContinuation(history, screenshotBase64, originalTask) {
+  async analyzePageAfterActionForContinuationWithElements(history, screenshotBase64, originalTask, sessionId) {
     try {
+      // Get page elements for coordinate-based interactions
+      const elements = await this.getPageElementsForAnalysis(sessionId);
+      
       const historyString = history.map(h => `${h.role}: ${h.content}`).join('\n');
 
+      const elementsInfo = elements.length > 0 ? 
+        `\n\nCLICKABLE ELEMENTS ON PAGE:\n${elements.map(el => 
+          `- ${el.tagName} at (${el.x}, ${el.y}): "${el.text || el.ariaLabel || el.placeholder || 'no text'}" ${el.className ? `[class: ${el.className.slice(0, 50)}]` : ''}`
+        ).join('\n')}` : '';
+
       const prompt = `
-You are a conversational AI agent analyzing the result of a browser action to determine if more actions are needed.
+You are analyzing the result of a browser action, working like a human user.
 
 ORIGINAL USER TASK: "${originalTask}"
 
@@ -497,31 +510,26 @@ CONVERSATION HISTORY:
 ${historyString}
 ---
 
-IMPORTANT AUTOMATION RULES:
-- Handle routine website interactions automatically without asking the user
-- Cookie consent dialogs: Look for buttons containing consent-related text. Use simple selectors like "button", "[role='button']", "div[role='button']". Look for elements with IDs/classes containing "accept", "consent", "cookie", "agree"
-- Use valid CSS selectors: button[id*="accept"], [class*="accept"], [data-*="accept"]
-- For popups: Look for close buttons, "X" symbols, "No thanks", "Dismiss", "Skip" 
-- Age verification, country selection: Choose reasonable defaults automatically
-- When a selector fails, try these fallback strategies:
-  1. Try broad selectors like "button" and look for text content in the description
-  2. Try common patterns: #accept, .accept, [aria-label*="accept"]
-  3. Look for the most prominent button on modal dialogs
-- Only ask the user for input when truly necessary (login credentials, specific preferences, etc.)
-- Your goal is to complete the user's task end-to-end, not stop at intermediate steps
+${elementsInfo}
 
-Look at the current screenshot and determine:
+ANALYSIS APPROACH:
+- Look at the screenshot to see what happened after the last action
+- Use the element list to identify what can be clicked at specific coordinates
+- For routine tasks (cookie consent), find and click appropriate buttons automatically
+- Determine if the original task is complete or needs more actions
+
+Key Questions:
 1. Did the last action succeed?
-2. Is the original task complete? (e.g., if user wanted flight info, do we have actual flight schedules displayed?)
-3. Are there routine dialogs/popups that need to be handled automatically?
-4. What is the next action needed to complete the original task?
+2. Is the original task complete? (e.g., if user wanted flight info, do we see flight schedules?)
+3. Are there routine dialogs that need handling?
+4. What coordinates should be clicked next?
 
 Respond ONLY with valid JSON in this exact format:
 {
-  "description": "Describe what you see on the page now and the current status of the task.",
+  "description": "Describe what you see and the current task status.",
   "taskCompleted": false,
   "requiresAction": true,
-  "actions": [{"type": "click", "description": "Accept cookies", "payload": {"selector": "[data-testid='accept-cookies']"}}],
+  "actions": [{"type": "click_coordinate", "description": "Click specific element", "payload": {"x": 150, "y": 200}}],
   "confidence": "high"
 }
 `;
@@ -539,25 +547,13 @@ Respond ONLY with valid JSON in this exact format:
       
       const parsed = this._parseGeminiResponse(text);
       if (parsed.error) {
-        logger.warn('Failed to parse continuation analysis response, assuming task incomplete');
-        return {
-          description: text,
-          taskCompleted: false,
-          requiresAction: false,
-          actions: [],
-          confidence: 'low'
-        };
+        logger.warn('Failed to parse enhanced continuation analysis, falling back');
+        return this.analyzePageAfterActionForContinuation(history, screenshotBase64, originalTask);
       }
       return parsed;
     } catch (error) {
-      logger.error('Error analyzing page for continuation:', error);
-      return {
-        description: `Error analyzing page: ${error.message}`,
-        taskCompleted: false,
-        requiresAction: false,
-        actions: [],
-        confidence: 'low'
-      };
+      logger.error('Error in enhanced continuation analysis:', error);
+      return this.analyzePageAfterActionForContinuation(history, screenshotBase64, originalTask);
     }
   }
 
@@ -796,46 +792,100 @@ Respond with a JSON object in this format:
   }
 
   /**
-   * Analyze text-only task (no screenshot)
+   * Get page elements and enhance analysis
    * @private
    */
-  async analyzeTextOnlyTask(taskDescription) {
+  async getPageElementsForAnalysis(sessionId) {
     try {
-      const prompt = `
-Analyze this browser automation task: "${taskDescription}"
-
-Provide a JSON response with the likely actions needed:
-
-{
-  "description": "Description of what this task involves",
-  "requiresAction": true/false,
-  "actions": [{"type": "action_type", "description": "what to do", "payload": {}}],
-  "confidence": "medium"
-}
-
-Common action types: navigate, click, type, scroll, screenshot
-`;
-
-      // Add timeout to Gemini API call
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Gemini API timeout')), 10000);
+      const elementsResult = await this.commandExecutor.executeCommand(sessionId, {
+        type: 'get_page_elements',
+        payload: {}
       });
 
-      const apiCallPromise = this.model.generateContent([prompt]);
+      if (elementsResult.result && elementsResult.result.elements) {
+        return elementsResult.result.elements;
+      }
+      return [];
+    } catch (error) {
+      logger.warn('Failed to get page elements:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Enhanced task processing that combines screenshots with element analysis
+   * @private
+   */
+  async analyzeTaskWithElements(history, screenshotBase64, sessionId) {
+    try {
+      // Get page elements for coordinate-based interactions
+      const elements = await this.getPageElementsForAnalysis(sessionId);
       
-      const result = await Promise.race([apiCallPromise, timeoutPromise]);
+      const historyString = history.map(h => `${h.role}: ${h.content}`).join('\n');
+      const lastUserTask = history.filter(h => h.role === 'user').pop()?.content || '';
+
+      const elementsInfo = elements.length > 0 ? 
+        `\n\nCLICKABLE ELEMENTS ON PAGE:\n${elements.map(el => 
+          `- ${el.tagName} at (${el.x}, ${el.y}): "${el.text || el.ariaLabel || el.placeholder || 'no text'}" ${el.className ? `[class: ${el.className.slice(0, 50)}]` : ''}`
+        ).join('\n')}` : '';
+
+      const prompt = `
+You are a conversational AI agent that controls a web browser like a human user.
+
+CONVERSATION HISTORY:
+---
+${historyString}
+---
+
+Your goal is to fulfill the user's latest request: "${lastUserTask}"
+
+HUMAN-LIKE INTERACTION APPROACH:
+- You see the page through a screenshot and have a list of clickable elements with their coordinates
+- Click directly on coordinates of elements you want to interact with
+- Handle routine interactions (cookie consent, popups) automatically
+- Think step by step like a human user would
+
+${elementsInfo}
+
+INTERACTION STRATEGY:
+1. Look at the screenshot to understand the current page state
+2. Use the element list above to find coordinates for clicking
+3. For cookie consent: Find buttons with "accept", "allow", "agree" in their text and click their coordinates
+4. For forms: Find input fields and buttons by their coordinates
+5. Use scroll if you need to see more content
+
+Based on the screenshot, element list, and user request, decide your next action.
+
+Respond ONLY with valid JSON in this exact format:
+{
+  "thought": "I can see [describe the page]. Looking at the elements, I found [describe relevant elements]. I need to [describe plan].",
+  "response": "A conversational response about what you're doing.",
+  "requiresAction": true,
+  "actions": [{"type": "click_coordinate", "description": "Click accept cookies button", "payload": {"x": 150, "y": 200}}],
+  "confidence": "high"
+}
+`;
+
+      const imagePart = {
+        inlineData: {
+          data: screenshotBase64,
+          mimeType: 'image/png'
+        }
+      };
+
+      const result = await this.model.generateContent([prompt, imagePart]);
       const response = await result.response;
       const text = response.text().trim();
       
       const parsed = this._parseGeminiResponse(text);
       if (parsed.error) {
-        logger.warn('Failed to parse Gemini text-only response as JSON, using fallback');
-        return this.createFallbackAnalysis(taskDescription, text);
+        logger.warn('Failed to parse enhanced analysis response, falling back');
+        return this.analyzeTaskAndPage(history, screenshotBase64);
       }
       return parsed;
     } catch (error) {
-      logger.error('Error with text-only Gemini analysis:', error);
-      return this.createFallbackAnalysis(taskDescription, `Error: ${error.message}`);
+      logger.error('Error in enhanced task analysis:', error);
+      return this.analyzeTaskAndPage(history, screenshotBase64);
     }
   }
 }

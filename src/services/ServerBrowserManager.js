@@ -322,6 +322,102 @@ class ServerBrowserManager {
               }
           };
 
+        case 'click_coordinate':
+          const x = command.payload.x;
+          const y = command.payload.y;
+          await page.mouse.click(x, y);
+          return {
+            success: true,
+            result: {
+              clicked: `coordinates (${x}, ${y})`,
+              timestamp: new Date().toISOString()
+            }
+          };
+
+        case 'scroll':
+          const deltaY = command.payload.deltaY || 300;
+          const deltaX = command.payload.deltaX || 0;
+          await page.mouse.wheel({ deltaX, deltaY });
+          return {
+            success: true,
+            result: {
+              scrolled: `deltaX: ${deltaX}, deltaY: ${deltaY}`,
+              timestamp: new Date().toISOString()
+            }
+          };
+
+        case 'key_press':
+          const key = command.payload.key;
+          await page.keyboard.press(key);
+          return {
+            success: true,
+            result: {
+              pressed: key,
+              timestamp: new Date().toISOString()
+            }
+          };
+
+        case 'type_text':
+          const textToType = command.payload.text;
+          await page.keyboard.type(textToType);
+          return {
+            success: true,
+            result: {
+              typed: textToType,
+              timestamp: new Date().toISOString()
+            }
+          };
+
+        case 'get_page_elements':
+          // Get interactive elements with their positions for AI analysis
+          const elements = await page.evaluate(() => {
+            const clickableElements = Array.from(document.querySelectorAll(
+              'button, input, a, [role="button"], [onclick], select, textarea, [tabindex]'
+            ));
+            
+            return clickableElements.map((el, index) => {
+              const rect = el.getBoundingClientRect();
+              const isVisible = rect.width > 0 && rect.height > 0 && 
+                               getComputedStyle(el).visibility !== 'hidden' &&
+                               getComputedStyle(el).display !== 'none';
+              
+              return {
+                id: index,
+                tagName: el.tagName.toLowerCase(),
+                text: el.textContent?.trim().substring(0, 100) || '',
+                type: el.type || '',
+                placeholder: el.placeholder || '',
+                ariaLabel: el.getAttribute('aria-label') || '',
+                className: el.className || '',
+                x: Math.round(rect.left + rect.width / 2),
+                y: Math.round(rect.top + rect.height / 2),
+                width: Math.round(rect.width),
+                height: Math.round(rect.height),
+                visible: isVisible
+              };
+            }).filter(el => el.visible && el.x > 0 && el.y > 0);
+          });
+
+          return {
+            success: true,
+            result: {
+              elements,
+              timestamp: new Date().toISOString()
+            }
+          };
+
+        case 'hover_coordinate':
+          const hoverX = command.payload.x;
+          const hoverY = command.payload.y;
+          await page.mouse.move(hoverX, hoverY);
+          return {
+            success: true,
+            result: {
+              hovered: `coordinates (${hoverX}, ${hoverY})`,
+              timestamp: new Date().toISOString()
+            }
+          };
+
         default:
           throw new Error(`Unknown command type: ${command.type}`);
       }
