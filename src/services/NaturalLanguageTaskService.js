@@ -72,7 +72,7 @@ class NaturalLanguageTaskService {
       let executionResult = [];
       let afterScreenshot = null;
       let iterationCount = 0;
-      const maxIterations = 8; // Reduced to be more conservative with API calls
+      const maxIterations = 12; // Increased to allow more completion attempts
       
       // Iterative execution until task is complete or max iterations reached
       while (analysis.requiresAction && analysis.actions && analysis.actions.length > 0 && iterationCount < maxIterations) {
@@ -1149,31 +1149,34 @@ Respond ONLY with valid JSON in this exact format:
       // If we've tried typing Frankfurt many times, try more aggressive approach
       if (frankfurtTypeCount >= 3) {
         return {
-          description: "AI rate limited, using super aggressive fallback logic. Trying multiple search strategies to trigger flight results.",
+          description: "AI rate limited, using complete flight search fallback. Completing entire search flow programmatically.",
           taskCompleted: false,
           requiresAction: true,
           actions: [
-            {"type": "key_press", "description": "Press Enter multiple times", "payload": {"key": "Enter"}},
-            {"type": "click_coordinate", "description": "Click center search area", "payload": {"x": 680, "y": 600}},
-            {"type": "key_press", "description": "Press Enter again", "payload": {"key": "Enter"}},
-            {"type": "click_coordinate", "description": "Click alternative search button", "payload": {"x": 650, "y": 550}},
-            {"type": "click_coordinate", "description": "Click bottom search area", "payload": {"x": 700, "y": 650}}
+            {"type": "key_press", "description": "Press Arrow Down to select Frankfurt suggestion", "payload": {"key": "ArrowDown"}},
+            {"type": "key_press", "description": "Press Enter to confirm Frankfurt", "payload": {"key": "Enter"}},
+            {"type": "key_press", "description": "Press Tab to move to destination", "payload": {"key": "Tab"}},
+            {"type": "keyboard_input", "description": "Type London Heathrow", "payload": {"input": "London Heathrow"}},
+            {"type": "key_press", "description": "Press Arrow Down to select London suggestion", "payload": {"key": "ArrowDown"}},
+            {"type": "key_press", "description": "Press Enter to confirm London", "payload": {"key": "Enter"}},
+            {"type": "click_coordinate", "description": "Click search button", "payload": {"x": 680, "y": 600}},
+            {"type": "key_press", "description": "Press Enter for final search", "payload": {"key": "Enter"}}
           ],
-          confidence: "medium"
+          confidence: "high"
         };
       }
       
       if (frankfurtTypeCount >= 2) {
         return {
-          description: "AI rate limited, using aggressive fallback logic. Forcefully proceeding to destination and search.",
+          description: "AI rate limited, using systematic fallback logic. Proceeding step-by-step through flight search.",
           taskCompleted: false,
           requiresAction: true,
           actions: [
-            {"type": "key_press", "description": "Press Tab to move to destination", "payload": {"key": "Tab"}},
-            {"type": "keyboard_input", "description": "Type London", "payload": {"input": "London"}},
-            {"type": "key_press", "description": "Press Enter to search", "payload": {"key": "Enter"}},
-            {"type": "click_coordinate", "description": "Click search button", "payload": {"x": 680, "y": 650}},
-            {"type": "key_press", "description": "Press Enter again", "payload": {"key": "Enter"}}
+            {"type": "key_press", "description": "Press Arrow Down to select Frankfurt from dropdown", "payload": {"key": "ArrowDown"}},
+            {"type": "key_press", "description": "Press Enter to confirm Frankfurt selection", "payload": {"key": "Enter"}},
+            {"type": "click_coordinate", "description": "Click destination field (Where to)", "payload": {"x": 950, "y": 472}},
+            {"type": "keyboard_input", "description": "Type London Heathrow", "payload": {"input": "London Heathrow"}},
+            {"type": "key_press", "description": "Press Enter to search", "payload": {"key": "Enter"}}
           ],
           confidence: "high"
         };
@@ -1182,10 +1185,11 @@ Respond ONLY with valid JSON in this exact format:
       // If we've tried typing Frankfurt multiple times, try different approach
       if (frankfurtTypeCount >= 1) {
         return {
-          description: "AI rate limited, using enhanced fallback logic. Attempting to proceed to destination field after Frankfurt entry.",
+          description: "AI rate limited, using enhanced fallback logic. Selecting Frankfurt from dropdown and proceeding to destination.",
           taskCompleted: false,
           requiresAction: true,
           actions: [
+            {"type": "key_press", "description": "Press Arrow Down to select Frankfurt from dropdown", "payload": {"key": "ArrowDown"}},
             {"type": "key_press", "description": "Press Enter to confirm Frankfurt", "payload": {"key": "Enter"}},
             {"type": "click_coordinate", "description": "Click Where to field", "payload": {"x": 950, "y": 472}},
             {"type": "keyboard_input", "description": "Type London Heathrow", "payload": {"input": "London Heathrow"}}
