@@ -1391,6 +1391,29 @@ Respond ONLY with valid JSON in this exact format:
     // Use basic fallback logic
     return this.analyzePageAfterActionForContinuation(history, null, originalTask);
   }
+
+  /**
+   * Initialize progress tracker for task execution
+   * @private
+   */
+  initializeProgressTracker(taskDescription, history) {
+    return {
+      iterationsSinceProgress: 0,
+      lastProgressTime: Date.now(),
+      lastScreenshotHash: null,
+      lastPageUrl: null,
+      lastFormState: {},
+      previousActions: [],
+      interactionCounts: {
+        clicks: 0,
+        inputs: 0,
+        navigations: 0
+      },
+      milestones: this.defineMilestones(taskDescription),
+      completedMilestones: new Set(),
+      lastInteractionStrategy: null
+    };
+  }
 }
 
 module.exports = NaturalLanguageTaskService;
