@@ -1542,6 +1542,78 @@ Respond ONLY with valid JSON in this exact format:
   }
 
   /**
+   * Detect repeated subtask patterns in history
+   * @private
+   */
+  detectRepeatedSubtasks(history, iterationsSinceProgress) {
+    const patterns = {
+      repeatedClicks: 0,
+      repeatedInputs: 0,
+      repeatedNavigations: 0,
+      consecutiveFailures: 0,
+      sameTargetRepeats: 0
+    };
+    
+    if (history.length < 2) {
+      return patterns;
+    }
+    
+    // Analyze recent assistant messages for patterns
+    const assistantMessages = history
+      .filter(h => h.role === 'assistant')
+      .slice(-Math.min(5, iterationsSinceProgress)); // Look at recent messages based on iterations since progress
+    
+    // Check for repeated action patterns
+    let lastAction = null;
+    let consecutiveActions = 0;
+    
+    assistantMessages.forEach(message => {
+      if (message.content) {
+        const content = message.content.toLowerCase();
+        
+        // Detect repeated click patterns
+        if (content.includes('click') && lastAction === 'click') {
+          consecutiveActions++;
+          patterns.repeatedClicks++;
+        } else if (content.includes('click')) {
+          lastAction = 'click';
+          consecutiveActions = 1;
+        }
+        
+        // Detect repeated input patterns
+        if (content.includes('input') || content.includes('type') || content.includes('enter')) {
+          if (lastAction === 'input') {
+            patterns.repeatedInputs++;
+          }
+          lastAction = 'input';
+        }
+        
+        // Detect navigation patterns
+        if (content.includes('navigate') || content.includes('reload') || content.includes('refresh')) {
+          if (lastAction === 'navigate') {
+            patterns.repeatedNavigations++;
+          }
+          lastAction = 'navigate';
+        }
+        
+        // Detect failure patterns
+        if (content.includes('error') || content.includes('failed') || content.includes('unable') || content.includes('cannot')) {
+          patterns.consecutiveFailures++;
+        } else if (patterns.consecutiveFailures > 0) {
+          patterns.consecutiveFailures = 0; // Reset on success
+        }
+        
+        // Detect same target repeats (simplified)
+        if (consecutiveActions > 2) {
+          patterns.sameTargetRepeats++;
+        }
+      }
+    });
+    
+    return patterns;
+  }
+
+  /**
    * Simple hash function for content comparison
    * @private
    */
