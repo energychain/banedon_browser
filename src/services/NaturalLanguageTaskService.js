@@ -1625,6 +1625,66 @@ Respond ONLY with valid JSON in this exact format:
   }
 
   /**
+   * Handle alternative search strategy when normal flow isn't working
+   * @private
+   */
+  async handleAlternativeSearch(history, taskDescription) {
+    // Try a different approach for the search
+    const sessionId = this.getCurrentSessionId();
+    
+    // For flight searches, try direct navigation approach
+    if (taskDescription.toLowerCase().includes('flight')) {
+      return {
+        description: "Normal search approach isn't working. Trying alternative direct navigation to search form.",
+        requiresAction: true,
+        actions: [{
+          type: "navigate",
+          description: "Navigate to a simpler search interface",
+          payload: { url: "https://www.google.com/travel/flights" }
+        }],
+        reason: 'alternative_navigation'
+      };
+    }
+    
+    // For general searches, try keyboard navigation
+    return {
+      description: "Normal interaction isn't working. Trying keyboard-based navigation.",
+      requiresAction: true,
+      actions: [{
+        type: "key_press",
+        description: "Use keyboard shortcut to focus search",
+        payload: { key: "Control+f" }
+      }],
+      reason: 'alternative_keyboard'
+    };
+  }
+
+  /**
+   * Filter milestones to only include user-facing ones
+   * @private
+   */
+  filterUserFacingMilestones(completedMilestones) {
+    const userFacingMilestones = [];
+    const technicalMilestones = new Set([
+      'page_loaded',
+      'navigation_completed',
+      'form_interaction'
+    ]);
+    
+    for (const milestone of completedMilestones) {
+      if (!technicalMilestones.has(milestone)) {
+        // Convert milestone to user-friendly text
+        const userFriendly = milestone
+          .replace(/_/g, ' ')
+          .replace(/\b\w/g, l => l.toUpperCase());
+        userFacingMilestones.push(userFriendly);
+      }
+    }
+    
+    return userFacingMilestones;
+  }
+
+  /**
    * Detect repeated subtask patterns in history
    * @private
    */
