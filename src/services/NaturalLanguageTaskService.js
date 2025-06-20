@@ -1393,6 +1393,195 @@ Respond ONLY with valid JSON in this exact format:
   }
 
   /**
+   * Detect progress in task execution
+   * @private
+   */
+  detectProgress(progressTracker, history, iterationCount, currentScreenshot) {
+    let progressMade = false;
+    let progressDetails = [];
+    
+    // Track iteration count since last progress
+    progressTracker.iterationsSinceProgress++;
+    
+    // Check for URL changes
+    const currentUrl = this.getCurrentPageUrl();
+    if (currentUrl && currentUrl !== progressTracker.lastPageUrl) {
+      progressMade = true;
+      progressDetails.push(`URL changed to ${currentUrl}`);
+      progressTracker.lastPageUrl = currentUrl;
+    }
+    
+    // Check for screenshot changes (simple hash comparison)
+    if (currentScreenshot) {
+      const screenshotHash = this.simpleHash(currentScreenshot.substring(0, 1000)); // Use first 1000 chars for hash
+      if (screenshotHash !== progressTracker.lastScreenshotHash) {
+        progressMade = true;
+        progressDetails.push('Page content changed');
+        progressTracker.lastScreenshotHash = screenshotHash;
+      }
+    }
+    
+    // Check for new form interactions
+    const currentFormState = this.getCurrentFormState();
+    if (JSON.stringify(currentFormState) !== JSON.stringify(progressTracker.lastFormState)) {
+      progressMade = true;
+      progressDetails.push('Form state changed');
+      progressTracker.lastFormState = currentFormState;
+    }
+    
+    // Check for milestone completion
+    if (history.length > 0) {
+      const lastAssistantMessage = history.filter(h => h.role === 'assistant').pop();
+      if (lastAssistantMessage && lastAssistantMessage.content) {
+        for (const milestone of progressTracker.milestones) {
+          if (!progressTracker.completedMilestones.has(milestone) && 
+              lastAssistantMessage.content.toLowerCase().includes(milestone.replace('_', ' '))) {
+            progressMade = true;
+            progressDetails.push(`Milestone completed: ${milestone}`);
+            progressTracker.completedMilestones.add(milestone);
+          }
+        }
+      }
+    }
+    
+    // Reset iteration counter if progress was made
+    if (progressMade) {
+      progressTracker.iterationsSinceProgress = 0;
+      progressTracker.lastProgressTime = Date.now();
+    }
+    
+    return {
+      progressMade,
+      details: progressDetails,
+      iterationsSinceProgress: progressTracker.iterationsSinceProgress
+    };
+  }
+
+  /**
+   * Build execution analytics for result reporting
+   * @private
+   */
+  buildExecutionAnalytics(history, executionResult, iterationCount) {
+    const analytics = {
+      totalIterations: iterationCount,
+      totalActions: 0,
+      actionTypes: {},
+      milestones: [],
+      timeSpent: 0,
+      errorCount: 0,
+      progressPoints: []
+    };
+    
+    // Calculate time spent
+    if (history.length > 0) {
+      const startTime = history[0].timestamp || Date.now();
+      const endTime = history[history.length - 1].timestamp || Date.now();
+      analytics.timeSpent = endTime - startTime;
+    }
+    
+    // Analyze history for actions and milestones
+    history.forEach((entry, index) => {
+      if (entry.role === 'assistant' && entry.content) {
+        // Count errors
+        if (entry.content.toLowerCase().includes('error') || 
+            entry.content.toLowerCase().includes('failed')) {
+          analytics.errorCount++;
+        }
+        
+        // Identify progress points
+        if (entry.content.toLowerCase().includes('successfully') ||
+            entry.content.toLowerCase().includes('completed') ||
+            entry.content.toLowerCase().includes('found')) {
+          analytics.progressPoints.push({
+            iteration: Math.floor(index / 2) + 1,
+            description: entry.content.substring(0, 100) + '...'
+          });
+        }
+      }
+      
+      // Count actions from action entries
+      if (entry.action) {
+        analytics.totalActions++;
+        const actionType = entry.action.type || 'unknown';
+        analytics.actionTypes[actionType] = (analytics.actionTypes[actionType] || 0) + 1;
+      }
+    });
+    
+    return analytics;
+  }
+
+  /**
+   * Build condensed history for result reporting
+   * @private
+   */
+  buildCondensedHistory(history) {
+    const condensed = [];
+    let lastRole = null;
+    
+    history.forEach((entry, index) => {
+      // Skip consecutive assistant messages that are just progress updates
+      if (entry.role === 'assistant' && lastRole === 'assistant' && 
+          entry.content && entry.content.length < 100) {
+        return;
+      }
+      
+      // Condense long assistant messages
+      if (entry.role === 'assistant' && entry.content && entry.content.length > 200) {
+        condensed.push({
+          ...entry,
+          content: entry.content.substring(0, 200) + '...'
+        });
+      } else {
+        condensed.push(entry);
+      }
+      
+      lastRole = entry.role;
+    });
+    
+    return condensed;
+  }
+
+  /**
+   * Simple hash function for content comparison
+   * @private
+   */
+  simpleHash(str) {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32bit integer
+    }
+    return hash;
+  }
+
+  /**
+   * Get current page URL (mock implementation for testing)
+   * @private
+   */
+  getCurrentPageUrl() {
+    // In a real implementation, this would get the URL from the browser
+    return null; // Placeholder
+  }
+
+  /**
+   * Get current form state (mock implementation for testing)
+   * @private
+   */
+  getCurrentFormState() {
+    // In a real implementation, this would analyze form fields
+    return {}; // Placeholder
+  }
+
+  /**
+   * Get current session ID from context
+   * @private
+   */
+  getCurrentSessionId() {
+    return this.currentSessionId || null;
+  }
+
+  /**
    * Initialize progress tracker for task execution
    * @private
    */
@@ -1413,6 +1602,63 @@ Respond ONLY with valid JSON in this exact format:
       completedMilestones: new Set(),
       lastInteractionStrategy: null
     };
+  }
+
+  /**
+   * Define key milestones for tracking progress in a task
+   */
+  defineMilestones(taskDescription) {
+    const milestones = [];
+    const lowerTask = taskDescription.toLowerCase();
+    
+    // Search-related milestones
+    if (lowerTask.includes('search') || lowerTask.includes('find')) {
+      milestones.push('search_initiated', 'results_loaded', 'result_selected');
+    }
+    
+    // Flight-related milestones
+    if (lowerTask.includes('flight')) {
+      milestones.push('flight_search_form', 'departure_entered', 'destination_entered', 'search_executed', 'results_displayed');
+    }
+    
+    // Form-related milestones
+    if (lowerTask.includes('form') || lowerTask.includes('fill') || lowerTask.includes('enter')) {
+      milestones.push('form_located', 'fields_filled', 'form_submitted');
+    }
+    
+    // Navigation milestones
+    if (lowerTask.includes('navigate') || lowerTask.includes('go to') || lowerTask.includes('visit')) {
+      milestones.push('page_loaded', 'navigation_complete');
+    }
+    
+    // Cookie consent milestones
+    milestones.push('cookie_consent_handled');
+    
+    // General completion milestone
+    milestones.push('task_completed');
+    
+    return milestones;
+  }
+
+  /**
+   * Build execution analytics from progress tracker
+   */
+  buildExecutionAnalytics(progressTracker) {
+    const analytics = {
+      totalIterations: progressTracker.iterationsSinceProgress || 0,
+      totalInteractions: 0,
+      interactionBreakdown: progressTracker.interactionCounts || {},
+      milestonesCompleted: Array.from(progressTracker.completedMilestones || []),
+      lastProgressTime: progressTracker.lastProgressTime,
+      strategiesUsed: progressTracker.lastInteractionStrategy ? [progressTracker.lastInteractionStrategy] : []
+    };
+    
+    // Calculate total interactions
+    if (analytics.interactionBreakdown) {
+      analytics.totalInteractions = Object.values(analytics.interactionBreakdown).reduce((sum, count) => sum + count, 0);
+    }
+    
+    return analytics;
   }
 }
 
