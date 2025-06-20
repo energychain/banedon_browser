@@ -1347,6 +1347,89 @@ Respond ONLY with valid JSON in this exact format:
   }
 
   /**
+   * Handle advanced fallback logic for repetitive behavior patterns
+   * @private
+   */
+  async handleAdvancedFallback(history, taskDescription, iterationsSinceProgress, subtaskPatterns) {
+    // Analyze patterns to determine the best fallback strategy
+    const totalPatterns = Object.values(subtaskPatterns).reduce((sum, count) => sum + count, 0);
+    
+    // If we have many repeated patterns, try a different approach
+    if (totalPatterns > 5 || iterationsSinceProgress > 10) {
+      // Suggest manual intervention
+      const sessionId = this.getCurrentSessionId();
+      if (sessionId) {
+        await this.requestManualIntervention(sessionId,
+          'Automated task execution stuck in repetitive pattern, unable to progress',
+          {
+            currentState: 'Repetitive behavior detected',
+            patterns: subtaskPatterns,
+            iterationsSinceProgress,
+            lastActions: history.slice(-3).map(h => h.content?.substring(0, 100))
+          }
+        );
+      }
+      
+      return {
+        description: "Task execution is stuck in repetitive patterns. Manual intervention may be required.",
+        requiresAction: false,
+        actions: [],
+        reason: 'repetitive_pattern_detected'
+      };
+    }
+    
+    // Try coordinate-based fallback if clicking isn't working
+    if (subtaskPatterns.repeatedClicks > 2) {
+      return {
+        description: "Multiple click attempts failed. Trying coordinate-based interaction or keyboard navigation.",
+        requiresAction: true,
+        actions: [{
+          type: "key_press",
+          description: "Try Tab to navigate to next element",
+          payload: { key: "Tab" }
+        }],
+        reason: 'click_fallback_keyboard'
+      };
+    }
+    
+    // Try alternative input methods if form inputs are failing
+    if (subtaskPatterns.repeatedInputs > 2) {
+      return {
+        description: "Form input attempts failed. Trying alternative input strategy.",
+        requiresAction: true,
+        actions: [{
+          type: "key_press",
+          description: "Clear field and retry input",
+          payload: { key: "Control+a" }
+        }],
+        reason: 'input_fallback_clear'
+      };
+    }
+    
+    // If navigation is failing, try refresh
+    if (subtaskPatterns.repeatedNavigations > 1) {
+      return {
+        description: "Navigation issues detected. Refreshing page to reset state.",
+        requiresAction: true,
+        actions: [{
+          type: "key_press",
+          description: "Refresh page",
+          payload: { key: "F5" }
+        }],
+        reason: 'navigation_fallback_refresh'
+      };
+    }
+    
+    // Default fallback - wait and retry with simplified approach
+    return {
+      description: "Applying general fallback strategy. Waiting before retry with simplified approach.",
+      requiresAction: false,
+      actions: [],
+      reason: 'general_fallback'
+    };
+  }
+
+  /**
    * Handle rate limit fallback with potential manual intervention
    * @private
    */
