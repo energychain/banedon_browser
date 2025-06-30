@@ -661,6 +661,30 @@ document.addEventListener('DOMContentLoaded', () => {
     // API functions
     async function createSession() {
         try {
+            // First, check for existing extension sessions
+            const sessionsResponse = await fetch(`${API_BASE}/api/sessions`);
+            const sessionsData = await sessionsResponse.json();
+            
+            if (sessionsData.success && sessionsData.sessions) {
+                // Look for connected extension sessions
+                const extensionSessions = sessionsData.sessions.filter(session => 
+                    session.isConnected && 
+                    (session.hasExtension || (session.metadata && session.metadata.browser === 'chrome-extension'))
+                );
+                
+                if (extensionSessions.length > 0) {
+                    // Use the most recent connected extension session
+                    const latestExtensionSession = extensionSessions.sort((a, b) => 
+                        new Date(b.createdAt) - new Date(a.createdAt)
+                    )[0];
+                    
+                    logAction(`🔌 Using existing extension session: ${latestExtensionSession.id}`);
+                    updateSessionStatus(latestExtensionSession.id, 'extension');
+                    return latestExtensionSession.id;
+                }
+            }
+
+            // If no extension session found, create a new session
             const response = await fetch(`${API_BASE}/api/sessions`, {
                 method: 'POST',
                 headers: {
@@ -690,6 +714,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error('Invalid session creation response');
             }
             
+            logAction(`🆕 Created new session: ${data.session.id}`);
+            updateSessionStatus(data.session.id, 'server');
             return data.session.id;
         } catch (error) {
             console.error('Error creating session:', error);
@@ -753,6 +779,16 @@ document.addEventListener('DOMContentLoaded', () => {
         executionStatus.style.display = message ? 'block' : 'none';
     }
 
+    function updateSessionStatus(sessionId, mode) {
+        const sessionStatus = document.getElementById('session-status');
+        if (!sessionStatus) return;
+        
+        const modeIcon = mode === 'extension' ? '🔌' : '🤖';
+        const modeText = mode === 'extension' ? 'Extension Mode' : 'Server Mode';
+        sessionStatus.innerHTML = `${modeIcon} Session: ${sessionId} (${modeText})`;
+        sessionStatus.style.display = 'block';
+    }
+
     async function runAllTasks() {
         if (tasks.length === 0) {
             updateExecutionStatus('error', 'No tasks to execute', 'error');
@@ -777,9 +813,9 @@ document.addEventListener('DOMContentLoaded', () => {
             // Clear previous task response
             clearTaskResponse();
 
-            // Create a new session
+            // Create a new session or use existing extension session
             currentSessionId = await createSession();
-            logAction(`Created session: ${currentSessionId}`);
+            // Note: createSession() now handles logging internally with appropriate message
 
             // Execute tasks sequentially
             for (let i = 0; i < tasks.length; i++) {
