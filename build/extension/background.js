@@ -329,6 +329,12 @@ class BackgroundService {
   async executeScreenshot(payload) {
     const tab = await this.getWorkingTab();
 
+    // Make sure the working tab is active/visible for screenshot
+    await chrome.tabs.update(tab.id, { active: true });
+    
+    // Small delay to ensure tab is active
+    await new Promise(resolve => setTimeout(resolve, 200));
+
     const dataUrl = await chrome.tabs.captureVisibleTab(null, {
       format: 'png',
       quality: 90
@@ -338,23 +344,19 @@ class BackgroundService {
       screenshot: dataUrl,
       timestamp: new Date().toISOString(),
       tabInfo: {
-        id: tabs[0].id,
-        url: tabs[0].url,
-        title: tabs[0].title
+        id: tab.id,
+        url: tab.url,
+        title: tab.title
       }
     };
   }
 
   async executeExtract(payload) {
     const { selector, attribute, multiple } = payload;
-    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-    
-    if (tabs.length === 0) {
-      throw new Error('No active tab found');
-    }
+    const tab = await this.getWorkingTab();
 
     const results = await chrome.scripting.executeScript({
-      target: { tabId: tabs[0].id },
+      target: { tabId: tab.id },
       func: (selector, attribute, multiple) => {
         const elements = document.querySelectorAll(selector);
         const extractData = (element) => {
@@ -392,14 +394,10 @@ class BackgroundService {
 
   async executeScript(payload) {
     const { script } = payload;
-    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-    
-    if (tabs.length === 0) {
-      throw new Error('No active tab found');
-    }
+    const tab = await this.getWorkingTab();
 
     const results = await chrome.scripting.executeScript({
-      target: { tabId: tabs[0].id },
+      target: { tabId: tab.id },
       func: new Function(script)
     });
 
