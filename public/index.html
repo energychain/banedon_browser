@@ -703,21 +703,32 @@
             </div>
         </div>
 
-        <!-- Optional Login Section -->
+        <!-- User Authentication & Login Section -->
         <div class="login-section" id="loginSection">
             <div id="loginForm" style="display: none;">
-                <h3 style="text-align: center; color: #667eea; margin-bottom: 15px;">🔐 User Authentication (Optional)</h3>
+                <h3 style="text-align: center; color: #667eea; margin-bottom: 15px;">🔐 User Authentication</h3>
                 <div class="login-form">
-                    <input type="text" id="username" placeholder="Username (optional)">
-                    <input type="password" id="password" placeholder="Password (optional)">
+                    <input type="text" id="username" placeholder="Enter username">
+                    <input type="password" id="password" placeholder="Enter password">
                     <button class="btn" onclick="login()">Login</button>
                     <button class="btn btn-secondary" onclick="toggleLoginForm()">Cancel</button>
                 </div>
+                <div style="margin-top: 10px; font-size: 0.9em; color: #666; text-align: center;">
+                    Demo credentials: <strong>demo / demo123</strong> or <strong>admin / admin123</strong>
+                </div>
             </div>
             <div id="userInfo" style="text-align: center;">
-                <span class="user-info" id="currentUser">👤 Guest User</span>
-                <button class="btn btn-secondary" onclick="toggleLoginForm()" style="margin-left: 10px;">🔐 Login</button>
-                <button class="btn btn-secondary" onclick="logout()" id="logoutBtn" style="display: none; margin-left: 10px;">🚪 Logout</button>
+                <div style="margin-bottom: 10px;">
+                    <span class="user-info" id="currentUser">👤 Guest User</span>
+                    <span style="margin-left: 10px; font-size: 0.9em; color: #666;" id="authStatus">
+                        (Authentication disabled - set ENABLE_AUTH=true to enable login)
+                    </span>
+                </div>
+                <div>
+                    <button class="btn btn-secondary" onclick="toggleLoginForm()" style="margin: 5px;">🔐 Login</button>
+                    <button class="btn btn-secondary" onclick="logout()" id="logoutBtn" style="display: none; margin: 5px;">🚪 Logout</button>
+                    <button class="btn btn-secondary" onclick="showStoredSessions()" style="margin: 5px;">💾 Saved Sessions</button>
+                </div>
             </div>
         </div>
 
@@ -728,7 +739,12 @@
                     <span class="dot yellow"></span>
                     <span class="dot green"></span>
                 </div>
-                <div class="browser-title">AI Browser Session</div>
+                <div class="browser-title">
+                    AI Browser Session
+                    <span id="executionModeIndicator" style="margin-left: 15px; font-size: 0.8em; padding: 4px 8px; border-radius: 12px; background: #f0f0f0; color: #666;">
+                        🤖 Auto Mode
+                    </span>
+                </div>
             </div>
             <div class="browser-body">
                 <div class="address-bar">
@@ -743,6 +759,7 @@
                     💡 Leave Session ID empty to create a new session, or enter an existing session ID to continue a previous session
                     <br>
                     <button class="btn btn-secondary" onclick="showQuickSessionSelect()" style="margin-top: 5px; padding: 5px 10px; font-size: 0.7em;">📋 Select from Active Sessions</button>
+                    <span style="margin-left: 15px; font-weight: bold;" id="quickConnectionStatus">🔴 Checking connections...</span>
                 </div>
                 <div id="quickSessionSelect" style="display: none; background: #f8f9fa; border-radius: 8px; padding: 10px; margin-bottom: 10px; font-size: 0.8em;">
                     <strong>Active Sessions:</strong>
@@ -803,14 +820,32 @@
                             <button class="btn btn-secondary" onclick="downloadSessionReceipt()">💾 Save Receipt</button>
                         </div>
                         <div class="execution-mode">
-                            <label><strong>Force Execution Mode:</strong></label>
-                            <div style="margin-top: 5px;">
-                                <input type="radio" name="forceMode" value="auto" id="modeAuto" checked>
-                                <label for="modeAuto">🤖 Auto (Smart Selection)</label>
-                                <input type="radio" name="forceMode" value="extension" id="modeExtension">
-                                <label for="modeExtension">🧩 Force Extension</label>
-                                <input type="radio" name="forceMode" value="server" id="modeServer">
-                                <label for="modeServer">🖥️ Force Server</label>
+                            <label><strong>Execution Mode:</strong></label>
+                            <div style="margin-top: 10px;">
+                                <div style="margin: 8px 0;">
+                                    <input type="radio" name="forceMode" value="auto" id="modeAuto" checked>
+                                    <label for="modeAuto">🤖 Auto (Smart Selection)</label>
+                                    <span style="font-size: 0.8em; color: #666; margin-left: 10px;" id="autoModeDesc">
+                                        Uses extension if connected, otherwise server
+                                    </span>
+                                </div>
+                                <div style="margin: 8px 0;">
+                                    <input type="radio" name="forceMode" value="extension" id="modeExtension">
+                                    <label for="modeExtension">🧩 Force Extension</label>
+                                    <span style="font-size: 0.8em; margin-left: 10px;" id="extensionModeStatus">
+                                        ⚠️ Extension not connected
+                                    </span>
+                                </div>
+                                <div style="margin: 8px 0;">
+                                    <input type="radio" name="forceMode" value="server" id="modeServer">
+                                    <label for="modeServer">🖥️ Force Server</label>
+                                    <span style="font-size: 0.8em; color: #666; margin-left: 10px;">
+                                        Always runs on server (headless browser)
+                                    </span>
+                                </div>
+                            </div>
+                            <div style="margin-top: 15px; padding: 10px; background: #e8f4fd; border-radius: 8px; font-size: 0.9em;" id="executionModeHelp">
+                                💡 <strong>Current recommendation:</strong> <span id="modeRecommendation">Server mode (extension not available)</span>
                             </div>
                         </div>
                     </div>
@@ -1221,6 +1256,34 @@
                 return;
             }
 
+            // Get selected execution mode
+            const selectedMode = document.querySelector('input[name="forceMode"]:checked').value;
+            
+            // Check if extension mode is selected but extension is not connected
+            if (selectedMode === 'extension') {
+                const extensionStatus = document.getElementById('extensionStatusText').textContent;
+                if (!extensionStatus.includes('Connected & Ready')) {
+                    addToChatHistory('assistant', '❌ Cannot execute in extension mode: Browser extension is not connected. Please connect the extension or choose a different execution mode.');
+                    return;
+                }
+            }
+
+            // Show execution mode feedback
+            let modeMessage = '';
+            switch (selectedMode) {
+                case 'extension':
+                    modeMessage = '🧩 Executing via browser extension...';
+                    break;
+                case 'server':
+                    modeMessage = '🖥️ Executing on server (headless browser)...';
+                    break;
+                case 'auto':
+                    const extensionReady = document.getElementById('extensionStatusText').textContent.includes('Connected & Ready');
+                    modeMessage = extensionReady ? '🧩 Auto-selected: Executing via browser extension...' : '🖥️ Auto-selected: Executing on server...';
+                    break;
+            }
+            addToChatHistory('assistant', modeMessage);
+
             // Prepare headers with authentication if available
             const headers = { 'Content-Type': 'application/json' };
             if (currentSessionToken) {
@@ -1237,7 +1300,8 @@
                             metadata: { 
                                 browser: "chrome", 
                                 purpose: "natural-language-task", 
-                                user: "dashboard" 
+                                user: "dashboard",
+                                executionMode: selectedMode
                             } 
                         })
                     });
@@ -1245,6 +1309,7 @@
                     if (sessionData.success && sessionData.session) {
                         sessionId = sessionData.session.id;
                         document.getElementById('nlSessionId').value = sessionId;
+                        document.getElementById('currentSessionDisplay').value = sessionId;
                         addToChatHistory('assistant', `Created new session: ${sessionId}`);
                     } else {
                         throw new Error('Failed to create session');
@@ -1262,10 +1327,16 @@
             resultDiv.innerHTML = '<p><i>Thinking...</i></p>';
 
             try {
+                // Include execution mode preference in the request
+                const requestBody = { 
+                    task: promptText,
+                    executionMode: selectedMode
+                };
+
                 const response = await fetch(`/api/sessions/${sessionId}/nl-tasks`, {
                     method: 'POST',
                     headers: headers,
-                    body: JSON.stringify({ task: promptText }),
+                    body: JSON.stringify(requestBody),
                 });
 
                 const data = await response.json();
@@ -1514,10 +1585,13 @@
             }
 
             // Check extension connection
-            checkExtensionConnection();
+            await checkExtensionConnection();
 
             // Check WebSocket connection
             checkWebSocketConnection();
+            
+            // Update execution mode indicator after checking connections
+            setTimeout(updateExecutionModeIndicator, 500);
         }
 
         function updateConnectionStatus(statusId, textId, indicator, text) {
@@ -1525,16 +1599,88 @@
             document.getElementById(textId).textContent = text;
         }
 
+        // Update execution mode UI based on extension status
+        function updateExecutionModeUI(extensionConnected) {
+            const extensionModeStatus = document.getElementById('extensionModeStatus');
+            const modeRecommendation = document.getElementById('modeRecommendation');
+            const extensionRadio = document.getElementById('modeExtension');
+            const quickStatus = document.getElementById('quickConnectionStatus');
+            
+            if (extensionConnected) {
+                extensionModeStatus.innerHTML = '<span style="color: #28a745;">✅ Extension ready</span>';
+                extensionRadio.disabled = false;
+                modeRecommendation.textContent = 'Extension mode (your browser extension is connected)';
+                quickStatus.innerHTML = '🟢 Extension Connected';
+                quickStatus.style.color = '#28a745';
+                
+                // If currently set to auto mode, update description
+                if (document.getElementById('modeAuto').checked) {
+                    document.getElementById('autoModeDesc').textContent = 'Will use extension (currently connected)';
+                    document.getElementById('autoModeDesc').style.color = '#28a745';
+                }
+            } else {
+                extensionModeStatus.innerHTML = '<span style="color: #dc3545;">❌ Extension not connected</span>';
+                extensionRadio.disabled = true;
+                modeRecommendation.textContent = 'Server mode (extension not available)';
+                
+                // Check if server is available for quick status
+                const serverStatus = document.getElementById('serverStatusText').textContent;
+                if (serverStatus.includes('Connected')) {
+                    quickStatus.innerHTML = '🟡 Server Only';
+                    quickStatus.style.color = '#ffc107';
+                } else {
+                    quickStatus.innerHTML = '🔴 No Connection';
+                    quickStatus.style.color = '#dc3545';
+                }
+                
+                // If extension mode was selected, switch to auto
+                if (document.getElementById('modeExtension').checked) {
+                    document.getElementById('modeAuto').checked = true;
+                }
+                
+                // Update auto mode description
+                document.getElementById('autoModeDesc').textContent = 'Will use server (extension not connected)';
+                document.getElementById('autoModeDesc').style.color = '#dc3545';
+            }
+        }
+
         async function checkExtensionConnection() {
             try {
-                // Try to communicate with extension
-                if (typeof chrome !== 'undefined' && chrome.runtime) {
-                    updateConnectionStatus('extensionStatus', 'extensionStatusText', '🟢', 'Extension Available');
-                } else {
-                    updateConnectionStatus('extensionStatus', 'extensionStatusText', '🔴', 'Extension Not Detected');
+                // First check if we're in a browser that supports extensions
+                if (typeof chrome === 'undefined' || !chrome.runtime) {
+                    updateConnectionStatus('extensionStatus', 'extensionStatusText', '�', 'Extension Not Available');
+                    updateExecutionModeUI(false);
+                    return false;
+                }
+
+                // Try to communicate with our specific extension
+                try {
+                    // Check if extension is actually connected by trying to send a message
+                    const response = await new Promise((resolve, reject) => {
+                        const timeout = setTimeout(() => reject(new Error('timeout')), 2000);
+                        chrome.runtime.sendMessage(chrome.runtime.id, { action: 'ping' }, (response) => {
+                            clearTimeout(timeout);
+                            if (chrome.runtime.lastError) {
+                                reject(chrome.runtime.lastError);
+                            } else {
+                                resolve(response);
+                            }
+                        });
+                    });
+                    
+                    updateConnectionStatus('extensionStatus', 'extensionStatusText', '�', 'Extension Connected & Ready');
+                    updateExecutionModeUI(true);
+                    return true;
+                } catch (error) {
+                    // Extension might be installed but not responding
+                    updateConnectionStatus('extensionStatus', 'extensionStatusText', '🟡', 'Extension Installed, Not Connected');
+                    updateExecutionModeUI(false);
+                    return false;
                 }
             } catch (error) {
                 updateConnectionStatus('extensionStatus', 'extensionStatusText', '🔴', 'Extension Error');
+                updateExecutionModeUI(false);
+                return false;
             }
         }
 
@@ -1748,78 +1894,67 @@
             }
         }
 
-        // Session and receipt storage functions
-        async function downloadSessionReceipt() {
-            const currentSession = document.getElementById('currentSessionDisplay').value;
-            if (currentSession) {
-                try {
-                    // Create a receipt object with session info
-                    const receipt = {
-                        sessionId: currentSession,
-                        timestamp: new Date().toISOString(),
-                        url: `${window.location.origin}/?session=${currentSession}`,
-                        platform: 'Corrently Cloud Browser',
-                        user: document.getElementById('currentUser').textContent,
-                        tasks: [], // Would be populated with actual task history
-                        metadata: {
-                            name: `Session ${currentSession.slice(0, 8)}`,
-                            createdAt: new Date().toISOString()
-                        }
-                    };
+        // Show stored sessions for the current user
+        async function showStoredSessions() {
+            try {
+                const response = await fetch('/api/user/sessions', {
+                    headers: currentSessionToken ? {
+                        'X-Session-Token': currentSessionToken
+                    } : {}
+                });
 
-                    // Save to user's account if logged in
-                    if (currentSessionToken) {
-                        try {
-                            await fetch('/api/user/sessions', {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'X-Session-Token': currentSessionToken
-                                },
-                                body: JSON.stringify({
-                                    sessionId: currentSession,
-                                    receipt: receipt
-                                })
-                            });
-                            addToChatHistory('assistant', `💾 Session saved to your account and downloaded locally.`);
-                        } catch (error) {
-                            console.error('Save to account error:', error);
-                            addToChatHistory('assistant', `💾 Session downloaded locally (account save failed).`);
+                const data = await response.json();
+                if (data.success) {
+                    if (data.sessions.length === 0) {
+                        alert('No saved sessions found.');
+                        return;
+                    }
+
+                    let sessionList = 'Saved Sessions:\n\n';
+                    data.sessions.forEach((session, index) => {
+                        sessionList += `${index + 1}. ${session.name}\n`;
+                        sessionList += `   Session ID: ${session.sessionId}\n`;
+                        sessionList += `   Saved: ${new Date(session.savedAt).toLocaleString()}\n\n`;
+                    });
+
+                    const choice = prompt(sessionList + '\nEnter session number to load (or cancel):');
+                    if (choice && !isNaN(choice)) {
+                        const sessionIndex = parseInt(choice) - 1;
+                        if (sessionIndex >= 0 && sessionIndex < data.sessions.length) {
+                            const selectedSession = data.sessions[sessionIndex];
+                            document.getElementById('nlSessionId').value = selectedSession.sessionId;
+                            document.getElementById('currentSessionDisplay').value = selectedSession.sessionId;
+                            sessionId = selectedSession.sessionId;
+                            addToChatHistory('assistant', `📂 Loaded saved session: ${selectedSession.name}`);
                         }
                     }
-                    
-                    // Download as JSON file
-                    const blob = new Blob([JSON.stringify(receipt, null, 2)], { type: 'application/json' });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `corrently-session-${currentSession}.json`;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    URL.revokeObjectURL(url);
-                    
-                    if (!currentSessionToken) {
-                        addToChatHistory('assistant', `💾 Session receipt downloaded: corrently-session-${currentSession}.json`);
-                    }
-                } catch (error) {
-                    console.error('Download receipt error:', error);
-                    alert('Failed to save session receipt.');
+                } else {
+                    alert(`Failed to load sessions: ${data.message}`);
                 }
-            } else {
-                alert('❌ No active session to save.');
+            } catch (error) {
+                console.error('Error loading sessions:', error);
+                alert('Failed to load saved sessions.');
             }
         }
 
-        // Check for session parameter in URL
-        function checkUrlForSession() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const sessionParam = urlParams.get('session');
-            if (sessionParam) {
-                document.getElementById('nlSessionId').value = sessionParam;
-                document.getElementById('currentSessionDisplay').value = sessionParam;
-                sessionId = sessionParam;
-                addToChatHistory('assistant', `🔗 Loaded session from URL: ${sessionParam}`);
+        // Check authentication status and update UI
+        async function checkAuthStatus() {
+            try {
+                const response = await fetch('/api/auth/me');
+                const data = await response.json();
+                
+                if (data.success) {
+                    if (data.user.username === 'guest') {
+                        document.getElementById('authStatus').textContent = '(Authentication available - click Login to authenticate)';
+                        document.getElementById('authStatus').style.color = '#667eea';
+                    } else {
+                        document.getElementById('authStatus').textContent = `(Authenticated as ${data.user.name})`;
+                        document.getElementById('authStatus').style.color = '#28a745';
+                    }
+                }
+            } catch (error) {
+                document.getElementById('authStatus').textContent = '(Authentication disabled)';
+                document.getElementById('authStatus').style.color = '#6c757d';
             }
         }
 
@@ -1834,10 +1969,46 @@
             checkUrlForSession();
             checkAllConnections();
             checkExistingLogin();
+            checkAuthStatus();
             
             // Update session display when session ID changes
             document.getElementById('nlSessionId').addEventListener('input', updateCurrentSessionDisplay);
+            
+            // Add event listeners for execution mode changes
+            document.querySelectorAll('input[name="forceMode"]').forEach(radio => {
+                radio.addEventListener('change', updateExecutionModeIndicator);
+            });
+            
+            // Initialize the execution mode indicator
+            updateExecutionModeIndicator();
         });
+
+        // Update the execution mode indicator in the browser header
+        function updateExecutionModeIndicator() {
+            const selectedMode = document.querySelector('input[name="forceMode"]:checked').value;
+            const indicator = document.getElementById('executionModeIndicator');
+            const extensionConnected = document.getElementById('extensionStatusText').textContent.includes('Connected & Ready');
+            
+            switch (selectedMode) {
+                case 'extension':
+                    indicator.innerHTML = '🧩 Extension Mode';
+                    indicator.style.background = extensionConnected ? '#d4edda' : '#f8d7da';
+                    indicator.style.color = extensionConnected ? '#155724' : '#721c24';
+                    break;
+                case 'server':
+                    indicator.innerHTML = '🖥️ Server Mode';
+                    indicator.style.background = '#cce5ff';
+                    indicator.style.color = '#004085';
+                    break;
+                case 'auto':
+                default:
+                    const willUseExtension = extensionConnected;
+                    indicator.innerHTML = willUseExtension ? '🤖 Auto (Extension)' : '🤖 Auto (Server)';
+                    indicator.style.background = willUseExtension ? '#d4edda' : '#cce5ff';
+                    indicator.style.color = willUseExtension ? '#155724' : '#004085';
+                    break;
+            }
+        }
 
         // Auto-refresh status every 30 seconds
         setInterval(() => {
