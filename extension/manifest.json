@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Browser Automation Service",
+  "name": "Corrently Cloud Browser Extension",
   "version": "1.0.0",
-  "description": "Connect your browser to the automation service for remote control",
+  "description": "Connect your browser to the Corrently Cloud Browser automation service for advanced web automation",
   
   "permissions": [
     "activeTab",
@@ -27,7 +27,7 @@
   
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Browser Automation Service",
+    "default_title": "Corrently Cloud Browser Extension",
     "default_icon": {
       "16": "icons/icon16.png",
       "32": "icons/icon32.png",

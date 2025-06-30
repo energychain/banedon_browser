@@ -19,6 +19,17 @@ const SessionManager = require('./services/SessionManager');
 const WebSocketManager = require('./services/WebSocketManager');
 const NaturalLanguageTaskService = require('./services/NaturalLanguageTaskService');
 
+// Simple user store (in production, this would be a database)
+const users = new Map();
+const sessions = new Map(); // Store user sessions and receipts
+const userReceipts = new Map(); // Store receipts per user
+
+// Initialize default users (optional, can be disabled)
+if (process.env.ENABLE_AUTH === 'true') {
+  users.set('demo', { password: 'demo123', name: 'Demo User' });
+  users.set('admin', { password: 'admin123', name: 'Administrator' });
+}
+
 class BrowserAutomationService {
   constructor() {
     this.app = express();
@@ -27,9 +38,38 @@ class BrowserAutomationService {
     this.wsManager = new WebSocketManager(this.sessionManager);
     
     this.setupMiddleware();
+    this.setupAuthRoutes();
     this.setupRoutes();
     this.setupWebSocket();
     this.setupGracefulShutdown();
+  }
+
+  // Authentication middleware
+  authenticateUser(req, res, next) {
+    // Skip auth if not enabled
+    if (process.env.ENABLE_AUTH !== 'true') {
+      req.user = { username: 'guest', name: 'Guest User' };
+      return next();
+    }
+
+    const sessionToken = req.headers['x-session-token'] || req.cookies?.sessionToken;
+    
+    if (sessionToken && sessions.has(sessionToken)) {
+      req.user = sessions.get(sessionToken);
+      return next();
+    }
+
+    // For API endpoints, return 401
+    if (req.path.startsWith('/api/')) {
+      return res.status(401).json({ 
+        success: false, 
+        message: 'Authentication required' 
+      });
+    }
+
+    // For web pages, continue as guest
+    req.user = { username: 'guest', name: 'Guest User' };
+    next();
   }
 
   setupMiddleware() {
@@ -110,8 +150,124 @@ class BrowserAutomationService {
     });
   }
 
+  setupAuthRoutes() {
+    // Login endpoint
+    this.app.post('/api/auth/login', express.json(), (req, res) => {
+      const { username, password } = req.body;
+      
+      if (!username || !password) {
+        return res.status(400).json({
+          success: false,
+          message: 'Username and password required'
+        });
+      }
+
+      const user = users.get(username);
+      if (!user || user.password !== password) {
+        return res.status(401).json({
+          success: false,
+          message: 'Invalid credentials'
+        });
+      }
+
+      // Create session token
+      const sessionToken = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const userSession = {
+        username: user.username || username,
+        name: user.name,
+        loginTime: new Date().toISOString()
+      };
+
+      sessions.set(sessionToken, userSession);
+
+      res.json({
+        success: true,
+        user: userSession,
+        sessionToken
+      });
+    });
+
+    // Logout endpoint
+    this.app.post('/api/auth/logout', (req, res) => {
+      const sessionToken = req.headers['x-session-token'] || req.cookies?.sessionToken;
+      
+      if (sessionToken) {
+        sessions.delete(sessionToken);
+      }
+
+      res.json({ success: true, message: 'Logged out successfully' });
+    });
+
+    // Get current user
+    this.app.get('/api/auth/me', this.authenticateUser.bind(this), (req, res) => {
+      res.json({
+        success: true,
+        user: req.user
+      });
+    });
+
+    // Session and receipt management
+    this.app.get('/api/user/sessions', this.authenticateUser.bind(this), (req, res) => {
+      const userSessions = userReceipts.get(req.user.username) || [];
+      res.json({
+        success: true,
+        sessions: userSessions
+      });
+    });
+
+    this.app.post('/api/user/sessions', this.authenticateUser.bind(this), express.json(), (req, res) => {
+      const { sessionId, receipt } = req.body;
+      
+      if (!sessionId || !receipt) {
+        return res.status(400).json({
+          success: false,
+          message: 'Session ID and receipt required'
+        });
+      }
+
+      if (!userReceipts.has(req.user.username)) {
+        userReceipts.set(req.user.username, []);
+      }
+
+      const userSessions = userReceipts.get(req.user.username);
+      const sessionData = {
+        sessionId,
+        receipt,
+        savedAt: new Date().toISOString(),
+        name: receipt.metadata?.name || `Session ${sessionId.slice(0, 8)}`
+      };
+
+      userSessions.push(sessionData);
+      userReceipts.set(req.user.username, userSessions);
+
+      res.json({
+        success: true,
+        message: 'Session saved successfully',
+        session: sessionData
+      });
+    });
+
+    this.app.get('/api/user/sessions/:sessionId', this.authenticateUser.bind(this), (req, res) => {
+      const { sessionId } = req.params;
+      const userSessions = userReceipts.get(req.user.username) || [];
+      const session = userSessions.find(s => s.sessionId === sessionId);
+
+      if (!session) {
+        return res.status(404).json({
+          success: false,
+          message: 'Session not found'
+        });
+      }
+
+      res.json({
+        success: true,
+        session
+      });
+    });
+  }
+
   setupRoutes() {
-    // Health check endpoint
+    // Health check endpoint (no auth required)
     this.app.get('/health', (req, res) => {
       res.json({
         status: 'healthy',
@@ -122,6 +278,11 @@ class BrowserAutomationService {
         wsConnections: this.wsManager.getConnectionCount()
       });
     });
+
+    // Apply authentication middleware to API routes
+    this.app.use('/api/sessions', this.authenticateUser.bind(this));
+    this.app.use('/api/nl-tasks', this.authenticateUser.bind(this));
+    this.app.use('/api/commands', this.authenticateUser.bind(this));
 
     // API routes
     this.app.use('/api/sessions', sessionRoutes(this.sessionManager));

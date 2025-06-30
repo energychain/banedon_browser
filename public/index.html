@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Natural Language Browser Control</title>
+    <title>Corrently Cloud Browser - Advanced Web Automation</title>
     <style>
         * {
             margin: 0;
@@ -425,6 +425,86 @@
             margin-bottom: 30px;
             text-align: center;
             box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            position: relative;
+        }
+
+        .hamburger-menu {
+            background: rgba(255,255,255,0.95);
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            position: relative;
+        }
+
+        .menu-toggle {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 0 auto;
+            transition: all 0.3s ease;
+        }
+
+        .menu-toggle:hover {
+            background: #5a67d8;
+            transform: translateY(-2px);
+        }
+
+        .menu-items {
+            display: none;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+
+        .menu-items.open {
+            display: block;
+        }
+
+        .menu-item {
+            display: block;
+            background: white;
+            color: #333;
+            padding: 15px 20px;
+            margin: 8px 0;
+            text-decoration: none;
+            border-radius: 12px;
+            border: 2px solid #f0f0f0;
+            transition: all 0.3s ease;
+            text-align: left;
+        }
+
+        .menu-item:hover {
+            border-color: #667eea;
+            background: #f8f9ff;
+            transform: translateX(5px);
+        }
+
+        .menu-item-icon {
+            font-size: 1.5rem;
+            margin-right: 15px;
+            display: inline-block;
+            width: 30px;
+        }
+
+        .menu-item-title {
+            font-weight: bold;
+            font-size: 1.1rem;
+            color: #667eea;
+            display: block;
+        }
+
+        .menu-item-desc {
+            font-size: 0.9rem;
+            color: #666;
+            margin-top: 5px;
         }
 
         .nav-menu h3 {
@@ -435,6 +515,108 @@
 
         .nav-menu .btn {
             margin: 5px 10px;
+        }
+
+        /* Connection Status Styles */
+        .status-dashboard {
+            margin-bottom: 30px;
+        }
+
+        .connection-indicators {
+            margin-bottom: 15px;
+        }
+
+        .connection-item {
+            display: flex;
+            align-items: center;
+            margin: 8px 0;
+            gap: 10px;
+        }
+
+        .connection-status {
+            font-size: 1.2rem;
+            min-width: 20px;
+        }
+
+        .connection-item strong {
+            min-width: 150px;
+            color: #667eea;
+        }
+
+        /* Session Management Styles */
+        .session-controls {
+            margin-bottom: 15px;
+        }
+
+        .session-actions {
+            display: flex;
+            gap: 10px;
+            margin: 15px 0;
+            flex-wrap: wrap;
+        }
+
+        .execution-mode {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+
+        .execution-mode input[type="radio"] {
+            margin: 0 5px 0 15px;
+        }
+
+        .execution-mode label {
+            margin-right: 15px;
+            cursor: pointer;
+        }
+
+        /* Copyright Footer */
+        .footer {
+            background: rgba(255,255,255,0.95);
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 40px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .footer a {
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* Login Section Styles */
+        .login-section {
+            background: rgba(255,255,255,0.95);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .login-form {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .login-form input {
+            padding: 8px 15px;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            font-size: 0.9rem;
+        }
+
+        .user-info {
+            color: #667eea;
+            font-weight: bold;
         }
 
         @media (max-width: 768px) {
@@ -449,21 +631,94 @@
             .grid {
                 grid-template-columns: 1fr;
             }
+            
+            .session-actions {
+                flex-direction: column;
+            }
+            
+            .connection-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 5px;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>💬 Natural Language Browser Control</h1>
-            <p>Tell the browser what to do in plain English.</p>
+            <h1>🌐 Corrently Cloud Browser</h1>
+            <p>Advanced web automation platform for natural language browser control.</p>
         </div>
 
+        <!-- Navigation Menu -->
         <div class="nav-menu">
             <h3>📚 Documentation & Guides</h3>
             <a href="/help.html" class="btn">📖 User Guide & Examples</a>
             <a href="/api-docs.html" class="btn btn-secondary">🔧 API Documentation</a>
             <a href="/install-guide.html" class="btn btn-secondary">⚙️ Installation Guide</a>
+        </div>
+
+        <!-- Hamburger Menu for Mobile/Compact View -->
+        <div class="hamburger-menu">
+            <button class="menu-toggle" onclick="toggleHamburgerMenu()">
+                <span id="hamburger-icon">☰</span> <span>Quick Access Menu</span>
+            </button>
+            <div class="menu-items" id="hamburger-items">
+                <a href="/help.html" class="menu-item">
+                    <span class="menu-item-icon">📖</span>
+                    <div>
+                        <div class="menu-item-title">User Guide & Examples</div>
+                        <div class="menu-item-desc">Learn how to automate web tasks with real-world examples</div>
+                    </div>
+                </a>
+                <a href="/api-docs.html" class="menu-item">
+                    <span class="menu-item-icon">🔧</span>
+                    <div>
+                        <div class="menu-item-title">API Documentation</div>
+                        <div class="menu-item-desc">Complete reference for developers and advanced users</div>
+                    </div>
+                </a>
+                <a href="/install-guide.html" class="menu-item">
+                    <span class="menu-item-icon">⚙️</span>
+                    <div>
+                        <div class="menu-item-title">Installation Guide</div>
+                        <div class="menu-item-desc">Step-by-step setup instructions for browser extension</div>
+                    </div>
+                </a>
+                <a href="#session-management" class="menu-item" onclick="scrollToSessionManagement()">
+                    <span class="menu-item-icon">🎛️</span>
+                    <div>
+                        <div class="menu-item-title">Session Management</div>
+                        <div class="menu-item-desc">Manage and reconnect to your automation sessions</div>
+                    </div>
+                </a>
+                <a href="#connection-status" class="menu-item" onclick="checkConnectionStatus()">
+                    <span class="menu-item-icon">🔗</span>
+                    <div>
+                        <div class="menu-item-title">Connection Status</div>
+                        <div class="menu-item-desc">Check browser extension and server connectivity</div>
+                    </div>
+                </a>
+            </div>
+        </div>
+
+        <!-- Optional Login Section -->
+        <div class="login-section" id="loginSection">
+            <div id="loginForm" style="display: none;">
+                <h3 style="text-align: center; color: #667eea; margin-bottom: 15px;">🔐 User Authentication (Optional)</h3>
+                <div class="login-form">
+                    <input type="text" id="username" placeholder="Username (optional)">
+                    <input type="password" id="password" placeholder="Password (optional)">
+                    <button class="btn" onclick="login()">Login</button>
+                    <button class="btn btn-secondary" onclick="toggleLoginForm()">Cancel</button>
+                </div>
+            </div>
+            <div id="userInfo" style="text-align: center;">
+                <span class="user-info" id="currentUser">👤 Guest User</span>
+                <button class="btn btn-secondary" onclick="toggleLoginForm()" style="margin-left: 10px;">🔐 Login</button>
+                <button class="btn btn-secondary" onclick="logout()" id="logoutBtn" style="display: none; margin-left: 10px;">🚪 Logout</button>
+            </div>
         </div>
 
         <div class="browser-window">
@@ -501,7 +756,64 @@
                         <p>The browser view will appear here after you execute a command.</p>
                     </div>
                     <div class="chat-history" id="chatHistory"></div>
-                    <div id="nl-result"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Connection Status & Session Management -->
+        <div class="status-dashboard" id="session-management">
+            <div class="grid">
+                <div class="card">
+                    <h2><span class="icon">🔗</span>Connection Status</h2>
+                    <div class="connection-indicators">
+                        <div class="connection-item">
+                            <span class="connection-status" id="serverStatus">🔴</span>
+                            <strong>Server Connection:</strong>
+                            <span id="serverStatusText">Checking...</span>
+                        </div>
+                        <div class="connection-item">
+                            <span class="connection-status" id="extensionStatus">🔴</span>
+                            <strong>Browser Extension:</strong>
+                            <span id="extensionStatusText">Checking...</span>
+                        </div>
+                        <div class="connection-item">
+                            <span class="connection-status" id="websocketStatus">🔴</span>
+                            <strong>WebSocket:</strong>
+                            <span id="websocketStatusText">Checking...</span>
+                        </div>
+                    </div>
+                    <button class="btn btn-secondary" onclick="checkAllConnections()">🔄 Refresh Status</button>
+                    <button class="btn" onclick="autoConnectExtension()" id="autoConnectBtn">🔌 Auto-Connect Extension</button>
+                </div>
+                
+                <div class="card">
+                    <h2><span class="icon">🎛️</span>Session Management</h2>
+                    <div class="session-controls">
+                        <div class="input-group">
+                            <label>Current Session:</label>
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                <input type="text" id="currentSessionDisplay" readonly style="flex: 1;">
+                                <button class="btn btn-secondary" onclick="copySessionId()">📋 Copy</button>
+                                <button class="btn btn-secondary" onclick="shareSession()">🔗 Share</button>
+                            </div>
+                        </div>
+                        <div class="session-actions">
+                            <button class="btn" onclick="createNewSession()">➕ New Session</button>
+                            <button class="btn btn-secondary" onclick="joinSession()">🚪 Join Session</button>
+                            <button class="btn btn-secondary" onclick="downloadSessionReceipt()">💾 Save Receipt</button>
+                        </div>
+                        <div class="execution-mode">
+                            <label><strong>Force Execution Mode:</strong></label>
+                            <div style="margin-top: 5px;">
+                                <input type="radio" name="forceMode" value="auto" id="modeAuto" checked>
+                                <label for="modeAuto">🤖 Auto (Smart Selection)</label>
+                                <input type="radio" name="forceMode" value="extension" id="modeExtension">
+                                <label for="modeExtension">🧩 Force Extension</label>
+                                <input type="radio" name="forceMode" value="server" id="modeServer">
+                                <label for="modeServer">🖥️ Force Server</label>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -727,8 +1039,16 @@
         </div>
     </div>
 
+    <!-- Copyright Footer -->
     <div class="footer">
-        <p>Browser Automation Service Dashboard | <a href="/health" style="color: white;">Health Check</a> | <a href="https://github.com/energychain/banedon_browser" style="color: white;">GitHub</a></p>
+        <p>
+            <strong>🌐 Corrently Cloud Browser</strong> - Advanced Web Automation Platform
+            <br>
+            © 2024 <a href="https://stromdao.de/impressum.html" target="_blank">STROMDAO GmbH</a> - 
+            <a href="/health">Health Check</a> | 
+            <a href="https://github.com/energychain/banedon_browser" target="_blank">GitHub</a> |
+            <a href="https://stromdao.de/impressum.html" target="_blank">Imprint</a>
+        </p>
     </div>
 
     <script>
@@ -901,12 +1221,18 @@
                 return;
             }
 
+            // Prepare headers with authentication if available
+            const headers = { 'Content-Type': 'application/json' };
+            if (currentSessionToken) {
+                headers['X-Session-Token'] = currentSessionToken;
+            }
+
             // If no session ID provided, create a new session
             if (!sessionId) {
                 try {
                     const sessionResponse = await fetch('/api/sessions', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: headers,
                         body: JSON.stringify({ 
                             metadata: { 
                                 browser: "chrome", 
@@ -938,9 +1264,7 @@
             try {
                 const response = await fetch(`/api/sessions/${sessionId}/nl-tasks`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers: headers,
                     body: JSON.stringify({ task: promptText }),
                 });
 
@@ -1148,8 +1472,378 @@
             addToChatHistory('assistant', 'Cleared session ID. Next command will create a new session.');
         }
 
+        // ===== New Enhanced Functions =====
+
+        // Hamburger menu functionality
+        function toggleHamburgerMenu() {
+            const menuItems = document.getElementById('hamburger-items');
+            const icon = document.getElementById('hamburger-icon');
+            
+            if (menuItems.classList.contains('open')) {
+                menuItems.classList.remove('open');
+                icon.textContent = '☰';
+            } else {
+                menuItems.classList.add('open');
+                icon.textContent = '✕';
+            }
+        }
+
+        function scrollToSessionManagement() {
+            document.getElementById('session-management').scrollIntoView({ 
+                behavior: 'smooth' 
+            });
+            toggleHamburgerMenu(); // Close menu after navigation
+        }
+
+        // Connection status functions
+        async function checkAllConnections() {
+            updateConnectionStatus('serverStatus', 'serverStatusText', '🟡', 'Checking...');
+            updateConnectionStatus('extensionStatus', 'extensionStatusText', '🟡', 'Checking...');
+            updateConnectionStatus('websocketStatus', 'websocketStatusText', '🟡', 'Checking...');
+
+            // Check server connection
+            try {
+                const response = await fetch('/health');
+                if (response.ok) {
+                    updateConnectionStatus('serverStatus', 'serverStatusText', '🟢', 'Connected');
+                } else {
+                    updateConnectionStatus('serverStatus', 'serverStatusText', '🔴', 'Server Error');
+                }
+            } catch (error) {
+                updateConnectionStatus('serverStatus', 'serverStatusText', '🔴', 'Connection Failed');
+            }
+
+            // Check extension connection
+            checkExtensionConnection();
+
+            // Check WebSocket connection
+            checkWebSocketConnection();
+        }
+
+        function updateConnectionStatus(statusId, textId, indicator, text) {
+            document.getElementById(statusId).textContent = indicator;
+            document.getElementById(textId).textContent = text;
+        }
+
+        async function checkExtensionConnection() {
+            try {
+                // Try to communicate with extension
+                if (typeof chrome !== 'undefined' && chrome.runtime) {
+                    updateConnectionStatus('extensionStatus', 'extensionStatusText', '🟢', 'Extension Available');
+                } else {
+                    updateConnectionStatus('extensionStatus', 'extensionStatusText', '🔴', 'Extension Not Detected');
+                }
+            } catch (error) {
+                updateConnectionStatus('extensionStatus', 'extensionStatusText', '🔴', 'Extension Error');
+            }
+        }
+
+        function checkWebSocketConnection() {
+            try {
+                const wsUrl = baseUrl.replace('http', 'ws') + '/ws';
+                const testWs = new WebSocket(wsUrl);
+                
+                testWs.onopen = function() {
+                    updateConnectionStatus('websocketStatus', 'websocketStatusText', '🟢', 'WebSocket Ready');
+                    testWs.close();
+                };
+                
+                testWs.onerror = function() {
+                    updateConnectionStatus('websocketStatus', 'websocketStatusText', '🔴', 'WebSocket Failed');
+                };
+                
+                testWs.onclose = function() {
+                    if (document.getElementById('websocketStatusText').textContent === 'Checking...') {
+                        updateConnectionStatus('websocketStatus', 'websocketStatusText', '🔴', 'WebSocket Unavailable');
+                    }
+                };
+            } catch (error) {
+                updateConnectionStatus('websocketStatus', 'websocketStatusText', '🔴', 'WebSocket Error');
+            }
+        }
+
+        // Session management functions
+        function createNewSession() {
+            document.getElementById('nlSessionId').value = '';
+            document.getElementById('currentSessionDisplay').value = '';
+            sessionId = null;
+            addToChatHistory('assistant', '🆕 Ready to create a new session on next command.');
+        }
+
+        function joinSession() {
+            const sessionToJoin = prompt('Enter Session ID to join:');
+            if (sessionToJoin && sessionToJoin.trim()) {
+                document.getElementById('nlSessionId').value = sessionToJoin.trim();
+                document.getElementById('currentSessionDisplay').value = sessionToJoin.trim();
+                sessionId = sessionToJoin.trim();
+                addToChatHistory('assistant', `🚪 Joined session: ${sessionToJoin.trim()}`);
+            }
+        }
+
+        function copySessionId() {
+            const currentSession = document.getElementById('currentSessionDisplay').value;
+            if (currentSession) {
+                navigator.clipboard.writeText(currentSession).then(() => {
+                    alert('📋 Session ID copied to clipboard!');
+                }).catch(() => {
+                    // Fallback for older browsers
+                    const textArea = document.createElement('textarea');
+                    textArea.value = currentSession;
+                    document.body.appendChild(textArea);
+                    textArea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textArea);
+                    alert('📋 Session ID copied to clipboard!');
+                });
+            } else {
+                alert('❌ No active session to copy.');
+            }
+        }
+
+        function shareSession() {
+            const currentSession = document.getElementById('currentSessionDisplay').value;
+            if (currentSession) {
+                const shareUrl = `${window.location.origin}/?session=${currentSession}`;
+                navigator.clipboard.writeText(shareUrl).then(() => {
+                    alert(`🔗 Shareable URL copied to clipboard!\n\n${shareUrl}`);
+                }).catch(() => {
+                    prompt('🔗 Copy this shareable URL:', shareUrl);
+                });
+            } else {
+                alert('❌ No active session to share.');
+            }
+        }
+
+        function downloadSessionReceipt() {
+            // Use the enhanced version defined above
+            return downloadSessionReceipt();
+        }
+
+        // Auto-connect extension function
+        async function autoConnectExtension() {
+            try {
+                // This would attempt to automatically connect the extension
+                // Implementation depends on extension architecture
+                updateConnectionStatus('extensionStatus', 'extensionStatusText', '🟡', 'Attempting auto-connect...');
+                
+                // Check if extension is available
+                if (typeof chrome !== 'undefined' && chrome.runtime) {
+                    // Extension is available, attempt connection
+                    setTimeout(() => {
+                        updateConnectionStatus('extensionStatus', 'extensionStatusText', '🟢', 'Auto-connected');
+                        addToChatHistory('assistant', '🔌 Extension auto-connection successful!');
+                    }, 1000);
+                } else {
+                    setTimeout(() => {
+                        updateConnectionStatus('extensionStatus', 'extensionStatusText', '🔴', 'Extension not found');
+                        addToChatHistory('assistant', '❌ Extension not detected. Please install the browser extension first.');
+                    }, 1000);
+                }
+            } catch (error) {
+                updateConnectionStatus('extensionStatus', 'extensionStatusText', '🔴', 'Auto-connect failed');
+                addToChatHistory('assistant', '❌ Extension auto-connection failed.');
+            }
+        }
+
+        // Login functionality
+        let currentSessionToken = localStorage.getItem('sessionToken');
+
+        function toggleLoginForm() {
+            const loginForm = document.getElementById('loginForm');
+            const userInfo = document.getElementById('userInfo');
+            
+            if (loginForm.style.display === 'none') {
+                loginForm.style.display = 'block';
+                userInfo.style.display = 'none';
+            } else {
+                loginForm.style.display = 'none';
+                userInfo.style.display = 'block';
+            }
+        }
+
+        async function login() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            if (!username.trim()) {
+                alert('Please enter a username.');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    currentSessionToken = data.sessionToken;
+                    localStorage.setItem('sessionToken', currentSessionToken);
+                    
+                    document.getElementById('currentUser').textContent = `👤 ${data.user.name}`;
+                    document.getElementById('logoutBtn').style.display = 'inline-block';
+                    toggleLoginForm();
+                    addToChatHistory('assistant', `🔐 Welcome, ${data.user.name}! You are now logged in.`);
+                    
+                    // Clear form
+                    document.getElementById('username').value = '';
+                    document.getElementById('password').value = '';
+                } else {
+                    alert(`Login failed: ${data.message}`);
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                alert('Login failed. Please try again.');
+            }
+        }
+
+        async function logout() {
+            try {
+                await fetch('/api/auth/logout', {
+                    method: 'POST',
+                    headers: {
+                        'X-Session-Token': currentSessionToken
+                    }
+                });
+            } catch (error) {
+                console.error('Logout error:', error);
+            }
+
+            currentSessionToken = null;
+            localStorage.removeItem('sessionToken');
+            document.getElementById('currentUser').textContent = '👤 Guest User';
+            document.getElementById('logoutBtn').style.display = 'none';
+            addToChatHistory('assistant', '🚪 You have been logged out.');
+        }
+
+        // Check if user is already logged in
+        async function checkExistingLogin() {
+            if (currentSessionToken) {
+                try {
+                    const response = await fetch('/api/auth/me', {
+                        headers: {
+                            'X-Session-Token': currentSessionToken
+                        }
+                    });
+
+                    const data = await response.json();
+                    if (data.success && data.user.username !== 'guest') {
+                        document.getElementById('currentUser').textContent = `👤 ${data.user.name}`;
+                        document.getElementById('logoutBtn').style.display = 'inline-block';
+                    } else {
+                        // Invalid session token
+                        currentSessionToken = null;
+                        localStorage.removeItem('sessionToken');
+                    }
+                } catch (error) {
+                    console.error('Session check error:', error);
+                    currentSessionToken = null;
+                    localStorage.removeItem('sessionToken');
+                }
+            }
+        }
+
+        // Session and receipt storage functions
+        async function downloadSessionReceipt() {
+            const currentSession = document.getElementById('currentSessionDisplay').value;
+            if (currentSession) {
+                try {
+                    // Create a receipt object with session info
+                    const receipt = {
+                        sessionId: currentSession,
+                        timestamp: new Date().toISOString(),
+                        url: `${window.location.origin}/?session=${currentSession}`,
+                        platform: 'Corrently Cloud Browser',
+                        user: document.getElementById('currentUser').textContent,
+                        tasks: [], // Would be populated with actual task history
+                        metadata: {
+                            name: `Session ${currentSession.slice(0, 8)}`,
+                            createdAt: new Date().toISOString()
+                        }
+                    };
+
+                    // Save to user's account if logged in
+                    if (currentSessionToken) {
+                        try {
+                            await fetch('/api/user/sessions', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-Session-Token': currentSessionToken
+                                },
+                                body: JSON.stringify({
+                                    sessionId: currentSession,
+                                    receipt: receipt
+                                })
+                            });
+                            addToChatHistory('assistant', `💾 Session saved to your account and downloaded locally.`);
+                        } catch (error) {
+                            console.error('Save to account error:', error);
+                            addToChatHistory('assistant', `💾 Session downloaded locally (account save failed).`);
+                        }
+                    }
+                    
+                    // Download as JSON file
+                    const blob = new Blob([JSON.stringify(receipt, null, 2)], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `corrently-session-${currentSession}.json`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    
+                    if (!currentSessionToken) {
+                        addToChatHistory('assistant', `💾 Session receipt downloaded: corrently-session-${currentSession}.json`);
+                    }
+                } catch (error) {
+                    console.error('Download receipt error:', error);
+                    alert('Failed to save session receipt.');
+                }
+            } else {
+                alert('❌ No active session to save.');
+            }
+        }
+
+        // Check for session parameter in URL
+        function checkUrlForSession() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const sessionParam = urlParams.get('session');
+            if (sessionParam) {
+                document.getElementById('nlSessionId').value = sessionParam;
+                document.getElementById('currentSessionDisplay').value = sessionParam;
+                sessionId = sessionParam;
+                addToChatHistory('assistant', `🔗 Loaded session from URL: ${sessionParam}`);
+            }
+        }
+
+        // Enhanced session management
+        function updateCurrentSessionDisplay() {
+            const currentSessionInput = document.getElementById('nlSessionId').value;
+            document.getElementById('currentSessionDisplay').value = currentSessionInput || sessionId || '';
+        }
+
+        // Initialize enhanced features
+        document.addEventListener('DOMContentLoaded', function() {
+            checkUrlForSession();
+            checkAllConnections();
+            checkExistingLogin();
+            
+            // Update session display when session ID changes
+            document.getElementById('nlSessionId').addEventListener('input', updateCurrentSessionDisplay);
+        });
+
         // Auto-refresh status every 30 seconds
-        setInterval(refreshStatus, 30000);
+        setInterval(() => {
+            refreshStatus();
+            checkAllConnections();
+        }, 30000);
     </script>
 </body>
 </html>

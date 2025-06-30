@@ -3,24 +3,109 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Browser Extension Installation Guide</title>
+    <title>Installation Guide - Corrently Cloud Browser</title>
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             line-height: 1.6;
-            max-width: 800px;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
             margin: 0 auto;
             padding: 20px;
-            color: #333;
         }
-        
+
         .header {
             text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        /* Navigation Menu */
+        .nav-menu {
+            background: rgba(255,255,255,0.95);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .nav-menu h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+        }
+
+        .btn {
+            display: inline-block;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            padding: 40px 20px;
+            padding: 12px 25px;
+            text-decoration: none;
+            border-radius: 25px;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            margin: 5px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #64b3f4 0%, #c2e59c 100%);
+        }
+
+        .content {
+            background: white;
             border-radius: 15px;
+            padding: 40px;
+            box-shadow: 0 15px 50px rgba(0,0,0,0.2);
             margin-bottom: 30px;
+        }
+
+        /* Footer */
+        .footer {
+            background: rgba(255,255,255,0.95);
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 40px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .footer a {
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
         }
         
         .step {
@@ -44,21 +129,6 @@
             margin: 15px 0;
             font-family: monospace;
             overflow-x: auto;
-        }
-        
-        .btn {
-            display: inline-block;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 12px 25px;
-            text-decoration: none;
-            border-radius: 25px;
-            margin: 10px 5px;
-            transition: transform 0.2s;
-        }
-        
-        .btn:hover {
-            transform: translateY(-2px);
         }
         
         .screenshot {
@@ -86,17 +156,26 @@
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>🧩 Browser Extension Installation Guide</h1>
-        <p>Step-by-step instructions to install and configure the Browser Automation Extension</p>
-    </div>
+    <div class="container">
+        <div class="header">
+            <h1>⚙️ Corrently Cloud Browser Installation</h1>
+            <p>Step-by-step guide to install and configure the browser extension</p>
+        </div>
 
-    <div class="step">
-        <h3>Step 1: Download the Extension</h3>
-        <p>Download the extension package from the service dashboard:</p>
-        <a href="/extension/download" class="btn">📥 Download Extension Package</a>
-        <p><small>This will download a ZIP file containing the browser extension.</small></p>
-    </div>
+        <div class="nav-menu">
+            <h3>🌐 Navigation</h3>
+            <a href="/" class="btn">🏠 Back to Dashboard</a>
+            <a href="/help.html" class="btn btn-secondary">📖 User Guide</a>
+            <a href="/api-docs.html" class="btn btn-secondary">🔧 API Documentation</a>
+        </div>
+
+        <div class="content">
+            <div class="step">
+                <h3>Step 1: Download the Extension</h3>
+                <p>Download the extension package from the service dashboard:</p>
+                <a href="/extension/download" class="btn">📥 Download Extension Package</a>
+                <p><small>This will download a ZIP file containing the browser extension.</small></p>
+            </div>
 
     <div class="step">
         <h3>Step 2: Extract the Package</h3>
@@ -202,10 +281,19 @@ curl -X POST <span id="apiUrl">http://localhost:3010</span>/api/sessions \
             <li>Verify the session ID is valid and active</li>
         </ul>
     </div>
+        </div>
+    </div>
 
-    <div style="text-align: center; margin: 40px 0;">
-        <a href="/" class="btn">← Back to Dashboard</a>
-        <a href="/extension/download" class="btn">📥 Download Extension</a>
+    <!-- Copyright Footer -->
+    <div class="footer">
+        <p>
+            <strong>🌐 Corrently Cloud Browser</strong> - Advanced Web Automation Platform
+            <br>
+            © 2024 <a href="https://stromdao.de/impressum.html" target="_blank">STROMDAO GmbH</a> - 
+            <a href="/health">Health Check</a> | 
+            <a href="https://github.com/energychain/banedon_browser" target="_blank">GitHub</a> |
+            <a href="https://stromdao.de/impressum.html" target="_blank">Imprint</a>
+        </p>
     </div>
 
     <script>

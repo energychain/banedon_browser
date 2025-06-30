@@ -10,6 +10,7 @@ class BackgroundService {
     this.maxReconnectAttempts = 5;
     this.reconnectDelay = 1000;
     this.workingTabId = null; // Track the tab used for automation
+    this.autoConnectEnabled = true; // Enable auto-connect by default
     
     this.setupEventListeners();
     this.loadStoredSession();
@@ -43,13 +44,24 @@ class BackgroundService {
 
   async loadStoredSession() {
     try {
-      const result = await chrome.storage.local.get(['sessionId', 'serverUrl']);
+      const result = await chrome.storage.local.get(['sessionId', 'serverUrl', 'autoConnectEnabled']);
       if (result.sessionId) {
         this.sessionId = result.sessionId;
         console.log('Loaded stored session:', this.sessionId);
       }
       if (result.serverUrl) {
         this.serverUrl = result.serverUrl;
+      }
+      if (result.autoConnectEnabled !== undefined) {
+        this.autoConnectEnabled = result.autoConnectEnabled;
+      }
+
+      // Auto-connect if enabled and we have a session ID
+      if (this.autoConnectEnabled && this.sessionId) {
+        console.log('Auto-connecting to stored session...');
+        setTimeout(() => {
+          this.connect(this.sessionId, this.serverUrl);
+        }, 1000); // Delay to ensure extension is fully loaded
       }
     } catch (error) {
       console.error('Failed to load stored session:', error);
@@ -60,7 +72,8 @@ class BackgroundService {
     try {
       await chrome.storage.local.set({
         sessionId: this.sessionId,
-        serverUrl: this.serverUrl
+        serverUrl: this.serverUrl,
+        autoConnectEnabled: this.autoConnectEnabled
       });
     } catch (error) {
       console.error('Failed to save session:', error);
@@ -97,8 +110,16 @@ class BackgroundService {
           success: true,
           status: this.connectionStatus,
           sessionId: this.sessionId,
-          serverUrl: this.serverUrl
+          serverUrl: this.serverUrl,
+          autoConnectEnabled: this.autoConnectEnabled
         });
+        break;
+
+      case 'set_auto_connect':
+        this.autoConnectEnabled = message.enabled;
+        this.saveSession()
+          .then(() => sendResponse({ success: true, autoConnectEnabled: this.autoConnectEnabled }))
+          .catch(error => sendResponse({ success: false, error: error.message }));
         break;
 
       case 'get_tabs':

@@ -3,24 +3,109 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Browser Automation Service - API Documentation</title>
+    <title>API Documentation - Corrently Cloud Browser</title>
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             line-height: 1.6;
-            max-width: 1000px;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
             margin: 0 auto;
             padding: 20px;
-            color: #333;
         }
-        
+
         .header {
             text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        /* Navigation Menu */
+        .nav-menu {
+            background: rgba(255,255,255,0.95);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .nav-menu h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+        }
+
+        .btn {
+            display: inline-block;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            padding: 40px 20px;
+            padding: 12px 25px;
+            text-decoration: none;
+            border-radius: 25px;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            margin: 5px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #64b3f4 0%, #c2e59c 100%);
+        }
+
+        .content {
+            background: white;
             border-radius: 15px;
+            padding: 40px;
+            box-shadow: 0 15px 50px rgba(0,0,0,0.2);
             margin-bottom: 30px;
+        }
+
+        /* Footer */
+        .footer {
+            background: rgba(255,255,255,0.95);
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 40px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .footer a {
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
         }
         
         .endpoint {
@@ -119,30 +204,39 @@
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>📚 Browser Automation Service API</h1>
-        <p>Complete REST API documentation for browser automation</p>
-    </div>
+    <div class="container">
+        <div class="header">
+            <h1>� Corrently Cloud Browser API</h1>
+            <p>Complete REST API documentation for advanced web automation</p>
+        </div>
 
-    <div class="toc">
-        <h3>Table of Contents</h3>
-        <ul>
-            <li><a href="#overview">Overview</a></li>
-            <li><a href="#authentication">Authentication</a></li>
-            <li><a href="#sessions">Session Management</a></li>
-            <li><a href="#commands">Command Execution</a></li>
-            <li><a href="#websocket">WebSocket API</a></li>
-            <li><a href="#errors">Error Handling</a></li>
-        </ul>
-    </div>
+        <div class="nav-menu">
+            <h3>🌐 Navigation</h3>
+            <a href="/" class="btn">🏠 Back to Dashboard</a>
+            <a href="/help.html" class="btn btn-secondary">📖 User Guide</a>
+            <a href="/install-guide.html" class="btn btn-secondary">⚙️ Installation Guide</a>
+        </div>
 
-    <section id="overview">
-        <h2>Overview</h2>
-        <p>The Browser Automation Service provides a REST API for controlling web browsers remotely through <strong>two execution modes</strong>:</p>
-        
-        <div class="parameter">
-            <strong>🔌 Extension-Based Mode:</strong> Commands executed in user's browser via WebSocket-connected extension<br>
-            <strong>🤖 Server-Side Mode:</strong> Commands executed in headless Chromium browser on the server<br>
+        <div class="content">
+            <div class="toc">
+                <h3>Table of Contents</h3>
+                <ul>
+                    <li><a href="#overview">Overview</a></li>
+                    <li><a href="#authentication">Authentication</a></li>
+                    <li><a href="#sessions">Session Management</a></li>
+                    <li><a href="#commands">Command Execution</a></li>
+                    <li><a href="#websocket">WebSocket API</a></li>
+                    <li><a href="#errors">Error Handling</a></li>
+                </ul>
+            </div>
+
+            <section id="overview">
+                <h2>Overview</h2>
+                <p>The Corrently Cloud Browser provides a REST API for controlling web browsers remotely through <strong>two execution modes</strong>:</p>
+                
+                <div class="parameter">
+                    <strong>🔌 Extension-Based Mode:</strong> Commands executed in user's browser via WebSocket-connected extension<br>
+                    <strong>🤖 Server-Side Mode:</strong> Commands executed in headless Chromium browser on the server<br>
             <strong>🎯 Automatic Selection:</strong> Service automatically chooses the best mode based on connection availability
         </div>
         
@@ -459,9 +553,19 @@ WebSocket URL: ws://localhost:3010/ws?sessionId={sessionId}
 }
         </div>
     </section>
+        </div>
+    </div>
 
-    <div style="text-align: center; margin: 40px 0;">
-        <a href="/" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 25px; text-decoration: none; border-radius: 25px;">← Back to Dashboard</a>
+    <!-- Copyright Footer -->
+    <div class="footer">
+        <p>
+            <strong>🌐 Corrently Cloud Browser</strong> - Advanced Web Automation Platform
+            <br>
+            © 2024 <a href="https://stromdao.de/impressum.html" target="_blank">STROMDAO GmbH</a> - 
+            <a href="/health">Health Check</a> | 
+            <a href="https://github.com/energychain/banedon_browser" target="_blank">GitHub</a> |
+            <a href="https://stromdao.de/impressum.html" target="_blank">Imprint</a>
+        </p>
     </div>
 
     <script>
