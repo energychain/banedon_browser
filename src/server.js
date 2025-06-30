@@ -12,6 +12,7 @@ const sessionRoutes = require('./routes/sessions');
 const commandRoutes = require('./routes/commands');
 const nlTaskRoutes = require('./routes/nlTasks');
 const interactiveRoutes = require('./routes/interactive');
+const receiptRoutes = require('./routes/receipts');
 
 // Import services
 const SessionManager = require('./services/SessionManager');
@@ -141,6 +142,9 @@ class BrowserAutomationService {
     
     // Interactive control routes
     this.app.use('/api/sessions', interactiveRoutes(this.sessionManager, this.commandExecutor));
+    
+    // Receipt execution routes
+    this.app.use('/api/receipts', receiptRoutes(this.sessionManager));
     
     // Serve screenshots
     this.app.use('/screenshots', express.static(path.join(__dirname, '..', 'public', 'screenshots')));

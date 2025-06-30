@@ -1,0 +1,27 @@
+{
+  "version": "1.0",
+  "createdAt": "2025-06-30T18:30:00.000Z",
+  "tasks": [
+    {
+      "id": "task_1",
+      "type": "natural_language_task",
+      "params": {
+        "query": "Navigate to google.com"
+      }
+    },
+    {
+      "id": "task_2", 
+      "type": "natural_language_task",
+      "params": {
+        "query": "Search for 'GitHub Copilot'"
+      }
+    },
+    {
+      "id": "task_3",
+      "type": "natural_language_task",
+      "params": {
+        "query": "Take a screenshot"
+      }
+    }
+  ]
+}

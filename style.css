@@ -142,11 +142,10 @@ h2 {
     border-top: 1px solid #eee;
 }
 
-/* Execution controls */
-.execution-actions {
-    margin-top: 1rem;
-    padding-top: 1rem;
-    border-top: 1px solid #eee;
+.receipt-upload {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid #f0f0f0;
 }
 
 #run-tasks-btn {
@@ -167,6 +166,28 @@ h2 {
 }
 
 #run-tasks-btn:disabled {
+    background-color: #6c757d;
+    cursor: not-allowed;
+}
+
+#upload-receipt-btn {
+    padding: 0.6rem 1.2rem;
+    border: none;
+    background-color: #17a2b8;
+    color: white;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    font-weight: bold;
+    width: 100%;
+    margin-bottom: 0.5rem;
+}
+
+#upload-receipt-btn:hover {
+    background-color: #138496;
+}
+
+#upload-receipt-btn:disabled {
     background-color: #6c757d;
     cursor: not-allowed;
 }
@@ -244,7 +265,7 @@ h2 {
     padding: 1rem;
     border-radius: 4px;
     font-family: "Courier New", Courier, monospace;
-    max-height: 300px;
+    max-height: 250px; /* Reduced to give more space to response */
 }
 
 #visualizer-content h3 {
@@ -369,4 +390,112 @@ h2 {
     border-radius: 4px;
     font-size: 11px;
     z-index: 10;
+}
+
+/* Task response display */
+#task-response-container {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+#task-response-container h3 {
+    margin-top: 0;
+    color: #495057;
+    border-bottom: 1px solid #dee2e6;
+    padding-bottom: 0.5rem;
+    margin-bottom: 1rem;
+    font-size: 1.1rem;
+}
+
+#task-response-display {
+    background: white;
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+    padding: 15px;
+    min-height: 60px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.5;
+    color: #333;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+#task-response-display.has-response {
+    border-left: 4px solid #28a745;
+    background: #f8fff9;
+}
+
+#task-response-display.has-error {
+    border-left: 4px solid #dc3545;
+    background: #fff8f8;
+}
+
+#task-response-display .response-header {
+    font-weight: bold;
+    color: #495057;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #e9ecef;
+    font-size: 14px;
+}
+
+#task-response-display .response-content {
+    font-size: 15px;
+    line-height: 1.6;
+}
+
+#task-response-display .response-metadata {
+    margin-top: 15px;
+    padding-top: 10px;
+    border-top: 1px solid #e9ecef;
+    font-size: 12px;
+    color: #6c757d;
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+#task-response-display .copy-response-btn {
+    background: #6c757d;
+    color: white;
+    border: none;
+    padding: 4px 8px;
+    border-radius: 3px;
+    font-size: 11px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+#task-response-display .copy-response-btn:hover {
+    background: #5a6268;
+}
+
+.status-message {
+    font-size: 0.9rem;
+    padding: 0.5rem;
+    border-radius: 4px;
+    margin-top: 0.5rem;
+}
+
+.status-message.success {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.status-message.error {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f1aeb5;
+}
+
+.status-message.info {
+    background-color: #d1ecf1;
+    color: #0c5460;
+    border: 1px solid #bee5eb;
 }

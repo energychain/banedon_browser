@@ -492,6 +492,172 @@ document.addEventListener('DOMContentLoaded', () => {
         logAction('Receipt downloaded.');
     }
 
+    function showReceiptStatus(message, type = 'info') {
+        const statusDiv = document.getElementById('receipt-status');
+        statusDiv.textContent = message;
+        statusDiv.className = `status-message ${type}`;
+        statusDiv.style.display = 'block';
+        
+        // Auto-hide after 5 seconds unless it's an error
+        if (type !== 'error') {
+            setTimeout(() => {
+                statusDiv.style.display = 'none';
+            }, 5000);
+        }
+    }
+
+    function validateReceipt(receipt) {
+        if (!receipt || typeof receipt !== 'object') {
+            throw new Error('Invalid receipt format: must be a JSON object');
+        }
+        
+        if (!receipt.version) {
+            throw new Error('Invalid receipt: missing version field');
+        }
+        
+        if (!Array.isArray(receipt.tasks)) {
+            throw new Error('Invalid receipt: tasks must be an array');
+        }
+        
+        receipt.tasks.forEach((task, index) => {
+            if (!task.id) {
+                throw new Error(`Invalid task at index ${index}: missing id`);
+            }
+            if (!task.type) {
+                throw new Error(`Invalid task at index ${index}: missing type`);
+            }
+            if (!task.params || !task.params.query) {
+                throw new Error(`Invalid task at index ${index}: missing params.query`);
+            }
+        });
+        
+        return true;
+    }
+
+    async function runReceiptTasks(receipt) {
+        if (!currentSessionId) {
+            // Create a new session if none exists
+            await createSession();
+        }
+        
+        // Clear existing tasks and add receipt tasks
+        tasks = [];
+        renderTaskList();
+        
+        // Add tasks from receipt
+        for (const receiptTask of receipt.tasks) {
+            const task = {
+                id: Date.now() + Math.random(), // Generate new ID for UI
+                type: receiptTask.type,
+                description: receiptTask.params.query,
+                status: 'pending'
+            };
+            tasks.push(task);
+        }
+        
+        renderTaskList();
+        showReceiptStatus(`Loaded ${receipt.tasks.length} tasks from receipt. Running tasks...`, 'info');
+        logAction(`Receipt loaded with ${receipt.tasks.length} tasks.`);
+        
+        // Run the tasks
+        await runAllTasks();
+    }
+
+    async function runReceiptViaAPI(receipt) {
+        try {
+            showReceiptStatus('Uploading receipt to server...', 'info');
+            
+            const response = await fetch(`${API_BASE}/api/receipts/run`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(receipt)
+            });
+            
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ error: 'Unknown server error' }));
+                throw new Error(errorData.error || `Server error: ${response.statusText}`);
+            }
+            
+            const result = await response.json();
+            showReceiptStatus(`Receipt executed successfully! Session ID: ${result.sessionId}`, 'success');
+            logAction(`Receipt executed via API. Session: ${result.sessionId}`);
+            
+            // Optionally switch to this session to view results
+            if (result.sessionId) {
+                currentSessionId = result.sessionId;
+                // Fetch and display any screenshots or results
+                await getCurrentScreenshot(currentSessionId);
+            }
+            
+            return result;
+        } catch (error) {
+            showReceiptStatus(`API execution failed: ${error.message}`, 'error');
+            logAction(`Receipt API execution failed: ${error.message}`);
+            throw error;
+        }
+    }
+
+    function handleReceiptUpload() {
+        const fileInput = document.getElementById('receipt-file-input');
+        const file = fileInput.files[0];
+        
+        if (!file) {
+            showReceiptStatus('Please select a receipt file', 'error');
+            return;
+        }
+        
+        if (!file.name.endsWith('.json')) {
+            showReceiptStatus('Please select a JSON file', 'error');
+            return;
+        }
+        
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            try {
+                const receiptText = e.target.result;
+                const receipt = JSON.parse(receiptText);
+                
+                // Validate receipt format
+                validateReceipt(receipt);
+                
+                showReceiptStatus('Receipt validated successfully. Choose execution method:', 'success');
+                logAction(`Receipt file "${file.name}" loaded and validated.`);
+                
+                // Show execution options
+                const confirmDialog = confirm(
+                    `Receipt loaded with ${receipt.tasks.length} tasks.\n\n` +
+                    'Choose execution method:\n' +
+                    'OK = Run locally in browser\n' +
+                    'Cancel = Run via server API'
+                );
+                
+                if (confirmDialog) {
+                    // Run locally
+                    await runReceiptTasks(receipt);
+                } else {
+                    // Run via API
+                    await runReceiptViaAPI(receipt);
+                }
+                
+            } catch (error) {
+                if (error instanceof SyntaxError) {
+                    showReceiptStatus('Invalid JSON file format', 'error');
+                } else {
+                    showReceiptStatus(`Error: ${error.message}`, 'error');
+                }
+                logAction(`Receipt upload error: ${error.message}`);
+            }
+        };
+        
+        reader.onerror = () => {
+            showReceiptStatus('Error reading file', 'error');
+        };
+        
+        reader.readAsText(file);
+    }
+
     // API functions
     async function createSession() {
         try {
@@ -607,6 +773,9 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             updateExecutionStatus('running', 'Creating browser session...', 'running');
             logAction('Starting task execution...');
+            
+            // Clear previous task response
+            clearTaskResponse();
 
             // Create a new session
             currentSessionId = await createSession();
@@ -621,6 +790,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 try {
                     const result = await executeTask(currentSessionId, task.description);
                     logAction(`✅ Task ${i + 1} completed: ${result.response ? result.response.substring(0, 100) + '...' : 'Success'}`);
+
+                    // Display task response prominently
+                    displayTaskResponse(result, task.description);
 
                     // Display final screenshot if available
                     if (result.screenshots && result.screenshots.final) {
@@ -637,6 +809,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 } catch (taskError) {
                     logAction(`❌ Task ${i + 1} failed: ${taskError.message}`);
                     console.error('Task execution error:', taskError);
+                    
+                    // Display error response prominently
+                    displayTaskResponse({
+                        success: false,
+                        error: taskError.message,
+                        execution: { iterations: 0, duration: 0 }
+                    }, task.description);
                 }
 
                 // Add a small delay between tasks
@@ -683,9 +862,131 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // Response display functions
+    function displayTaskResponse(taskResult, taskDescription) {
+        const responseContainer = document.getElementById('task-response-container');
+        const responseDisplay = document.getElementById('task-response-display');
+        
+        if (!responseContainer || !responseDisplay || !taskResult) {
+            return;
+        }
+
+        // Show the response container
+        responseContainer.style.display = 'block';
+        
+        // Clear previous content
+        responseDisplay.innerHTML = '';
+        responseDisplay.className = '';
+
+        // Determine if this is an error or success
+        const isError = !taskResult.success || taskResult.error;
+        const responseText = taskResult.response || taskResult.error || 'No response available';
+        
+        // Apply appropriate styling
+        if (isError) {
+            responseDisplay.classList.add('has-error');
+        } else {
+            responseDisplay.classList.add('has-response');
+        }
+
+        // Create response header
+        const header = document.createElement('div');
+        header.className = 'response-header';
+        header.innerHTML = `
+            ${isError ? '❌' : '✅'} Response for: "${taskDescription.substring(0, 60)}${taskDescription.length > 60 ? '...' : ''}"
+        `;
+
+        // Create response content
+        const content = document.createElement('div');
+        content.className = 'response-content';
+        content.textContent = responseText;
+
+        // Create metadata section
+        const metadata = document.createElement('div');
+        metadata.className = 'response-metadata';
+        
+        const timestamp = new Date().toLocaleString();
+        const iterations = taskResult.iterations || taskResult.execution?.iterations || 0;
+        const duration = taskResult.execution?.duration || 0;
+        
+        metadata.innerHTML = `
+            <span>📅 ${timestamp}</span>
+            <span>🔄 ${iterations} iterations</span>
+            <span>⏱️ ${Math.round(duration / 1000)}s</span>
+            <button class="copy-response-btn" onclick="copyResponseToClipboard('${responseText.replace(/'/g, "\\'")}')">📋 Copy</button>
+        `;
+
+        // Assemble the response display
+        responseDisplay.appendChild(header);
+        responseDisplay.appendChild(content);
+        responseDisplay.appendChild(metadata);
+
+        // Scroll the response into view
+        responseContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        
+        logAction(`💬 Task response displayed prominently`);
+    }
+
+    // Global function for copy button (needed for onclick in HTML)
+    window.copyResponseToClipboard = function(text) {
+        navigator.clipboard.writeText(text).then(() => {
+            logAction('📋 Response copied to clipboard');
+            
+            // Show temporary feedback
+            const btn = event.target;
+            const originalText = btn.textContent;
+            btn.textContent = '✅ Copied';
+            setTimeout(() => {
+                btn.textContent = originalText;
+            }, 2000);
+        }).catch(err => {
+            console.error('Failed to copy text: ', err);
+            logAction('❌ Failed to copy response to clipboard');
+            
+            // Fallback for older browsers
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            document.body.appendChild(textArea);
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                logAction('📋 Response copied to clipboard (fallback)');
+            } catch (fallbackErr) {
+                logAction('❌ Copy to clipboard not supported');
+            }
+            document.body.removeChild(textArea);
+        });
+    };
+
+    function hideTaskResponse() {
+        const responseContainer = document.getElementById('task-response-container');
+        if (responseContainer) {
+            responseContainer.style.display = 'none';
+        }
+    }
+
+    function clearTaskResponse() {
+        const responseDisplay = document.getElementById('task-response-display');
+        if (responseDisplay) {
+            responseDisplay.innerHTML = '<p>Task responses will appear here...</p>';
+            responseDisplay.className = '';
+        }
+        hideTaskResponse();
+    }
+
     addTaskBtn.addEventListener('click', addTask);
     runTasksBtn.addEventListener('click', runAllTasks);
     downloadReceiptBtn.addEventListener('click', downloadReceipt);
+    
+    // Receipt upload functionality
+    const uploadReceiptBtn = document.getElementById('upload-receipt-btn');
+    const receiptFileInput = document.getElementById('receipt-file-input');
+    
+    uploadReceiptBtn.addEventListener('click', () => {
+        receiptFileInput.click();
+    });
+    
+    receiptFileInput.addEventListener('change', handleReceiptUpload);
     
     // Interactive control event listeners
     document.getElementById('enable-live-view').addEventListener('click', startLiveView);

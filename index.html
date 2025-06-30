@@ -26,6 +26,11 @@
             </div>
             <div class="receipt-actions">
                 <button id="download-receipt-btn">Download Receipt</button>
+                <div class="receipt-upload">
+                    <input type="file" id="receipt-file-input" accept=".json" style="display: none;">
+                    <button id="upload-receipt-btn">Upload & Run Receipt</button>
+                    <div id="receipt-status" class="status-message" style="display: none;"></div>
+                </div>
             </div>
         </div>
         <div id="visualizer-panel">
@@ -49,6 +54,12 @@
                             <small>💡 Click "Live View" to start, then use Click/Type modes to interact</small>
                         </div>
                     </div>
+                </div>
+            </div>
+            <div id="task-response-container" style="display: none;">
+                <h3>💬 Task Response</h3>
+                <div id="task-response-display">
+                    <p>Task responses will appear here...</p>
                 </div>
             </div>
             <div id="visualizer-content">
