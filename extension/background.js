@@ -5,10 +5,11 @@ class BackgroundService {
     this.wsConnection = null;
     this.sessionId = null;
     this.connectionStatus = 'disconnected';
-    this.serverUrl = 'ws://localhost:3010/ws';
+    this.serverUrl = 'wss://browserless.corrently.cloud/ws';
     this.reconnectAttempts = 0;
     this.maxReconnectAttempts = 5;
     this.reconnectDelay = 1000;
+    this.workingTabId = null; // Track the tab used for automation
     
     this.setupEventListeners();
     this.loadStoredSession();
@@ -268,18 +269,15 @@ class BackgroundService {
 
   async executeNavigate(payload) {
     const { url } = payload;
-    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
     
-    if (tabs.length === 0) {
-      throw new Error('No active tab found');
-    }
-
-    await chrome.tabs.update(tabs[0].id, { url });
+    // Create a new tab for navigation instead of using the current tab
+    const newTab = await chrome.tabs.create({ url, active: true });
+    this.workingTabId = newTab.id; // Store the working tab ID for future commands
     
     // Wait for navigation to complete
     return new Promise((resolve) => {
       const listener = (tabId, changeInfo, tab) => {
-        if (tabId === tabs[0].id && changeInfo.status === 'complete') {
+        if (tabId === newTab.id && changeInfo.status === 'complete') {
           chrome.tabs.onUpdated.removeListener(listener);
           resolve({
             url: tab.url,
@@ -302,12 +300,34 @@ class BackgroundService {
     });
   }
 
-  async executeScreenshot(payload) {
-    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+  // Helper function to get the working tab
+  async getWorkingTab() {
+    // If we have a working tab ID, verify it still exists and is valid
+    if (this.workingTabId) {
+      try {
+        const tab = await chrome.tabs.get(this.workingTabId);
+        if (tab && !tab.discarded) {
+          return tab;
+        }
+      } catch (error) {
+        // Tab no longer exists, reset working tab ID
+        this.workingTabId = null;
+      }
+    }
     
+    // Fallback to active tab
+    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
     if (tabs.length === 0) {
       throw new Error('No active tab found');
     }
+    
+    // Set this as the new working tab
+    this.workingTabId = tabs[0].id;
+    return tabs[0];
+  }
+
+  async executeScreenshot(payload) {
+    const tab = await this.getWorkingTab();
 
     const dataUrl = await chrome.tabs.captureVisibleTab(null, {
       format: 'png',
@@ -401,14 +421,10 @@ class BackgroundService {
 
   async executeScroll(payload) {
     const { x = 0, y = 0, selector } = payload;
-    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-    
-    if (tabs.length === 0) {
-      throw new Error('No active tab found');
-    }
+    const tab = await this.getWorkingTab();
 
     const results = await chrome.scripting.executeScript({
-      target: { tabId: tabs[0].id },
+      target: { tabId: tab.id },
       func: (x, y, selector) => {
         if (selector) {
           const element = document.querySelector(selector);
@@ -432,14 +448,10 @@ class BackgroundService {
   }
 
   async executeElementAction(selector, action, params = {}) {
-    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-    
-    if (tabs.length === 0) {
-      throw new Error('No active tab found');
-    }
+    const tab = await this.getWorkingTab();
 
     const results = await chrome.scripting.executeScript({
-      target: { tabId: tabs[0].id },
+      target: { tabId: tab.id },
       func: (selector, action, params) => {
         const element = document.querySelector(selector);
         if (!element) {

@@ -487,7 +487,41 @@
                 <textarea id="nlPrompt_old" rows="4" placeholder="e.g., 'Navigate to google.com and search for pictures of cute cats'"></textarea>
             </div>
             <button class="btn" onclick="sendNlCommand()">Execute Command</button>
-            <div class="response-area" id="nlResponse">Results will appear here...</div>
+            <div class="response-area" id="nlResponse">Results will appear here...            </div>
+        </div>
+
+        <!-- Quick Access Section -->
+        <div class="grid" style="margin-bottom: 30px;">
+            <div class="card">
+                <h2><span class="icon">🧩</span>Browser Extension</h2>
+                <p>Install the browser extension to control your actual browser remotely</p>
+                <a href="/extension/download" class="btn" id="downloadBtn">📥 Download Extension</a>
+                <a href="/extension/install-guide" class="btn btn-secondary">📖 Installation Guide</a>
+                <div style="margin-top: 15px; font-size: 0.9em; color: #666;">
+                    <strong>Extension Server URL:</strong> <code>wss://browserless.corrently.cloud/ws</code>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h2><span class="icon">📚</span>API Documentation</h2>
+                <p>Complete REST API and WebSocket documentation for developers</p>
+                <a href="/api-docs.html" class="btn">📖 View API Docs</a>
+                <a href="/openapi.json" class="btn btn-secondary" target="_blank">📥 OpenAPI Spec</a>
+                <div style="margin-top: 15px; font-size: 0.9em; color: #666;">
+                    <strong>Base URL:</strong> <code>https://browserless.corrently.cloud</code><br>
+                    <strong>WebSocket:</strong> <code>wss://browserless.corrently.cloud/ws</code>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h2><span class="icon">🎯</span>Task List Interface</h2>
+                <p>Build and execute sequences of automation tasks with visual feedback</p>
+                <a href="/index.html" class="btn">🔗 Open Task Builder</a>
+                <a href="/sample-receipt.json" class="btn btn-secondary" target="_blank">📄 Example Receipt</a>
+                <div style="margin-top: 15px; font-size: 0.9em; color: #666;">
+                    Alternative interface for multi-step automation workflows
+                </div>
+            </div>
         </div>
 
         <div class="status-bar" id="statusBar">
@@ -512,12 +546,6 @@
         <div class="advanced-tools">
             <button class="btn btn-secondary" onclick="toggleAdvancedTools()">Show/Hide Advanced Tools</button>
             <div class="advanced-tools-content" id="advancedToolsContent">
-                <div class="extension-download">
-                    <h2>🧩 Browser Extension</h2>
-                    <p>Install the browser extension to enable remote browser automation</p>
-                    <a href="/extension/download" class="btn" id="downloadBtn">📥 Download Extension</a>
-                    <a href="/extension/install-guide" class="btn btn-secondary">📖 Installation Guide</a>
-                </div>
 
                 <div class="grid">
                     <div class="card">
@@ -542,7 +570,7 @@
                         <h2><span class="icon">📋</span>OpenAPI Specification</h2>
                         <p>Complete OpenAPI 3.0 specification for integration and development.</p>
                         <a href="/openapi.json" class="btn" target="_blank">📥 Download OpenAPI JSON</a>
-                        <a href="https://editor.swagger.io/?url=http://10.0.0.2:3010/openapi.json" class="btn btn-secondary" target="_blank">🔧 Open in Swagger Editor</a>
+                        <a href="https://editor.swagger.io/?url=https://browserless.corrently.cloud/openapi.json" class="btn btn-secondary" target="_blank">🔧 Open in Swagger Editor</a>
                     </div>
 
                     <div class="card">
@@ -550,7 +578,7 @@
                         <p>Test real-time WebSocket connections and messaging.</p>
                         <button class="btn" onclick="showTab('websocket-test')">Test WebSocket</button>
                         <div style="margin-top: 15px;">
-                            <small><strong>WebSocket URL:</strong> <code id="wsUrlAdvanced">ws://localhost:3010/ws</code></small>
+                            <small><strong>WebSocket URL:</strong> <code id="wsUrlAdvanced">wss://browserless.corrently.cloud/ws</code></small>
                         </div>
                     </div>
 
@@ -558,9 +586,9 @@
                         <h2><span class="icon">📊</span>Service Information</h2>
                         <p>View service configuration and endpoints.</p>
                         <div class="code-block" style="margin-top: 15px;">
-                            <strong>Base URL:</strong> <span id="baseUrlAdvanced">http://localhost:3010</span><br>
-                            <strong>Health Check:</strong> <span id="healthUrlAdvanced">http://localhost:3010/health</span><br>
-                            <strong>API Base:</strong> <span id="apiUrlAdvanced">http://localhost:3010/api</span>
+                            <strong>Base URL:</strong> <span id="baseUrlAdvanced">https://browserless.corrently.cloud</span><br>
+                            <strong>Health Check:</strong> <span id="healthUrlAdvanced">https://browserless.corrently.cloud/health</span><br>
+                            <strong>API Base:</strong> <span id="apiUrlAdvanced">https://browserless.corrently.cloud/api</span>
                         </div>
                         <button class="btn btn-secondary" onclick="refreshStatus()">🔄 Refresh Status</button>
                     </div>
