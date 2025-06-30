@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Guide - Browser Automation Service</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .content {
+            background: white;
+            border-radius: 15px;
+            padding: 40px;
+            box-shadow: 0 15px 50px rgba(0,0,0,0.2);
+            margin-bottom: 30px;
+        }
+
+        .nav-buttons {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .nav-buttons a {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 25px;
+            text-decoration: none;
+            border-radius: 25px;
+            margin: 5px;
+            transition: all 0.3s ease;
+        }
+
+        .nav-buttons a:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.8rem;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+        }
+
+        h3 {
+            color: #5a67d8;
+            margin: 25px 0 15px 0;
+            font-size: 1.3rem;
+        }
+
+        .example-box {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .example-box h4 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+
+        .task-list {
+            background: #e8f4fd;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+
+        .task-list ol {
+            margin-left: 20px;
+        }
+
+        .task-list li {
+            margin: 5px 0;
+            font-family: monospace;
+            font-size: 0.95rem;
+        }
+
+        .tip {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+
+        .tip strong {
+            color: #155724;
+        }
+
+        .warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+
+        .warning strong {
+            color: #856404;
+        }
+
+        code {
+            background: #f1f3f4;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+
+        .step-number {
+            background: #667eea;
+            color: white;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 10px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🤖 Browser Automation User Guide</h1>
+            <p>Complete guide with real-world examples and best practices</p>
+        </header>
+
+        <div class="nav-buttons">
+            <a href="/">← Back to Dashboard</a>
+            <a href="/api-docs.html">📚 API Documentation</a>
+            <a href="/install-guide.html">🔧 Installation Guide</a>
+        </div>
+
+        <div class="content">
+            <h2>🚀 Getting Started</h2>
+            
+            <h3><span class="step-number">1</span>Install the Browser Extension</h3>
+            <p>Download and install the browser extension from the main dashboard. This allows tasks to run directly in your browser.</p>
+            
+            <h3><span class="step-number">2</span>Connect Extension</h3>
+            <p>Click the extension icon, create or enter a session ID, and connect. The extension will show "Connected" when ready.</p>
+            
+            <h3><span class="step-number">3</span>Create Task Lists</h3>
+            <p>Use natural language to describe what you want the browser to do. The AI will execute tasks step by step.</p>
+
+            <h2>📋 Real-World Use Cases</h2>
+
+            <div class="example-box">
+                <h4>🏠 Home Automation Dashboard</h4>
+                <p>Check and monitor your smart home devices through web interfaces.</p>
+                <div class="task-list">
+                    <ol>
+                        <li>Open http://192.168.1.100</li>
+                        <li>How full is the battery?</li>
+                        <li>What is the current power consumption in watts?</li>
+                        <li>Check if all sensors are online</li>
+                    </ol>
+                </div>
+                <div class="tip">
+                    <strong>💡 Tip:</strong> Perfect for checking device status without manually navigating complex interfaces.
+                </div>
+            </div>
+
+            <div class="example-box">
+                <h4>🛒 E-commerce Product Research</h4>
+                <p>Automate price checking and product comparison across websites.</p>
+                <div class="task-list">
+                    <ol>
+                        <li>Go to amazon.com</li>
+                        <li>Search for "wireless headphones under $100"</li>
+                        <li>Click on the first result</li>
+                        <li>What is the price and rating?</li>
+                        <li>Go to bestbuy.com</li>
+                        <li>Search for the same product</li>
+                        <li>Compare the prices</li>
+                    </ol>
+                </div>
+            </div>
+
+            <div class="example-box">
+                <h4>📧 Email and Social Media Management</h4>
+                <p>Automate routine checks and interactions.</p>
+                <div class="task-list">
+                    <ol>
+                        <li>Go to gmail.com</li>
+                        <li>How many unread emails do I have?</li>
+                        <li>Open the first email from today</li>
+                        <li>If it's a newsletter, mark it as read</li>
+                        <li>Go to linkedin.com</li>
+                        <li>Check for new connection requests</li>
+                    </ol>
+                </div>
+            </div>
+
+            <div class="example-box">
+                <h4>🏦 Financial Dashboard Monitoring</h4>
+                <p>Check account balances and financial data across platforms.</p>
+                <div class="task-list">
+                    <ol>
+                        <li>Go to my bank's website</li>
+                        <li>Login with my credentials</li>
+                        <li>What is my checking account balance?</li>
+                        <li>Are there any pending transactions?</li>
+                        <li>Go to my investment platform</li>
+                        <li>How did my portfolio perform today?</li>
+                    </ol>
+                </div>
+                <div class="warning">
+                    <strong>⚠️ Security Note:</strong> Be cautious with sensitive financial information. Use secure networks and clear browser data after automation.
+                </div>
+            </div>
+
+            <div class="example-box">
+                <h4>📰 News and Information Gathering</h4>
+                <p>Collect information from multiple sources quickly.</p>
+                <div class="task-list">
+                    <ol>
+                        <li>Go to news.ycombinator.com</li>
+                        <li>What are the top 3 stories today?</li>
+                        <li>Go to reddit.com/r/technology</li>
+                        <li>What's trending in technology?</li>
+                        <li>Go to weather.com</li>
+                        <li>What's the weather forecast for this week?</li>
+                    </ol>
+                </div>
+            </div>
+
+            <h2>🎯 Best Practices</h2>
+
+            <h3>Writing Effective Tasks</h3>
+            <ul style="margin-left: 20px; margin-bottom: 20px;">
+                <li><strong>Be specific:</strong> "Click the red 'Subscribe' button" vs "Click subscribe"</li>
+                <li><strong>Use complete URLs:</strong> "Go to https://example.com" vs "Go to example"</li>
+                <li><strong>Break complex tasks:</strong> Split multi-step processes into individual tasks</li>
+                <li><strong>Include context:</strong> "In the search results, click the first Amazon listing"</li>
+            </ul>
+
+            <h3>Extension vs Server Mode</h3>
+            <div class="tip">
+                <strong>🔌 Extension Mode (Recommended):</strong> Tasks run in your actual browser. You can see what's happening in real-time and maintain login sessions.
+            </div>
+            <div class="tip">
+                <strong>🤖 Server Mode:</strong> Tasks run in a server-side browser. Useful for headless automation but can't access your logged-in sessions.
+            </div>
+
+            <h3>Session Management</h3>
+            <ul style="margin-left: 20px; margin-bottom: 20px;">
+                <li><strong>Reuse sessions:</strong> Enter the same session ID to continue where you left off</li>
+                <li><strong>New sessions:</strong> Leave session ID empty to create a fresh session</li>
+                <li><strong>Extension sessions:</strong> Connect your extension first, then use that session ID</li>
+            </ul>
+
+            <h2>🔧 Troubleshooting</h2>
+
+            <h3>Extension Not Connecting</h3>
+            <ol style="margin-left: 20px; margin-bottom: 20px;">
+                <li>Reload the extension in <code>chrome://extensions/</code></li>
+                <li>Check that the server URL is correct: <code>wss://browserless.corrently.cloud/ws</code></li>
+                <li>Try creating a new session ID</li>
+                <li>Check the browser console for WebSocket errors</li>
+            </ol>
+
+            <h3>Tasks Not Executing</h3>
+            <ul style="margin-left: 20px; margin-bottom: 20px;">
+                <li>Ensure the extension shows "Connected" status</li>
+                <li>Check that the session ID matches between extension and interface</li>
+                <li>Make sure the website is accessible and loaded</li>
+                <li>Try simpler tasks first to test the connection</li>
+            </ul>
+
+            <h3>Screenshots Not Showing</h3>
+            <ul style="margin-left: 20px; margin-bottom: 20px;">
+                <li>The working tab must be visible for screenshots</li>
+                <li>Reload the extension if recently updated</li>
+                <li>Check browser permissions for the extension</li>
+            </ul>
+
+            <h2>⚡ Advanced Features</h2>
+
+            <h3>Interactive Mode</h3>
+            <p>After tasks complete, interactive mode allows you to continue with manual commands while keeping the automation session active.</p>
+
+            <h3>Receipt Download</h3>
+            <p>Save your task sequences as JSON files to replay later or share with others.</p>
+
+            <h3>Live Screenshots</h3>
+            <p>Watch real-time screenshots as tasks execute to see exactly what the browser is doing.</p>
+
+            <div class="tip">
+                <strong>🎯 Pro Tip:</strong> Start with simple tasks to get familiar, then gradually build more complex automation workflows!
+            </div>
+        </div>
+
+        <div class="nav-buttons">
+            <a href="/">← Back to Dashboard</a>
+            <a href="/api-docs.html">📚 API Documentation</a>
+            <a href="/install-guide.html">🔧 Installation Guide</a>
+        </div>
+    </div>
+</body>
+</html>

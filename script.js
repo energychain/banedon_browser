@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let tasks = [];
     let draggedIndex = null;
     let currentSessionId = null;
+    let originalTabId = null; // Track the original tab
     let isExecuting = false;
     let liveViewInterval = null;
     let isLiveViewActive = false;
@@ -807,6 +808,20 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
+            // Store the original tab ID before starting tasks
+            if (chrome && chrome.tabs) {
+                try {
+                    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+                    if (tabs.length > 0) {
+                        originalTabId = tabs[0].id;
+                        logAction(`📌 Stored original tab: ${tabs[0].title}`);
+                    }
+                } catch (tabError) {
+                    // Ignore tab access errors (not in extension context)
+                    console.log('Not running in extension context, tab switching disabled');
+                }
+            }
+
             updateExecutionStatus('running', 'Creating browser session...', 'running');
             logAction('Starting task execution...');
             
@@ -862,6 +877,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
             updateExecutionStatus('completed', `All ${tasks.length} tasks completed successfully!`, 'completed');
             logAction('🎉 All tasks completed!');
+
+            // Switch back to original tab if we stored one
+            if (originalTabId && chrome && chrome.tabs) {
+                try {
+                    await chrome.tabs.update(originalTabId, { active: true });
+                    logAction('🔄 Switched back to original tab');
+                } catch (tabError) {
+                    console.log('Could not switch back to original tab:', tabError.message);
+                }
+            }
 
         } catch (error) {
             updateExecutionStatus('error', `Execution failed: ${error.message}`, 'error');
