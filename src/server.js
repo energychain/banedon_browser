@@ -71,9 +71,33 @@ class BrowserAutomationService {
     // Parse JSON bodies
     this.app.use(express.json({ limit: '10mb' }));
     
-    // Serve static files from public directory
+    // Serve our enhanced task management interface as the default homepage
+    this.app.get('/', (req, res) => {
+      res.sendFile(path.join(__dirname, '..', 'index.html'));
+    });
+    
+    // Serve task management assets
+    this.app.get('/script.js', (req, res) => {
+      res.sendFile(path.join(__dirname, '..', 'script.js'));
+    });
+    
+    this.app.get('/style.css', (req, res) => {
+      res.sendFile(path.join(__dirname, '..', 'style.css'));
+    });
+    
+    // Serve the original demo at /demo
+    this.app.get('/demo', (req, res) => {
+      res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
+    });
+    
+    // Serve static files from public directory (except index.html which we handle above)
     this.app.use(express.static('public'));
     
+    // Keep the task management interface also available at /tasks for backward compatibility
+    this.app.get('/tasks', (req, res) => {
+      res.sendFile(path.join(__dirname, '..', 'index.html'));
+    });
+
     // Request logging
     this.app.use((req, res, next) => {
       logger.info(`${req.method} ${req.path}`, { 

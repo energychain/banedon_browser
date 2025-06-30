@@ -20,14 +20,23 @@
             <ul id="task-list">
                 <!-- Tasks will be dynamically added here -->
             </ul>
+            <div class="execution-actions">
+                <button id="run-tasks-btn">Run Tasks</button>
+                <div id="execution-status"></div>
+            </div>
             <div class="receipt-actions">
                 <button id="download-receipt-btn">Download Receipt</button>
             </div>
         </div>
         <div id="visualizer-panel">
             <h2>Browser Visualizer</h2>
+            <div id="screenshot-container">
+                <div id="screenshot-display">
+                    <p>Browser screenshots will appear here when tasks are executed.</p>
+                </div>
+            </div>
             <div id="visualizer-content">
-                <p>Browser actions and screenshots will appear here.</p>
+                <h3>Action Log</h3>
                 <div id="action-log"></div>
             </div>
         </div>

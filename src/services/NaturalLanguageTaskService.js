@@ -272,6 +272,13 @@ class NaturalLanguageTaskService {
         });
       }
       
+      // Ensure we have a final screenshot regardless of how the task completed
+      let finalScreenshot = afterScreenshot;
+      if (!finalScreenshot || finalScreenshot.error) {
+        logger.info('Taking final screenshot for task completion');
+        finalScreenshot = await this.takeScreenshot(sessionId);
+      }
+
       const finalHistory = this.sessionManager.getHistory(sessionId);
       const lastMessage = finalHistory[finalHistory.length - 1];
 
@@ -307,6 +314,7 @@ class NaturalLanguageTaskService {
         screenshots: {
           before: screenshotResult,
           after: afterScreenshot,
+          final: finalScreenshot, // Always ensure we have a final screenshot
           total: executionAnalytics.screenshotCount
         },
 

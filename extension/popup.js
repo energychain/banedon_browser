@@ -69,7 +69,17 @@ class PopupController {
     this.resizePopup();
   }
 
+  showLoading(show) {
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    const mainContent = document.querySelector('main');
+    if (loadingIndicator && mainContent) {
+      loadingIndicator.style.display = show ? 'flex' : 'none';
+      mainContent.style.display = show ? 'none' : '';
+    }
+  }
+
   async loadCurrentStatus() {
+    this.showLoading(true);
     try {
       const response = await this.sendMessageToBackground({ type: 'get_status' });
       if (response.success) {
@@ -77,10 +87,13 @@ class PopupController {
       }
     } catch (error) {
       this.log('Failed to load current status', 'error');
+    } finally {
+      this.showLoading(false);
     }
   }
 
   async createNewSession() {
+    this.showLoading(true);
     this.setButtonLoading(this.createSessionBtn, true);
     
     try {
@@ -113,6 +126,7 @@ class PopupController {
       this.log(`Failed to create session: ${error.message}`, 'error');
     } finally {
       this.setButtonLoading(this.createSessionBtn, false);
+      this.showLoading(false);
     }
   }
 
@@ -130,9 +144,9 @@ class PopupController {
       return;
     }
     
+    this.showLoading(true);
     this.setButtonLoading(this.connectBtn, true);
     this.updateConnectionStatus('connecting');
-    
     try {
       const response = await this.sendMessageToBackground({
         type: 'connect',
@@ -151,6 +165,7 @@ class PopupController {
       this.updateConnectionStatus('disconnected');
     } finally {
       this.setButtonLoading(this.connectBtn, false);
+      this.showLoading(false);
     }
   }
 
@@ -308,10 +323,8 @@ class PopupController {
     this.isConnected = status === 'connected';
     this.currentSessionId = sessionId;
     if (serverUrl) this.currentServerUrl = serverUrl;
-    
     this.updateConnectionStatus(status);
     this.updateUI();
-    
     if (sessionId) {
       this.currentSessionId.textContent = sessionId;
       this.currentStatus.textContent = status;
@@ -320,117 +333,59 @@ class PopupController {
   }
 
   updateConnectionStatus(status) {
-    this.statusDot.className = 'status-dot';
-    
-    switch (status) {
-      case 'connected':
-        this.statusDot.classList.add('connected');
-        this.statusText.textContent = 'Connected';
-        break;
-      case 'connecting':
-        this.statusDot.classList.add('connecting');
-        this.statusText.textContent = 'Connecting...';
-        break;
-      case 'disconnected':
-      default:
-        this.statusText.textContent = 'Disconnected';
-        break;
-    }
+    const isConnected = status === 'connected';
+    this.statusIndicator.classList.toggle('connected', isConnected);
+    this.statusIndicator.classList.toggle('disconnected', !isConnected);
+    this.statusText.textContent = isConnected ? 'Connected' : 'Disconnected';
+    this.statusDot.style.backgroundColor = isConnected ? 'green' : 'red';
   }
 
   updateUI() {
-    // Update button states
-    this.connectBtn.disabled = this.isConnected;
-    this.disconnectBtn.disabled = !this.isConnected;
-    
-    // Update input states
-    this.serverUrlInput.disabled = this.isConnected;
-    this.sessionIdInput.disabled = this.isConnected;
-    this.createSessionBtn.disabled = this.isConnected;
-    
-    // Update testing button states
-    this.testNavigateBtn.disabled = !this.isConnected;
-    this.testScreenshotBtn.disabled = !this.isConnected;
-    this.testExtractBtn.disabled = !this.isConnected;
-    
-    // Show/hide sections
-    if (this.isConnected) {
-      this.sessionInfoSection.style.display = 'block';
-      this.testingSection.style.display = 'block';
-    } else {
-      this.sessionInfoSection.style.display = 'none';
-      this.testingSection.style.display = 'none';
-    }
-    
-    this.resizePopup();
+    const isConnected = this.isConnected;
+    this.connectionSection.style.display = isConnected ? 'none' : 'block';
+    this.sessionInfoSection.style.display = isConnected ? 'block' : 'none';
+    this.testingSection.style.display = isConnected ? 'block' : 'none';
   }
 
-  handleBackgroundMessage(message) {
-    switch (message.type) {
-      case 'connection_status':
-        this.updateStatus(message.status, this.currentSessionId, this.currentServerUrl);
-        break;
-      case 'navigation_complete':
-        this.log(`Navigation completed: ${message.url}`, 'success');
-        break;
-      default:
-        console.log('Unknown message from background:', message);
-    }
+  setButtonLoading(button, isLoading) {
+    button.disabled = isLoading;
+    button.classList.toggle('loading', isLoading);
   }
 
-  sendMessageToBackground(message) {
+  log(message, type = 'info') {
+    const logEntry = document.createElement('div');
+    logEntry.className = `log-entry ${type}`;
+    logEntry.textContent = message;
+    this.logContainer.appendChild(logEntry);
+    
+    // Auto-scroll to the bottom
+    this.logContainer.scrollTop = this.logContainer.scrollHeight;
+  }
+
+  clearLogs() {
+    this.logContainer.innerHTML = '';
+  }
+
+  async sendMessageToBackground(message) {
     return new Promise((resolve, reject) => {
       chrome.runtime.sendMessage(message, (response) => {
         if (chrome.runtime.lastError) {
-          reject(new Error(chrome.runtime.lastError.message));
-        } else {
-          resolve(response);
+          return reject(new Error(chrome.runtime.lastError));
         }
+        resolve(response);
       });
     });
   }
 
-  setButtonLoading(button, loading) {
-    if (loading) {
-      button.classList.add('loading');
-      button.disabled = true;
-    } else {
-      button.classList.remove('loading');
-      button.disabled = false;
-      this.updateUI(); // Restore proper disabled state
-    }
-  }
-
-  log(message, level = 'info') {
-    const timestamp = new Date().toLocaleTimeString();
-    const logEntry = document.createElement('div');
-    logEntry.className = `log-entry ${level}`;
-    logEntry.innerHTML = `<span class="timestamp">${timestamp}</span>${message}`;
-    
-    this.logContainer.appendChild(logEntry);
-    this.logContainer.scrollTop = this.logContainer.scrollHeight;
-    
-    // Keep only last 100 log entries
-    const entries = this.logContainer.children;
-    if (entries.length > 100) {
-      this.logContainer.removeChild(entries[0]);
-    }
-  }
-
-  clearLogs() {
-    this.logContainer.innerHTML = '<div class="log-entry info">Logs cleared</div>';
+  handleBackgroundMessage(message) {
+    // Handle messages from the background script if needed
   }
 
   resizePopup() {
-    // Auto-resize popup based on content
-    setTimeout(() => {
-      const height = document.body.scrollHeight;
-      document.body.style.height = `${Math.min(height, 600)}px`;
-    }, 100);
+    // Resize logic if needed
   }
 }
 
-// Initialize popup when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
   new PopupController();
 });
