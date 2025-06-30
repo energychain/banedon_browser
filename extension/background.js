@@ -11,6 +11,9 @@ class BackgroundService {
     this.reconnectDelay = 1000;
     this.workingTabId = null; // Track the tab used for automation
     this.autoConnectEnabled = true; // Enable auto-connect by default
+    this.autoCreateSession = true; // Enable auto-session creation by default
+    this.connectionHeartbeat = null; // For connection monitoring
+    this.lastHeartbeat = null;
     
     this.setupEventListeners();
     this.loadStoredSession();
@@ -44,7 +47,7 @@ class BackgroundService {
 
   async loadStoredSession() {
     try {
-      const result = await chrome.storage.local.get(['sessionId', 'serverUrl', 'autoConnectEnabled']);
+      const result = await chrome.storage.local.get(['sessionId', 'serverUrl', 'autoConnectEnabled', 'autoCreateSession']);
       if (result.sessionId) {
         this.sessionId = result.sessionId;
         console.log('Loaded stored session:', this.sessionId);
@@ -55,13 +58,30 @@ class BackgroundService {
       if (result.autoConnectEnabled !== undefined) {
         this.autoConnectEnabled = result.autoConnectEnabled;
       }
+      if (result.autoCreateSession !== undefined) {
+        this.autoCreateSession = result.autoCreateSession;
+      }
 
-      // Auto-connect if enabled and we have a session ID
-      if (this.autoConnectEnabled && this.sessionId) {
-        console.log('Auto-connecting to stored session...');
-        setTimeout(() => {
-          this.connect(this.sessionId, this.serverUrl);
-        }, 1000); // Delay to ensure extension is fully loaded
+      // Auto-connect logic
+      if (this.autoConnectEnabled) {
+        if (this.sessionId) {
+          console.log('Auto-connecting to stored session...');
+          setTimeout(() => {
+            this.connect(this.sessionId, this.serverUrl);
+          }, 1000); // Delay to ensure extension is fully loaded
+        } else if (this.autoCreateSession) {
+          console.log('Auto-creating new session...');
+          setTimeout(async () => {
+            try {
+              const sessionId = await this.createNewSession();
+              if (sessionId) {
+                await this.connect(sessionId, this.serverUrl);
+              }
+            } catch (error) {
+              console.error('Auto-session creation failed:', error);
+            }
+          }, 1000);
+        }
       }
     } catch (error) {
       console.error('Failed to load stored session:', error);
@@ -73,7 +93,8 @@ class BackgroundService {
       await chrome.storage.local.set({
         sessionId: this.sessionId,
         serverUrl: this.serverUrl,
-        autoConnectEnabled: this.autoConnectEnabled
+        autoConnectEnabled: this.autoConnectEnabled,
+        autoCreateSession: this.autoCreateSession
       });
     } catch (error) {
       console.error('Failed to save session:', error);
@@ -111,7 +132,8 @@ class BackgroundService {
           status: this.connectionStatus,
           sessionId: this.sessionId,
           serverUrl: this.serverUrl,
-          autoConnectEnabled: this.autoConnectEnabled
+          autoConnectEnabled: this.autoConnectEnabled,
+          autoCreateSession: this.autoCreateSession
         });
         break;
 
@@ -119,6 +141,19 @@ class BackgroundService {
         this.autoConnectEnabled = message.enabled;
         this.saveSession()
           .then(() => sendResponse({ success: true, autoConnectEnabled: this.autoConnectEnabled }))
+          .catch(error => sendResponse({ success: false, error: error.message }));
+        break;
+
+      case 'set_auto_create':
+        this.autoCreateSession = message.enabled;
+        this.saveSession()
+          .then(() => sendResponse({ success: true, autoCreateSession: this.autoCreateSession }))
+          .catch(error => sendResponse({ success: false, error: error.message }));
+        break;
+
+      case 'create_session':
+        this.createNewSession()
+          .then(sessionId => sendResponse({ success: true, sessionId }))
           .catch(error => sendResponse({ success: false, error: error.message }));
         break;
 
@@ -153,6 +188,7 @@ class BackgroundService {
         console.log('WebSocket connected');
         this.connectionStatus = 'connected';
         this.reconnectAttempts = 0;
+        this.startConnectionMonitoring(); // Start monitoring
         this.notifyPopup({ type: 'connection_status', status: 'connected' });
         resolve({ success: true, status: 'connected' });
       };
@@ -195,6 +231,7 @@ class BackgroundService {
     }
     
     this.connectionStatus = 'disconnected';
+    this.stopConnectionMonitoring(); // Stop monitoring
     await this.clearSession();
     this.notifyPopup({ type: 'connection_status', status: 'disconnected' });
     
@@ -555,6 +592,71 @@ class BackgroundService {
       active: tab.active,
       windowId: tab.windowId
     }));
+  }
+
+  async createNewSession() {
+    try {
+      const serverBaseUrl = this.serverUrl.replace('ws://', 'http://').replace('wss://', 'https://').replace('/ws', '');
+      
+      const response = await fetch(`${serverBaseUrl}/api/sessions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          metadata: {
+            browser: 'chrome',
+            purpose: 'extension_auto_connect',
+            userAgent: navigator.userAgent,
+            timestamp: new Date().toISOString()
+          }
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to create session: ${response.status} ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      if (!data.success || !data.session || !data.session.id) {
+        throw new Error('Invalid response from session creation API');
+      }
+      
+      this.sessionId = data.session.id;
+      await this.saveSession();
+      
+      console.log('Auto-created new session:', this.sessionId);
+      return this.sessionId;
+    } catch (error) {
+      console.error('Failed to create new session:', error);
+      throw error;
+    }
+  }
+
+  startConnectionMonitoring() {
+    // Clear existing heartbeat if any
+    if (this.connectionHeartbeat) {
+      clearInterval(this.connectionHeartbeat);
+    }
+    
+    // Send ping every 30 seconds and monitor connection
+    this.connectionHeartbeat = setInterval(() => {
+      if (this.wsConnection && this.wsConnection.readyState === WebSocket.OPEN) {
+        this.wsConnection.send(JSON.stringify({ type: 'ping' }));
+        this.lastHeartbeat = Date.now();
+      } else if (this.autoConnectEnabled && this.sessionId) {
+        // Connection lost, attempt reconnect
+        console.log('Connection lost, attempting auto-reconnect...');
+        this.attemptReconnect();
+      }
+    }, 30000);
+  }
+
+  stopConnectionMonitoring() {
+    if (this.connectionHeartbeat) {
+      clearInterval(this.connectionHeartbeat);
+      this.connectionHeartbeat = null;
+    }
   }
 }
 

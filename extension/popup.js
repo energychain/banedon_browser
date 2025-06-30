@@ -18,6 +18,11 @@ class PopupController {
     this.createSessionBtn = document.getElementById('createSessionBtn');
     this.connectBtn = document.getElementById('connectBtn');
     this.disconnectBtn = document.getElementById('disconnectBtn');
+    this.reconnectBtn = document.getElementById('reconnectBtn');
+    
+    // Auto-connect elements
+    this.autoConnectEnabled = document.getElementById('autoConnectEnabled');
+    this.autoCreateSession = document.getElementById('autoCreateSession');
     
     // Status elements
     this.statusIndicator = document.getElementById('statusIndicator');
@@ -51,6 +56,11 @@ class PopupController {
     this.createSessionBtn.addEventListener('click', () => this.createNewSession());
     this.connectBtn.addEventListener('click', () => this.connect());
     this.disconnectBtn.addEventListener('click', () => this.disconnect());
+    this.reconnectBtn.addEventListener('click', () => this.reconnect());
+    
+    // Auto-connect settings
+    this.autoConnectEnabled.addEventListener('change', () => this.updateAutoConnectSetting());
+    this.autoCreateSession.addEventListener('change', () => this.updateAutoCreateSetting());
     
     // Testing buttons
     this.testNavigateBtn.addEventListener('click', () => this.testNavigate());
@@ -84,6 +94,7 @@ class PopupController {
       const response = await this.sendMessageToBackground({ type: 'get_status' });
       if (response.success) {
         this.updateStatus(response.status, response.sessionId, response.serverUrl);
+        this.updateAutoConnectUI(response.autoConnectEnabled, response.autoCreateSession);
       }
     } catch (error) {
       this.log('Failed to load current status', 'error');
@@ -370,7 +381,7 @@ class PopupController {
     return new Promise((resolve, reject) => {
       chrome.runtime.sendMessage(message, (response) => {
         if (chrome.runtime.lastError) {
-          return reject(new Error(chrome.runtime.lastError));
+          return reject(new Error(chrome.runtime.lastError.message));
         }
         resolve(response);
       });
@@ -378,7 +389,64 @@ class PopupController {
   }
 
   handleBackgroundMessage(message) {
-    // Handle messages from the background script if needed
+    // Handle messages from the background script
+    switch (message.type) {
+      case 'connection_status':
+        this.updateConnectionStatus(message.status);
+        break;
+      default:
+        console.log('Received background message:', message);
+    }
+  }
+
+  async reconnect() {
+    if (this.currentSessionId) {
+      await this.connect();
+    } else {
+      this.log('No session to reconnect to', 'error');
+    }
+  }
+
+  async updateAutoConnectSetting() {
+    try {
+      const response = await this.sendMessageToBackground({
+        type: 'set_auto_connect',
+        enabled: this.autoConnectEnabled.checked
+      });
+      if (response.success) {
+        this.log(`Auto-connect ${this.autoConnectEnabled.checked ? 'enabled' : 'disabled'}`, 'info');
+      }
+    } catch (error) {
+      this.log('Failed to update auto-connect setting', 'error');
+    }
+  }
+
+  async updateAutoCreateSetting() {
+    try {
+      const response = await this.sendMessageToBackground({
+        type: 'set_auto_create',
+        enabled: this.autoCreateSession.checked
+      });
+      if (response.success) {
+        this.log(`Auto-create session ${this.autoCreateSession.checked ? 'enabled' : 'disabled'}`, 'info');
+      }
+    } catch (error) {
+      this.log('Failed to update auto-create setting', 'error');
+    }
+  }
+
+  updateAutoConnectUI(autoConnectEnabled, autoCreateSession) {
+    if (this.autoConnectEnabled) {
+      this.autoConnectEnabled.checked = autoConnectEnabled;
+    }
+    if (this.autoCreateSession) {
+      this.autoCreateSession.checked = autoCreateSession;
+    }
+  }
+
+  updateConnectionStatus(status) {
+    this.connectionStatus = status;
+    this.updateStatus(status, this.currentSessionId, this.currentServerUrl);
   }
 
   resizePopup() {

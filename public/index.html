@@ -1111,6 +1111,16 @@
             refreshStatus();
             setupTabs();
             updateAdvancedUrls();
+            
+            // Check all connections immediately
+            await checkAllConnections();
+            
+            // Try auto-connect extension if it's available
+            setTimeout(() => {
+                if (typeof chrome !== 'undefined' && chrome.runtime) {
+                    autoConnectExtension();
+                }
+            }, 2000);
         });
 
         async function initializeSession() {
@@ -1578,7 +1588,7 @@
             try {
                 const response = await fetch('/health');
                 if (response.ok) {
-                    updateConnectionStatus('serverStatus', 'serverStatusText', '🟢', 'Connected');
+                    updateConnectionStatus('serverStatus', 'serverStatusText', '🟢', 'Connected & Ready');
                 } else {
                     updateConnectionStatus('serverStatus', 'serverStatusText', '🔴', 'Server Error');
                 }
@@ -1586,14 +1596,149 @@
                 updateConnectionStatus('serverStatus', 'serverStatusText', '🔴', 'Connection Failed');
             }
 
-            // Check extension connection
+            // Check extension connection with enhanced detection
             await checkExtensionConnection();
 
             // Check WebSocket connection
             checkWebSocketConnection();
             
-            // Update execution mode indicator after checking connections
-            setTimeout(updateExecutionModeIndicator, 500);
+            // Update execution mode indicator and recommendations
+            setTimeout(() => {
+                updateExecutionModeIndicator();
+                updateConnectionStatusDisplay();
+            }, 500);
+        }
+
+        async function checkExtensionConnection() {
+            try {
+                // Enhanced extension detection
+                if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+                    chrome.runtime.sendMessage({ type: 'get_status' }, (response) => {
+                        if (chrome.runtime.lastError) {
+                            // Extension not available
+                            updateConnectionStatus('extensionStatus', 'extensionStatusText', '🔴', 'Extension Not Available');
+                            document.getElementById('extensionModeStatus').textContent = '❌ Extension not available';
+                        } else if (response && response.success) {
+                            if (response.status === 'connected') {
+                                updateConnectionStatus('extensionStatus', 'extensionStatusText', '🟢', `Connected & Ready (Session: ${response.sessionId})`);
+                                document.getElementById('extensionModeStatus').textContent = '✅ Ready for use';
+                                
+                                // Update session ID if extension has one
+                                if (response.sessionId && !document.getElementById('nlSessionId').value) {
+                                    document.getElementById('nlSessionId').value = response.sessionId;
+                                }
+                            } else {
+                                updateConnectionStatus('extensionStatus', 'extensionStatusText', '🟡', 'Extension Installed but Disconnected');
+                                document.getElementById('extensionModeStatus').textContent = '⚠️ Extension available but not connected';
+                            }
+                        }
+                    });
+                } else {
+                    // No extension API available
+                    updateConnectionStatus('extensionStatus', 'extensionStatusText', '🔴', 'Extension Not Available');
+                    document.getElementById('extensionModeStatus').textContent = '❌ Extension not available';
+                }
+            } catch (error) {
+                updateConnectionStatus('extensionStatus', 'extensionStatusText', '🔴', 'Extension Check Failed');
+                document.getElementById('extensionModeStatus').textContent = '❌ Extension check failed';
+            }
+        }
+
+        function updateConnectionStatusDisplay() {
+            const extensionReady = document.getElementById('extensionStatusText').textContent.includes('Connected & Ready');
+            const serverReady = document.getElementById('serverStatusText').textContent.includes('Connected & Ready');
+            
+            // Update quick connection status
+            const quickStatus = document.getElementById('quickConnectionStatus');
+            if (extensionReady && serverReady) {
+                quickStatus.textContent = '🟢 Extension & Server Ready';
+                quickStatus.style.color = '#28a745';
+            } else if (serverReady) {
+                quickStatus.textContent = '🟡 Server Ready (Extension Unavailable)';
+                quickStatus.style.color = '#ffc107';
+            } else {
+                quickStatus.textContent = '🔴 Connection Issues';
+                quickStatus.style.color = '#dc3545';
+            }
+            
+            // Update execution mode recommendation
+            const recommendation = document.getElementById('modeRecommendation');
+            if (extensionReady) {
+                recommendation.textContent = 'Extension mode (recommended)';
+                recommendation.style.color = '#28a745';
+            } else if (serverReady) {
+                recommendation.textContent = 'Server mode (extension not available)';
+                recommendation.style.color = '#ffc107';
+            } else {
+                recommendation.textContent = 'No connection available';
+                recommendation.style.color = '#dc3545';
+            }
+        }
+
+        async function autoConnectExtension() {
+            try {
+                if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+                    // Check if extension is available and try to auto-connect
+                    chrome.runtime.sendMessage({ type: 'get_status' }, async (response) => {
+                        if (chrome.runtime.lastError) {
+                            addToChatHistory('assistant', '❌ Browser extension is not available. Please install the extension first.');
+                            return;
+                        }
+                        
+                        if (response.status === 'connected') {
+                            addToChatHistory('assistant', '✅ Extension is already connected!');
+                            return;
+                        }
+                        
+                        // Try to trigger auto-connect
+                        if (response.autoConnectEnabled !== false) { // Default to true if not set
+                            addToChatHistory('assistant', '🔄 Triggering extension auto-connect...');
+                            
+                            // If no session exists, create one
+                            if (!response.sessionId) {
+                                chrome.runtime.sendMessage({ type: 'create_session' }, (createResponse) => {
+                                    if (createResponse.success) {
+                                        addToChatHistory('assistant', `✅ Created new session: ${createResponse.sessionId}`);
+                                        // Now connect
+                                        chrome.runtime.sendMessage({ 
+                                            type: 'connect', 
+                                            sessionId: createResponse.sessionId,
+                                            serverUrl: 'wss://browserless.corrently.cloud/ws'
+                                        }, (connectResponse) => {
+                                            if (connectResponse.success) {
+                                                addToChatHistory('assistant', '✅ Extension auto-connected successfully!');
+                                                setTimeout(checkAllConnections, 1000);
+                                            } else {
+                                                addToChatHistory('assistant', `❌ Auto-connect failed: ${connectResponse.error}`);
+                                            }
+                                        });
+                                    }
+                                });
+                            } else {
+                                // Connect with existing session
+                                chrome.runtime.sendMessage({ 
+                                    type: 'connect', 
+                                    sessionId: response.sessionId,
+                                    serverUrl: response.serverUrl || 'wss://browserless.corrently.cloud/ws'
+                                }, (connectResponse) => {
+                                    if (connectResponse.success) {
+                                        addToChatHistory('assistant', '✅ Extension reconnected successfully!');
+                                        setTimeout(checkAllConnections, 1000);
+                                    } else {
+                                        addToChatHistory('assistant', `❌ Reconnect failed: ${connectResponse.error}`);
+                                    }
+                                });
+                            }
+                        } else {
+                            addToChatHistory('assistant', '⚠️ Extension auto-connect is disabled. Please enable it in the extension popup.');
+                        }
+                    });
+                } else {
+                    addToChatHistory('assistant', '❌ Browser extension API is not available. Please install the extension.');
+                }
+            } catch (error) {
+                addToChatHistory('assistant', `❌ Auto-connect failed: ${error.message}`);
+            }
         }
 
         function updateConnectionStatus(statusId, textId, indicator, text) {
