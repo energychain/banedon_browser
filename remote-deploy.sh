@@ -220,7 +220,7 @@ cd $DEPLOY_PATH
 echo "🧪 Testing health endpoint..."
 for i in {1..10}; do
     if curl -f http://localhost:3010/health >/dev/null 2>&1; then
-        echo "✅ Service is healthy!"
+        echo "✅ Health endpoint is working!"
         break
     else
         echo "⏳ Waiting for service to be ready... (attempt \$i/10)"
@@ -228,12 +228,25 @@ for i in {1..10}; do
     fi
 done
 
+# Test root endpoint (task management interface)
+echo "🧪 Testing root endpoint..."
+for i in {1..5}; do
+    if curl -f http://localhost:3010/ >/dev/null 2>&1; then
+        echo "✅ Root endpoint is working!"
+        break
+    else
+        echo "⏳ Testing root endpoint... (attempt \$i/5)"
+        sleep 2
+    fi
+done
+
 # Final status check
-if curl -f http://localhost:3010/health >/dev/null 2>&1; then
+if curl -f http://localhost:3010/health >/dev/null 2>&1 && curl -f http://localhost:3010/ >/dev/null 2>&1; then
     echo ""
     echo "🎉 Deployment successful!"
-    echo "📍 Service URL: http://$SERVER_IP:3010"
+    echo "📍 Task Management Interface: http://$SERVER_IP:3010"
     echo "🏥 Health check: http://$SERVER_IP:3010/health"
+    echo "🎮 Interactive Mode: Available after running tasks"
     echo ""
     echo "📊 Service status:"
     \$DOCKER_COMPOSE_CMD -f docker-compose.yml ps
@@ -242,6 +255,22 @@ else
     echo "❌ Deployment completed but service health check failed"
     echo "📋 Check logs:"
     echo "   \$DOCKER_COMPOSE_CMD -f docker-compose.yml logs browser-automation-service"
+    
+    # Show specific endpoint statuses
+    echo ""
+    echo "🔍 Endpoint status:"
+    if curl -f http://localhost:3010/health >/dev/null 2>&1; then
+        echo "  ✅ Health endpoint: working"
+    else
+        echo "  ❌ Health endpoint: not working"
+    fi
+    
+    if curl -f http://localhost:3010/ >/dev/null 2>&1; then
+        echo "  ✅ Root endpoint: working"
+    else
+        echo "  ❌ Root endpoint: not working (missing index.html?)"
+    fi
+    
     exit 1
 fi
 EOF
@@ -292,5 +321,6 @@ echo "  \$DOCKER_COMPOSE_CMD -f docker-compose.yml restart     # Restart service
 echo "  \$DOCKER_COMPOSE_CMD -f docker-compose.yml down        # Stop service"
 echo ""
 echo "🧪 Manual test commands:"
-echo "  curl http://$SERVER_IP:3010/health"
-echo "  npm test -- --testNamePattern=\"flight search\" # Run against deployed service"
+echo "  curl http://$SERVER_IP:3010/health                     # Health check"
+echo "  curl http://$SERVER_IP:3010/                           # Task management interface"
+echo "  npm test -- --testNamePattern=\"flight search\"         # Run against deployed service"

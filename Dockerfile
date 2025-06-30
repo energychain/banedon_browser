@@ -17,6 +17,10 @@ COPY docs/ ./docs/
 COPY extension/ ./extension/
 COPY public/ ./public/
 COPY build.sh ./build.sh
+# Copy root-level frontend files for task management interface
+COPY index.html ./index.html
+COPY script.js ./script.js
+COPY style.css ./style.css
 
 # Install zip for building extension
 RUN apk add --no-cache zip
@@ -103,6 +107,10 @@ COPY --from=builder --chown=appuser:nodejs /app/docs ./docs
 COPY --from=builder --chown=appuser:nodejs /app/extension ./extension
 COPY --from=builder --chown=appuser:nodejs /app/public ./public
 COPY --from=builder --chown=appuser:nodejs /app/build ./build
+# Copy root-level frontend files for task management interface
+COPY --from=builder --chown=appuser:nodejs /app/index.html ./index.html
+COPY --from=builder --chown=appuser:nodejs /app/script.js ./script.js
+COPY --from=builder --chown=appuser:nodejs /app/style.css ./style.css
 COPY --chown=appuser:nodejs package*.json ./
 
 # Create directories and set permissions
