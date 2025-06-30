@@ -12,9 +12,377 @@ document.addEventListener('DOMContentLoaded', () => {
     let draggedIndex = null;
     let currentSessionId = null;
     let isExecuting = false;
+    let liveViewInterval = null;
+    let isLiveViewActive = false;
+    let isClickMode = false;
+    let isTypeMode = false;
 
     // API configuration
     const API_BASE = window.location.origin;
+
+    // Interactive API functions
+    async function sendInteractiveCommand(sessionId, command) {
+        try {
+            const response = await fetch(`${API_BASE}/api/sessions/${sessionId}/interactive`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    command: command
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Interactive command failed: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            return data;
+        } catch (error) {
+            console.error('Error sending interactive command:', error);
+            throw error;
+        }
+    }
+
+    async function getCurrentScreenshot(sessionId) {
+        try {
+            const response = await fetch(`${API_BASE}/api/sessions/${sessionId}/screenshot`);
+            
+            if (!response.ok) {
+                throw new Error(`Failed to get screenshot: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            return data;
+        } catch (error) {
+            console.error('Error getting screenshot:', error);
+            throw error;
+        }
+    }
+
+    async function getSessionState(sessionId) {
+        try {
+            const response = await fetch(`${API_BASE}/api/sessions/${sessionId}/state`);
+            
+            if (!response.ok) {
+                throw new Error(`Failed to get session state: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            return data;
+        } catch (error) {
+            console.error('Error getting session state:', error);
+            throw error;
+        }
+    }
+
+    // Interactive mode functions
+    function enableInteractiveMode() {
+        const interactiveControls = document.getElementById('interactive-controls');
+        if (currentSessionId && interactiveControls) {
+            interactiveControls.style.display = 'block';
+            logAction('🎮 Interactive mode enabled');
+        }
+    }
+
+    function disableInteractiveMode() {
+        const interactiveControls = document.getElementById('interactive-controls');
+        if (interactiveControls) {
+            interactiveControls.style.display = 'none';
+            stopLiveView();
+            logAction('🎮 Interactive mode disabled');
+        }
+    }
+
+    async function startLiveView() {
+        if (!currentSessionId) {
+            logAction('❌ No active session for live view');
+            return;
+        }
+
+        if (isLiveViewActive) {
+            stopLiveView();
+            return;
+        }
+
+        isLiveViewActive = true;
+        const liveViewBtn = document.getElementById('enable-live-view');
+        if (liveViewBtn) {
+            liveViewBtn.textContent = '⏹️ Stop Live View';
+            liveViewBtn.classList.add('btn-danger');
+        }
+
+        const screenshotDisplay = document.getElementById('screenshot-display');
+        if (screenshotDisplay) {
+            screenshotDisplay.classList.add('live-view-active');
+        }
+
+        logAction('📹 Live view started');
+
+        liveViewInterval = setInterval(async () => {
+            try {
+                const data = await getCurrentScreenshot(currentSessionId);
+                if (data.success && data.screenshot) {
+                    updateScreenshotDisplay(data.screenshot, false); // Don't log each update
+                    
+                    // Update session state indicators
+                    if (data.sessionState && data.sessionState.isPaused) {
+                        screenshotDisplay.classList.add('session-paused');
+                        updateInteractionStatus(`⏸️ Session paused: ${data.sessionState.pauseReason || 'Unknown reason'}`);
+                    } else {
+                        screenshotDisplay.classList.remove('session-paused');
+                    }
+                }
+            } catch (error) {
+                console.error('Live view update failed:', error);
+                // Don't spam the log with live view errors
+            }
+        }, 2000); // Update every 2 seconds
+    }
+
+    function stopLiveView() {
+        isLiveViewActive = false;
+        
+        if (liveViewInterval) {
+            clearInterval(liveViewInterval);
+            liveViewInterval = null;
+        }
+
+        const liveViewBtn = document.getElementById('enable-live-view');
+        if (liveViewBtn) {
+            liveViewBtn.textContent = '📹 Live View';
+            liveViewBtn.classList.remove('btn-danger');
+        }
+
+        const screenshotDisplay = document.getElementById('screenshot-display');
+        if (screenshotDisplay) {
+            screenshotDisplay.classList.remove('live-view-active');
+        }
+
+        logAction('📹 Live view stopped');
+    }
+
+    function enableClickMode() {
+        if (!currentSessionId) {
+            logAction('❌ No active session for click mode');
+            return;
+        }
+
+        isClickMode = !isClickMode;
+        isTypeMode = false; // Disable type mode
+
+        const clickBtn = document.getElementById('click-mode');
+        const typeBtn = document.getElementById('type-mode');
+        const screenshotDisplay = document.getElementById('screenshot-display');
+
+        if (isClickMode) {
+            clickBtn.textContent = '🖱️ Click: ON';
+            clickBtn.classList.add('btn-success');
+            screenshotDisplay.classList.add('screenshot-interactive');
+            updateInteractionStatus('🖱️ Click mode active - Click anywhere on the screenshot to interact');
+            logAction('🖱️ Click mode enabled');
+        } else {
+            clickBtn.textContent = '🖱️ Click Mode';
+            clickBtn.classList.remove('btn-success');
+            screenshotDisplay.classList.remove('screenshot-interactive');
+            updateInteractionStatus('💡 Click mode disabled');
+            logAction('🖱️ Click mode disabled');
+        }
+
+        // Reset type button
+        if (typeBtn) {
+            typeBtn.textContent = '⌨️ Type Mode';
+            typeBtn.classList.remove('btn-success');
+        }
+        document.getElementById('type-text').style.display = 'none';
+    }
+
+    function enableTypeMode() {
+        if (!currentSessionId) {
+            logAction('❌ No active session for type mode');
+            return;
+        }
+
+        isTypeMode = !isTypeMode;
+        isClickMode = false; // Disable click mode
+
+        const typeBtn = document.getElementById('type-mode');
+        const clickBtn = document.getElementById('click-mode');
+        const typeInput = document.getElementById('type-text');
+        const screenshotDisplay = document.getElementById('screenshot-display');
+
+        if (isTypeMode) {
+            typeBtn.textContent = '⌨️ Type: ON';
+            typeBtn.classList.add('btn-success');
+            typeInput.style.display = 'block';
+            typeInput.focus();
+            updateInteractionStatus('⌨️ Type mode active - Enter text and press Enter to type');
+            logAction('⌨️ Type mode enabled');
+        } else {
+            typeBtn.textContent = '⌨️ Type Mode';
+            typeBtn.classList.remove('btn-success');
+            typeInput.style.display = 'none';
+            updateInteractionStatus('💡 Type mode disabled');
+            logAction('⌨️ Type mode disabled');
+        }
+
+        // Reset click button and mode
+        if (clickBtn) {
+            clickBtn.textContent = '🖱️ Click Mode';
+            clickBtn.classList.remove('btn-success');
+        }
+        screenshotDisplay.classList.remove('screenshot-interactive');
+    }
+
+    function updateInteractionStatus(message) {
+        const statusElement = document.getElementById('interaction-status');
+        if (statusElement) {
+            statusElement.innerHTML = `<small>${message}</small>`;
+        }
+    }
+
+    function updateScreenshotDisplay(screenshot, shouldLog = true) {
+        const screenshotDisplay = document.getElementById('screenshot-display');
+        if (!screenshotDisplay || !screenshot) return;
+
+        // Clear existing content but preserve classes
+        const existingClasses = screenshotDisplay.className;
+        screenshotDisplay.innerHTML = '';
+        screenshotDisplay.className = existingClasses + ' has-screenshot';
+
+        const img = document.createElement('img');
+        if (screenshot.base64) {
+            img.src = `data:image/png;base64,${screenshot.base64}`;
+        } else if (screenshot.url) {
+            img.src = screenshot.url.startsWith('/') ? `${API_BASE}${screenshot.url}` : screenshot.url;
+        }
+        img.alt = 'Browser screenshot';
+        
+        img.onerror = () => {
+            screenshotDisplay.innerHTML = '<p>Failed to load screenshot</p>';
+            screenshotDisplay.classList.remove('has-screenshot');
+        };
+
+        // Add click handler for interactive mode
+        img.onclick = async (e) => {
+            if (isClickMode && currentSessionId) {
+                const rect = img.getBoundingClientRect();
+                const scaleX = img.naturalWidth / img.width;
+                const scaleY = img.naturalHeight / img.height;
+                
+                const x = Math.round((e.clientX - rect.left) * scaleX);
+                const y = Math.round((e.clientY - rect.top) * scaleY);
+
+                // Show click coordinates
+                const clickIndicator = document.createElement('div');
+                clickIndicator.className = 'click-coordinates';
+                clickIndicator.textContent = `(${x}, ${y})`;
+                clickIndicator.style.left = (e.clientX - rect.left) + 'px';
+                clickIndicator.style.top = (e.clientY - rect.top) + 'px';
+                screenshotDisplay.appendChild(clickIndicator);
+
+                try {
+                    logAction(`🖱️ Clicking at coordinates (${x}, ${y})`);
+                    const result = await sendInteractiveCommand(currentSessionId, {
+                        type: 'click',
+                        x: x,
+                        y: y
+                    });
+
+                    if (result.success) {
+                        logAction(`✅ Click successful at (${x}, ${y})`);
+                        if (result.screenshot) {
+                            // Update screenshot after click
+                            setTimeout(() => updateScreenshotDisplay(result.screenshot), 1000);
+                        }
+                    }
+                } catch (error) {
+                    logAction(`❌ Click failed: ${error.message}`);
+                }
+            }
+        };
+
+        const info = document.createElement('div');
+        info.className = 'screenshot-info';
+        const timestamp = screenshot.timestamp ? new Date(screenshot.timestamp).toLocaleTimeString() : 'now';
+        info.textContent = `Screenshot taken at ${timestamp}`;
+
+        screenshotDisplay.appendChild(img);
+        screenshotDisplay.appendChild(info);
+
+        if (shouldLog) {
+            logAction('📸 Screenshot updated');
+        }
+    }
+
+    async function pauseSession() {
+        if (!currentSessionId) {
+            logAction('❌ No active session to pause');
+            return;
+        }
+
+        try {
+            const result = await sendInteractiveCommand(currentSessionId, {
+                type: 'pause',
+                reason: 'manual_pause'
+            });
+
+            if (result.success) {
+                logAction('⏸️ Session paused manually');
+                updateInteractionStatus('⏸️ Session is paused - click Resume to continue');
+            }
+        } catch (error) {
+            logAction(`❌ Failed to pause session: ${error.message}`);
+        }
+    }
+
+    async function resumeSession() {
+        if (!currentSessionId) {
+            logAction('❌ No active session to resume');
+            return;
+        }
+
+        try {
+            const result = await sendInteractiveCommand(currentSessionId, {
+                type: 'resume'
+            });
+
+            if (result.success) {
+                logAction('▶️ Session resumed');
+                updateInteractionStatus('▶️ Session resumed - ready for interaction');
+            }
+        } catch (error) {
+            logAction(`❌ Failed to resume session: ${error.message}`);
+        }
+    }
+
+    async function sendTypeCommand(text) {
+        if (!currentSessionId || !text.trim()) {
+            return;
+        }
+
+        try {
+            logAction(`⌨️ Typing: "${text}"`);
+            const result = await sendInteractiveCommand(currentSessionId, {
+                type: 'type',
+                text: text
+            });
+
+            if (result.success) {
+                logAction(`✅ Text typed successfully: "${text}"`);
+                if (result.screenshot) {
+                    // Update screenshot after typing
+                    setTimeout(() => updateScreenshotDisplay(result.screenshot), 1000);
+                }
+                
+                // Clear the input
+                document.getElementById('type-text').value = '';
+            }
+        } catch (error) {
+            logAction(`❌ Typing failed: ${error.message}`);
+        }
+    }
 
     function renderTasks() {
         taskList.innerHTML = '';
@@ -207,32 +575,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const screenshotDisplay = document.getElementById('screenshot-display');
-        if (!screenshotDisplay) return;
-        
-        screenshotDisplay.innerHTML = '';
-        screenshotDisplay.classList.add('has-screenshot');
-
-        const img = document.createElement('img');
-        if (screenshot.url) {
-            // Handle relative URLs by making them absolute
-            img.src = screenshot.url.startsWith('/') ? `${API_BASE}${screenshot.url}` : screenshot.url;
-        } else if (screenshot.base64) {
-            img.src = `data:image/png;base64,${screenshot.base64}`;
-        }
-        img.alt = 'Final task screenshot';
-        img.onerror = () => {
-            screenshotDisplay.innerHTML = '<p>Failed to load screenshot</p>';
-            screenshotDisplay.classList.remove('has-screenshot');
-        };
-        
-        const info = document.createElement('div');
-        info.className = 'screenshot-info';
-        const timestamp = screenshot.timestamp ? new Date(screenshot.timestamp).toLocaleTimeString() : 'now';
-        info.textContent = `Screenshot taken at ${timestamp}`;
-
-        screenshotDisplay.appendChild(img);
-        screenshotDisplay.appendChild(info);
+        updateScreenshotDisplay(screenshot, true);
     }
 
     function updateExecutionStatus(status, message, type = '') {
@@ -288,6 +631,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         logAction('📸 Screenshot displayed');
                     }
 
+                    // Enable interactive mode after task completion
+                    enableInteractiveMode();
+
                 } catch (taskError) {
                     logAction(`❌ Task ${i + 1} failed: ${taskError.message}`);
                     console.error('Task execution error:', taskError);
@@ -310,6 +656,9 @@ document.addEventListener('DOMContentLoaded', () => {
             // Clean up session
             if (currentSessionId) {
                 try {
+                    // Disable interactive mode before cleanup
+                    disableInteractiveMode();
+                    
                     await deleteSession(currentSessionId);
                     logAction('🧹 Session cleaned up');
                 } catch (cleanupError) {
@@ -337,6 +686,20 @@ document.addEventListener('DOMContentLoaded', () => {
     addTaskBtn.addEventListener('click', addTask);
     runTasksBtn.addEventListener('click', runAllTasks);
     downloadReceiptBtn.addEventListener('click', downloadReceipt);
+    
+    // Interactive control event listeners
+    document.getElementById('enable-live-view').addEventListener('click', startLiveView);
+    document.getElementById('click-mode').addEventListener('click', enableClickMode);
+    document.getElementById('type-mode').addEventListener('click', enableTypeMode);
+    document.getElementById('pause-session').addEventListener('click', pauseSession);
+    document.getElementById('resume-session').addEventListener('click', resumeSession);
+    
+    // Type input handler
+    document.getElementById('type-text').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter' && isTypeMode) {
+            sendTypeCommand(e.target.value);
+        }
+    });
     
     taskInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {

@@ -254,3 +254,119 @@ h2 {
     padding-bottom: 0.5rem;
     margin-bottom: 1rem;
 }
+
+/* Interactive controls */
+.interactive-controls {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 15px;
+    margin-top: 15px;
+}
+
+.interactive-controls h3 {
+    margin-top: 0;
+    color: #495057;
+    border-bottom: 1px solid #dee2e6;
+    padding-bottom: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.control-buttons {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 15px;
+}
+
+.control-buttons .btn {
+    padding: 6px 12px;
+    font-size: 13px;
+    border-radius: 4px;
+}
+
+.manual-inputs {
+    margin-top: 10px;
+}
+
+.manual-inputs input {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    margin-bottom: 10px;
+}
+
+.interaction-status {
+    background: #e3f2fd;
+    border: 1px solid #90caf9;
+    border-radius: 4px;
+    padding: 8px;
+    font-size: 12px;
+    color: #1565c0;
+}
+
+.screenshot-interactive {
+    cursor: crosshair;
+    border: 2px solid #007bff !important;
+    position: relative;
+}
+
+.screenshot-interactive::before {
+    content: "🖱️ Click Mode Active";
+    position: absolute;
+    top: 5px;
+    left: 5px;
+    background: rgba(0, 123, 255, 0.9);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    z-index: 10;
+}
+
+.click-coordinates {
+    position: absolute;
+    background: rgba(255, 0, 0, 0.8);
+    color: white;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 11px;
+    pointer-events: none;
+    z-index: 5;
+    animation: fadeOut 2s forwards;
+}
+
+@keyframes fadeOut {
+    0% { opacity: 1; }
+    70% { opacity: 1; }
+    100% { opacity: 0; }
+}
+
+.session-paused {
+    border: 3px solid #ffc107 !important;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(255, 193, 7, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0); }
+}
+
+.live-view-active {
+    border: 2px solid #28a745;
+}
+
+.live-view-active::before {
+    content: "📹 Live View Active";
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background: rgba(40, 167, 69, 0.9);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    z-index: 10;
+}

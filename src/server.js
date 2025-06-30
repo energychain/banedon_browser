@@ -11,6 +11,7 @@ const config = require('./utils/config');
 const sessionRoutes = require('./routes/sessions');
 const commandRoutes = require('./routes/commands');
 const nlTaskRoutes = require('./routes/nlTasks');
+const interactiveRoutes = require('./routes/interactive');
 
 // Import services
 const SessionManager = require('./services/SessionManager');
@@ -137,6 +138,9 @@ class BrowserAutomationService {
     
     // Natural language task routes
     this.app.use('/api/sessions', nlTaskRoutes(this.sessionManager, this.nlTaskService));
+    
+    // Interactive control routes
+    this.app.use('/api/sessions', interactiveRoutes(this.sessionManager, this.commandExecutor));
     
     // Serve screenshots
     this.app.use('/screenshots', express.static(path.join(__dirname, '..', 'public', 'screenshots')));

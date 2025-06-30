@@ -34,6 +34,22 @@
                 <div id="screenshot-display">
                     <p>Browser screenshots will appear here when tasks are executed.</p>
                 </div>
+                <div class="interactive-controls" id="interactive-controls" style="display: none;">
+                    <h3>🎮 Interactive Mode</h3>
+                    <div class="control-buttons">
+                        <button id="enable-live-view" class="btn btn-secondary">📹 Live View</button>
+                        <button id="click-mode" class="btn btn-secondary">🖱️ Click Mode</button>
+                        <button id="type-mode" class="btn btn-secondary">⌨️ Type Mode</button>
+                        <button id="pause-session" class="btn" style="background: #ffc107;">⏸️ Pause</button>
+                        <button id="resume-session" class="btn btn-success">▶️ Resume</button>
+                    </div>
+                    <div class="manual-inputs">
+                        <input type="text" id="type-text" placeholder="Text to type..." style="display: none;">
+                        <div class="interaction-status" id="interaction-status">
+                            <small>💡 Click "Live View" to start, then use Click/Type modes to interact</small>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div id="visualizer-content">
                 <h3>Action Log</h3>
