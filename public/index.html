@@ -818,6 +818,8 @@
                             <button class="btn" onclick="createNewSession()">➕ New Session</button>
                             <button class="btn btn-secondary" onclick="joinSession()">🚪 Join Session</button>
                             <button class="btn btn-secondary" onclick="downloadSessionReceipt()">💾 Save Receipt</button>
+                            <input type="file" id="receiptFileInput" accept=".json" style="display: none;" onchange="handleReceiptUpload(event)">
+                            <button class="btn btn-secondary" onclick="document.getElementById('receiptFileInput').click()">📤 Upload Receipt</button>
                         </div>
                         <div class="execution-mode">
                             <label><strong>Execution Mode:</strong></label>
@@ -1964,52 +1966,174 @@
             document.getElementById('currentSessionDisplay').value = currentSessionInput || sessionId || '';
         }
 
-        // Initialize enhanced features
-        document.addEventListener('DOMContentLoaded', function() {
-            checkUrlForSession();
-            checkAllConnections();
-            checkExistingLogin();
-            checkAuthStatus();
-            
-            // Update session display when session ID changes
-            document.getElementById('nlSessionId').addEventListener('input', updateCurrentSessionDisplay);
-            
-            // Add event listeners for execution mode changes
-            document.querySelectorAll('input[name="forceMode"]').forEach(radio => {
-                radio.addEventListener('change', updateExecutionModeIndicator);
-            });
-            
-            // Initialize the execution mode indicator
-            updateExecutionModeIndicator();
-        });
+        // Receipt upload functionality
+        async function handleReceiptUpload(event) {
+            const file = event.target.files[0];
+            if (!file) {
+                return;
+            }
 
-        // Update the execution mode indicator in the browser header
-        function updateExecutionModeIndicator() {
-            const selectedMode = document.querySelector('input[name="forceMode"]:checked').value;
-            const indicator = document.getElementById('executionModeIndicator');
-            const extensionConnected = document.getElementById('extensionStatusText').textContent.includes('Connected & Ready');
-            
-            switch (selectedMode) {
-                case 'extension':
-                    indicator.innerHTML = '🧩 Extension Mode';
-                    indicator.style.background = extensionConnected ? '#d4edda' : '#f8d7da';
-                    indicator.style.color = extensionConnected ? '#155724' : '#721c24';
-                    break;
-                case 'server':
-                    indicator.innerHTML = '🖥️ Server Mode';
-                    indicator.style.background = '#cce5ff';
-                    indicator.style.color = '#004085';
-                    break;
-                case 'auto':
-                default:
-                    const willUseExtension = extensionConnected;
-                    indicator.innerHTML = willUseExtension ? '🤖 Auto (Extension)' : '🤖 Auto (Server)';
-                    indicator.style.background = willUseExtension ? '#d4edda' : '#cce5ff';
-                    indicator.style.color = willUseExtension ? '#155724' : '#004085';
-                    break;
+            try {
+                const fileContent = await file.text();
+                let receipt;
+                
+                try {
+                    receipt = JSON.parse(fileContent);
+                } catch (parseError) {
+                    addToChatHistory('assistant', `❌ Invalid JSON in receipt file: ${parseError.message}`);
+                    return;
+                }
+
+                // Validate receipt structure
+                if (!validateReceipt(receipt)) {
+                    return;
+                }
+
+                addToChatHistory('assistant', `📄 Receipt file "${file.name}" loaded and validated.`);
+                
+                // Ask user how they want to execute the receipt
+                if (confirm('Execute receipt tasks immediately? Click OK to run now, or Cancel to review first.')) {
+                    await executeReceiptTasks(receipt);
+                }
+
+            } catch (error) {
+                addToChatHistory('assistant', `❌ Receipt upload error: ${error.message}`);
+                console.error('Receipt upload error:', error);
             }
         }
 
+        function validateReceipt(receipt) {
+            if (!receipt || typeof receipt !== 'object') {
+                addToChatHistory('assistant', '❌ Invalid receipt: not a valid object');
+                return false;
+            }
+            
+            if (!receipt.tasks || !Array.isArray(receipt.tasks)) {
+                addToChatHistory('assistant', '❌ Invalid receipt: missing or invalid tasks array');
+                return false;
+            }
+            
+            if (receipt.tasks.length === 0) {
+                addToChatHistory('assistant', '❌ Invalid receipt: no tasks found');
+                return false;
+            }
+            
+            for (let i = 0; i < receipt.tasks.length; i++) {
+                const task = receipt.tasks[i];
+                if (!task.id) {
+                    addToChatHistory('assistant', `❌ Invalid task at index ${i}: missing id`);
+                    return false;
+                }
+                if (!task.type) {
+                    addToChatHistory('assistant', `❌ Invalid task at index ${i}: missing type`);
+                    return false;
+                }
+                if (!task.params || !task.params.query) {
+                    addToChatHistory('assistant', `❌ Invalid task at index ${i}: missing params.query`);
+                    return false;
+                }
+            }
+            
+            return true;
+        }
+
+        async function executeReceiptTasks(receipt) {
+            try {
+                // Get or create session
+                let currentSessionId = document.getElementById('nlSessionId').value;
+                
+                if (!currentSessionId) {
+                    // Create new session
+                    const headers = { 'Content-Type': 'application/json' };
+                    if (currentSessionToken) {
+                        headers['X-Session-Token'] = currentSessionToken;
+                    }
+
+                    const sessionResponse = await fetch('/api/sessions', {
+                        method: 'POST',
+                        headers: headers,
+                        body: JSON.stringify({ 
+                            metadata: { purpose: 'receipt-execution', user: 'receipt-upload' }
+                        })
+                    });
+                    
+                    const sessionData = await sessionResponse.json();
+                    if (sessionData.success && sessionData.session) {
+                        currentSessionId = sessionData.session.id;
+                        document.getElementById('nlSessionId').value = currentSessionId;
+                        addToChatHistory('assistant', `🆕 Created new session for receipt: ${currentSessionId}`);
+                    } else {
+                        throw new Error('Failed to create session for receipt execution');
+                    }
+                }
+
+                // Check if we should prefer extension mode
+                const extensionReady = document.getElementById('extensionStatusText').textContent.includes('Connected & Ready');
+                const sessionMode = extensionReady ? 'extension' : 'server';
+                
+                addToChatHistory('assistant', `🔌 Using ${sessionMode} session: ${currentSessionId}`);
+
+                // Execute each task sequentially
+                for (let i = 0; i < receipt.tasks.length; i++) {
+                    const task = receipt.tasks[i];
+                    const taskDescription = task.params.query;
+                    
+                    addToChatHistory('assistant', `⏳ Executing task ${i + 1}/${receipt.tasks.length}: ${taskDescription}`);
+                    addToChatHistory('user', taskDescription);
+
+                    // Prepare headers with authentication if available
+                    const headers = { 'Content-Type': 'application/json' };
+                    if (currentSessionToken) {
+                        headers['X-Session-Token'] = currentSessionToken;
+                    }
+
+                    // Execute the task
+                    const response = await fetch(`/api/sessions/${currentSessionId}/nl-tasks`, {
+                        method: 'POST',
+                        headers: headers,
+                        body: JSON.stringify({ 
+                            task: taskDescription,
+                            executionMode: 'auto' // Let the system choose the best mode
+                        })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`Task ${i + 1} failed: ${response.statusText}`);
+                    }
+
+                    const result = await response.json();
+                    
+                    if (!result.success) {
+                        throw new Error(`Task ${i + 1} failed: ${result.message || 'Unknown error'}`);
+                    }
+
+                    // Display task result
+                    if (result.task && result.task.response) {
+                        addToChatHistory('assistant', result.task.response);
+                    }
+
+                    // Show screenshots if available
+                    if (result.task && result.task.screenshots) {
+                        if (result.task.screenshots.final) {
+                            renderScreenshots(null, result.task.screenshots.final);
+                        } else if (result.task.screenshots.after) {
+                            renderScreenshots(null, result.task.screenshots.after);
+                        }
+                    }
+
+                    // Small delay between tasks
+                    if (i < receipt.tasks.length - 1) {
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                    }
+                }
+
+                addToChatHistory('assistant', `✅ Receipt execution completed! All ${receipt.tasks.length} tasks executed successfully.`);
+
+            } catch (error) {
+                addToChatHistory('assistant', `❌ Receipt execution failed: ${error.message}`);
+                console.error('Receipt execution error:', error);
+            }
+        }
         // Auto-refresh status every 30 seconds
         setInterval(() => {
             refreshStatus();

@@ -543,7 +543,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Clear existing tasks and add receipt tasks
         tasks = [];
-        renderTaskList();
+        renderTasks();
         
         // Add tasks from receipt
         for (const receiptTask of receipt.tasks) {
@@ -556,7 +556,7 @@ document.addEventListener('DOMContentLoaded', () => {
             tasks.push(task);
         }
         
-        renderTaskList();
+        renderTasks();
         showReceiptStatus(`Loaded ${receipt.tasks.length} tasks from receipt. Running tasks...`, 'info');
         logAction(`Receipt loaded with ${receipt.tasks.length} tasks.`);
         
