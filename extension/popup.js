@@ -46,6 +46,14 @@ class PopupController {
     this.screenshotResult = document.getElementById('screenshotResult');
     this.extractResult = document.getElementById('extractResult');
     
+    // Version elements
+    this.currentVersionDisplay = document.getElementById('currentVersionDisplay');
+    this.latestVersionDisplay = document.getElementById('latestVersionDisplay');
+    this.updateStatus = document.getElementById('updateStatus');
+    this.updateMessage = document.getElementById('updateMessage');
+    this.updateBtn = document.getElementById('updateBtn');
+    this.checkUpdateBtn = document.getElementById('checkUpdateBtn');
+    
     // Log elements
     this.logContainer = document.getElementById('logContainer');
     this.clearLogsBtn = document.getElementById('clearLogsBtn');
@@ -66,6 +74,9 @@ class PopupController {
     this.testNavigateBtn.addEventListener('click', () => this.testNavigate());
     this.testScreenshotBtn.addEventListener('click', () => this.testScreenshot());
     this.testExtractBtn.addEventListener('click', () => this.testExtract());
+    
+    // Version check button
+    this.checkUpdateBtn.addEventListener('click', () => this.checkForUpdates());
     
     // Other buttons
     this.clearLogsBtn.addEventListener('click', () => this.clearLogs());
@@ -95,6 +106,11 @@ class PopupController {
       if (response.success) {
         this.updateStatus(response.status, response.sessionId, response.serverUrl);
         this.updateAutoConnectUI(response.autoConnectEnabled, response.autoCreateSession);
+        
+        // Update version information
+        if (response.currentVersion) {
+          this.updateVersionDisplay(response.currentVersion, response.latestVersion, response.updateAvailable);
+        }
       }
     } catch (error) {
       this.log('Failed to load current status', 'error');
@@ -394,8 +410,12 @@ class PopupController {
       case 'connection_status':
         this.updateConnectionStatus(message.status);
         break;
+      case 'update_available':
+        this.updateVersionDisplay(message.currentVersion, message.version, true);
+        this.log(`Update available: v${message.version}`, 'warning');
+        break;
       default:
-        console.log('Received background message:', message);
+        console.log('Unknown message type:', message.type);
     }
   }
 
@@ -447,6 +467,52 @@ class PopupController {
   updateConnectionStatus(status) {
     this.connectionStatus = status;
     this.updateStatus(status, this.currentSessionId, this.currentServerUrl);
+  }
+
+  async checkForUpdates() {
+    this.setButtonLoading(this.checkUpdateBtn, true);
+    this.log('Checking for updates...', 'info');
+    
+    try {
+      const response = await this.sendMessageToBackground({ type: 'check_updates' });
+      if (response.success) {
+        this.updateVersionDisplay(response.currentVersion, response.latestVersion, response.updateAvailable);
+        if (response.updateAvailable) {
+          this.log(`Update available: v${response.latestVersion}`, 'warning');
+        } else {
+          this.log('Extension is up to date', 'success');
+        }
+      }
+    } catch (error) {
+      this.log('Failed to check for updates', 'error');
+    } finally {
+      this.setButtonLoading(this.checkUpdateBtn, false);
+    }
+  }
+
+  updateVersionDisplay(currentVersion, latestVersion, updateAvailable) {
+    if (this.currentVersionDisplay) {
+      this.currentVersionDisplay.textContent = currentVersion;
+    }
+    
+    if (this.latestVersionDisplay) {
+      if (latestVersion) {
+        this.latestVersionDisplay.textContent = latestVersion;
+      } else {
+        this.latestVersionDisplay.textContent = 'Unknown';
+      }
+    }
+    
+    if (this.updateStatus && this.updateMessage && this.updateBtn) {
+      if (updateAvailable) {
+        this.updateStatus.style.display = 'block';
+        this.updateMessage.textContent = `Version ${latestVersion} is available!`;
+        this.updateBtn.style.display = 'inline-block';
+      } else {
+        this.updateStatus.style.display = 'none';
+        this.updateBtn.style.display = 'none';
+      }
+    }
   }
 
   resizePopup() {

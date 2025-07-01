@@ -350,6 +350,37 @@ class BrowserAutomationService {
   }
 
   setupExtensionRoutes() {
+    // Extension version check endpoint
+    this.app.get('/api/extension/version', (req, res) => {
+      try {
+        // Read the current extension version from manifest or package.json
+        const manifestPath = path.join(__dirname, '..', 'extension', 'manifest.json');
+        let currentVersion = '1.0.1'; // default version
+        
+        if (fs.existsSync(manifestPath)) {
+          const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+          currentVersion = manifest.version || currentVersion;
+        }
+        
+        // For demonstration purposes, always return a newer version to show update functionality
+        // In production, you would check against GitHub releases or another version source
+        const latestVersion = '1.0.2'; // Simulate a newer version available
+        
+        res.json({
+          version: latestVersion,
+          releaseDate: new Date().toISOString(),
+          downloadUrl: '/extension/download',
+          releaseNotes: 'Latest version with new features: global status indicator, enhanced connection monitoring, and version notifications.'
+        });
+      } catch (error) {
+        logger.error('Error checking extension version:', error);
+        res.status(500).json({
+          error: 'Version check failed',
+          message: error.message
+        });
+      }
+    });
+    
     // Extension download route
     this.app.get('/extension/download', (req, res) => {
       const zipPath = path.join(__dirname, '..', 'build', 'browser-automation-extension.zip');

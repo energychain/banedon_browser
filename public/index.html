@@ -42,6 +42,50 @@
             opacity: 0.9;
         }
 
+        /* Global Status Indicator */
+        .global-status-indicator {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+            padding: 15px 25px;
+            background: rgba(255,255,255,0.15);
+            border-radius: 25px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .status-light {
+            font-size: 1.5rem;
+            animation: pulse 2s infinite;
+        }
+
+        .status-light.connected {
+            color: #28a745;
+        }
+
+        .status-light.partial {
+            color: #ffc107;
+        }
+
+        .status-light.disconnected {
+            color: #dc3545;
+        }
+
+        .status-message {
+            font-size: 1rem;
+            font-weight: 500;
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.6; }
+            100% { opacity: 1; }
+        }
+
         .status-bar {
             background: rgba(255,255,255,0.9);
             border-radius: 15px;
@@ -575,10 +619,85 @@
         .footer {
             background: rgba(255,255,255,0.95);
             border-radius: 15px;
-            padding: 20px;
+            padding: 30px;
             margin-top: 40px;
-            text-align: center;
             box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            color: #333;
+        }
+
+        .footer-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 30px;
+            margin-bottom: 25px;
+        }
+
+        .footer-section h4 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .footer-section p {
+            color: #666;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+        }
+
+        .footer-links {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .footer-links a {
+            color: #667eea;
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color 0.3s ease;
+        }
+
+        .footer-links a:hover {
+            color: #5a67d8;
+            text-decoration: underline;
+        }
+
+        .footer-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 10px;
+            padding: 8px 12px;
+            background: #f8f9fa;
+            border-radius: 20px;
+            border: 1px solid #e9ecef;
+        }
+
+        .footer-status-light {
+            font-size: 1rem;
+        }
+
+        .footer-status span:last-child {
+            font-size: 0.8rem;
+            color: #666;
+            font-weight: 500;
+        }
+
+        .footer-bottom {
+            text-align: center;
+            padding-top: 20px;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .footer-bottom p {
+            color: #666;
+            font-size: 0.85rem;
+            line-height: 1.6;
+        }
+
+        .footer-bottom strong {
+            color: #667eea;
         }
 
         .footer a {
@@ -649,6 +768,12 @@
         <div class="header">
             <h1>🌐 Corrently Cloud Browser</h1>
             <p>Advanced web automation platform for natural language browser control.</p>
+            
+            <!-- Global Connection Status Indicator -->
+            <div class="global-status-indicator" id="globalStatusIndicator">
+                <div class="status-light" id="globalStatusLight">🔴</div>
+                <span class="status-message" id="globalStatusMessage">Checking connections...</span>
+            </div>
         </div>
 
         <!-- Navigation Menu -->
@@ -1078,14 +1203,46 @@
 
     <!-- Copyright Footer -->
     <div class="footer">
-        <p>
-            <strong>🌐 Corrently Cloud Browser</strong> - Advanced Web Automation Platform
-            <br>
-            © 2024 <a href="https://stromdao.de/impressum.html" target="_blank">STROMDAO GmbH</a> - 
-            <a href="/health">Health Check</a> | 
-            <a href="https://github.com/energychain/banedon_browser" target="_blank">GitHub</a> |
-            <a href="https://stromdao.de/impressum.html" target="_blank">Imprint</a>
-        </p>
+        <div class="footer-content">
+            <div class="footer-section">
+                <h4>🌐 Corrently Cloud Browser</h4>
+                <p>Advanced Web Automation Platform</p>
+                <div class="footer-status">
+                    <span class="footer-status-light" id="footerStatusLight">🔴</span>
+                    <span id="footerStatusText">System Status</span>
+                </div>
+            </div>
+            
+            <div class="footer-section">
+                <h4>Legal & Support</h4>
+                <div class="footer-links">
+                    <a href="https://stromdao.de/impressum.html" target="_blank">📄 Imprint</a>
+                    <a href="https://stromdao.de/datenschutz.html" target="_blank">🔒 Privacy Policy</a>
+                    <a href="/health" target="_blank">💚 Health Check</a>
+                    <a href="https://github.com/energychain/banedon_browser" target="_blank">📋 GitHub</a>
+                </div>
+            </div>
+            
+            <div class="footer-section">
+                <h4>Quick Access</h4>
+                <div class="footer-links">
+                    <a href="/help.html">📖 Documentation</a>
+                    <a href="/api-docs.html">🔧 API Reference</a>
+                    <a href="/install-guide.html">⚙️ Setup Guide</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer-bottom">
+            <p>
+                © 2024 <strong><a href="https://stromdao.de" target="_blank">STROMDAO GmbH</a></strong> - 
+                Alle Rechte vorbehalten | All rights reserved
+                <br>
+                <small>Gerauer Str. 33, 69234 Dielheim, Germany | 
+                <a href="mailto:kontakt@stromdao.de">kontakt@stromdao.de</a> | 
+                USt-IdNr.: DE313071808</small>
+            </p>
+        </div>
     </div>
 
     <script>
@@ -1619,8 +1776,16 @@
                             updateConnectionStatus('extensionStatus', 'extensionStatusText', '🔴', 'Extension Not Available');
                             document.getElementById('extensionModeStatus').textContent = '❌ Extension not available';
                         } else if (response && response.success) {
+                            let statusText = '';
                             if (response.status === 'connected') {
-                                updateConnectionStatus('extensionStatus', 'extensionStatusText', '🟢', `Connected & Ready (Session: ${response.sessionId})`);
+                                statusText = `Connected & Ready (Session: ${response.sessionId})`;
+                                if (response.currentVersion) {
+                                    statusText += ` - v${response.currentVersion}`;
+                                    if (response.updateAvailable) {
+                                        statusText += ` ⚠️ Update Available (v${response.latestVersion})`;
+                                    }
+                                }
+                                updateConnectionStatus('extensionStatus', 'extensionStatusText', '🟢', statusText);
                                 document.getElementById('extensionModeStatus').textContent = '✅ Ready for use';
                                 
                                 // Update session ID if extension has one
@@ -1628,7 +1793,14 @@
                                     document.getElementById('nlSessionId').value = response.sessionId;
                                 }
                             } else {
-                                updateConnectionStatus('extensionStatus', 'extensionStatusText', '🟡', 'Extension Installed but Disconnected');
+                                statusText = 'Extension Installed but Disconnected';
+                                if (response.currentVersion) {
+                                    statusText += ` - v${response.currentVersion}`;
+                                    if (response.updateAvailable) {
+                                        statusText += ` ⚠️ Update Available (v${response.latestVersion})`;
+                                    }
+                                }
+                                updateConnectionStatus('extensionStatus', 'extensionStatusText', '🟡', statusText);
                                 document.getElementById('extensionModeStatus').textContent = '⚠️ Extension available but not connected';
                             }
                         }
@@ -1647,6 +1819,10 @@
         function updateConnectionStatusDisplay() {
             const extensionReady = document.getElementById('extensionStatusText').textContent.includes('Connected & Ready');
             const serverReady = document.getElementById('serverStatusText').textContent.includes('Connected & Ready');
+            const websocketReady = document.getElementById('websocketStatusText').textContent.includes('WebSocket Ready');
+            
+            // Update global status indicator
+            updateGlobalStatusIndicator(extensionReady, serverReady, websocketReady);
             
             // Update quick connection status
             const quickStatus = document.getElementById('quickConnectionStatus');
@@ -1672,6 +1848,46 @@
             } else {
                 recommendation.textContent = 'No connection available';
                 recommendation.style.color = '#dc3545';
+            }
+        }
+
+        function updateGlobalStatusIndicator(extensionReady, serverReady, websocketReady) {
+            const globalLight = document.getElementById('globalStatusLight');
+            const globalMessage = document.getElementById('globalStatusMessage');
+            const footerLight = document.getElementById('footerStatusLight');
+            const footerText = document.getElementById('footerStatusText');
+            
+            // Remove existing classes
+            globalLight.className = 'status-light';
+            
+            if (extensionReady && serverReady && websocketReady) {
+                // All systems operational
+                globalLight.textContent = '🟢';
+                globalLight.classList.add('connected');
+                globalMessage.textContent = 'All Systems Operational';
+                footerLight.textContent = '🟢';
+                footerText.textContent = 'All Systems Ready';
+            } else if (serverReady && websocketReady) {
+                // Server ready, extension optional
+                globalLight.textContent = '🟡';
+                globalLight.classList.add('partial');
+                globalMessage.textContent = 'Server Ready - Extension Optional';
+                footerLight.textContent = '🟡';
+                footerText.textContent = 'Server Ready';
+            } else if (serverReady) {
+                // Limited functionality
+                globalLight.textContent = '🟡';
+                globalLight.classList.add('partial');
+                globalMessage.textContent = 'Limited Functionality Available';
+                footerLight.textContent = '🟡';
+                footerText.textContent = 'Limited Service';
+            } else {
+                // System issues
+                globalLight.textContent = '🔴';
+                globalLight.classList.add('disconnected');
+                globalMessage.textContent = 'System Connection Issues';
+                footerLight.textContent = '🔴';
+                footerText.textContent = 'Service Issues';
             }
         }
 

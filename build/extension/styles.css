@@ -415,3 +415,48 @@ footer {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
+
+/* Version Section Styles */
+.update-status {
+  background: #fff3cd;
+  border: 1px solid #ffeaa7;
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin: 8px 0;
+  color: #856404;
+}
+
+.update-status label {
+  font-weight: 600;
+  color: #856404;
+}
+
+.version-section .info-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.version-section .info-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.version-section .info-item:last-child {
+  border-bottom: none;
+}
+
+.version-section .info-item label {
+  font-weight: 500;
+  color: #4a5568;
+  margin-bottom: 0;
+}
+
+.version-section .info-item span {
+  color: #667eea;
+  font-weight: 600;
+}

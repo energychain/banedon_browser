@@ -15,8 +15,16 @@ class BackgroundService {
     this.connectionHeartbeat = null; // For connection monitoring
     this.lastHeartbeat = null;
     
+    // Version check properties
+    this.currentVersion = '1.0.1'; // Current extension version
+    this.latestVersion = null;
+    this.versionCheckUrl = 'https://browserless.corrently.cloud/api/extension/version';
+    this.versionCheckInterval = null;
+    this.updateAvailable = false;
+    
     this.setupEventListeners();
     this.loadStoredSession();
+    this.checkForUpdates(); // Check for updates on startup
   }
 
   setupEventListeners() {
@@ -133,8 +141,22 @@ class BackgroundService {
           sessionId: this.sessionId,
           serverUrl: this.serverUrl,
           autoConnectEnabled: this.autoConnectEnabled,
-          autoCreateSession: this.autoCreateSession
+          autoCreateSession: this.autoCreateSession,
+          currentVersion: this.currentVersion,
+          latestVersion: this.latestVersion,
+          updateAvailable: this.updateAvailable
         });
+        break;
+
+      case 'check_updates':
+        this.checkForUpdates()
+          .then(() => sendResponse({
+            success: true,
+            currentVersion: this.currentVersion,
+            latestVersion: this.latestVersion,
+            updateAvailable: this.updateAvailable
+          }))
+          .catch(error => sendResponse({ success: false, error: error.message }));
         break;
 
       case 'set_auto_connect':
@@ -656,6 +678,35 @@ class BackgroundService {
     if (this.connectionHeartbeat) {
       clearInterval(this.connectionHeartbeat);
       this.connectionHeartbeat = null;
+    }
+  }
+
+  async checkForUpdates() {
+    try {
+      const response = await fetch(this.versionCheckUrl);
+      if (!response.ok) {
+        throw new Error(`Failed to check for updates: ${response.status} ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      if (data.version && data.version !== this.currentVersion) {
+        this.latestVersion = data.version;
+        this.updateAvailable = true;
+        console.log(`Update available: ${this.latestVersion}`);
+        
+        // Notify popup or take other actions as needed
+        this.notifyPopup({
+          type: 'update_available',
+          version: this.latestVersion,
+          currentVersion: this.currentVersion
+        });
+      } else {
+        this.latestVersion = null;
+        this.updateAvailable = false;
+        console.log('No updates available');
+      }
+    } catch (error) {
+      console.error('Failed to check for updates:', error);
     }
   }
 }
