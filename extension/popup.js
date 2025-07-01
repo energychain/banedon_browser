@@ -113,7 +113,8 @@ class PopupController {
         }
       }
     } catch (error) {
-      this.log('Failed to load current status', 'error');
+      console.error('loadCurrentStatus error:', error);
+      this.log('Failed to load current status: ' + error.message, 'error');
     } finally {
       this.showLoading(false);
     }
@@ -474,8 +475,6 @@ class PopupController {
       this.autoCreateSession.checked = autoCreateSession;
     }
   }
-
-
 
   async checkForUpdates() {
     this.setButtonLoading(this.checkUpdateBtn, true);
