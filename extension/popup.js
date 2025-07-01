@@ -33,9 +33,9 @@ class PopupController {
     this.connectionSection = document.getElementById('connectionSection');
     this.sessionInfoSection = document.getElementById('sessionInfoSection');
     this.testingSection = document.getElementById('testingSection');
-    this.currentSessionId = document.getElementById('currentSessionId');
-    this.currentStatus = document.getElementById('currentStatus');
-    this.currentServer = document.getElementById('currentServer');
+    this.currentSessionIdElement = document.getElementById('currentSessionId');
+    this.currentStatusElement = document.getElementById('currentStatus');
+    this.currentServerElement = document.getElementById('currentServer');
     
     // Testing elements
     this.testUrlInput = document.getElementById('testUrl');
@@ -363,9 +363,9 @@ class PopupController {
     this.updateConnectionStatus(status);
     this.updateUI();
     if (sessionId) {
-      this.currentSessionId.textContent = sessionId;
-      this.currentStatus.textContent = status;
-      this.currentServer.textContent = serverUrl || this.currentServerUrl;
+      this.currentSessionIdElement.textContent = sessionId;
+      this.currentStatusElement.textContent = status;
+      this.currentServerElement.textContent = serverUrl || this.currentServerUrl;
     }
   }
 
