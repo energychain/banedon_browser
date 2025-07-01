@@ -15,12 +15,12 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             line-height: 1.6;
             color: #333;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #147a50 0%, #0f5d3d 100%);
             min-height: 100vh;
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
             padding: 20px;
         }
@@ -29,20 +29,147 @@
             text-align: center;
             color: white;
             margin-bottom: 40px;
+            padding: 40px 20px;
         }
 
         .header h1 {
-            font-size: 3rem;
-            margin-bottom: 10px;
+            font-size: 3.5rem;
+            margin-bottom: 15px;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            font-weight: 700;
         }
 
         .header p {
-            font-size: 1.2rem;
-            opacity: 0.9;
+            font-size: 1.4rem;
+            opacity: 0.95;
+            max-width: 600px;
+            margin: 0 auto 20px;
+            line-height: 1.5;
         }
 
-        /* Global Status Indicator */
+        .header .tagline {
+            font-size: 1rem;
+            opacity: 0.8;
+            font-weight: 300;
+            margin-top: 10px;
+        }
+
+        /* Hero Section */
+        .hero-section {
+            background: rgba(255,255,255,0.95);
+            border-radius: 20px;
+            padding: 40px;
+            margin-bottom: 40px;
+            box-shadow: 0 15px 50px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .hero-section h2 {
+            color: #147a50;
+            font-size: 2.2rem;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .hero-section p {
+            color: #666;
+            font-size: 1.1rem;
+            margin-bottom: 30px;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+            line-height: 1.6;
+        }
+
+        .cta-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 25px;
+        }
+
+        .cta-primary {
+            background: linear-gradient(135deg, #147a50 0%, #0f5d3d 100%);
+            color: white;
+            padding: 15px 30px;
+            text-decoration: none;
+            border-radius: 30px;
+            border: none;
+            cursor: pointer;
+            font-size: 1.1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 25px rgba(20, 122, 80, 0.3);
+        }
+
+        .cta-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 35px rgba(20, 122, 80, 0.4);
+        }
+
+        .cta-secondary {
+            background: rgba(20, 122, 80, 0.1);
+            color: #147a50;
+            padding: 15px 30px;
+            text-decoration: none;
+            border-radius: 30px;
+            border: 2px solid #147a50;
+            cursor: pointer;
+            font-size: 1.1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .cta-secondary:hover {
+            background: #147a50;
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        /* Features Grid */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+
+        .feature-card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+            transition: all 0.3s ease;
+            border: 1px solid #f0f0f0;
+            text-align: center;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.12);
+            border-color: #147a50;
+        }
+
+        .feature-icon {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            display: block;
+        }
+
+        .feature-card h3 {
+            color: #147a50;
+            font-size: 1.4rem;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .feature-card p {
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+
         .global-status-indicator {
             display: flex;
             align-items: center;
@@ -87,24 +214,36 @@
         }
 
         .status-bar {
-            background: rgba(255,255,255,0.9);
-            border-radius: 15px;
-            padding: 20px;
+            background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(248,250,252,0.95) 100%);
+            border-radius: 20px;
+            padding: 25px;
             margin-bottom: 30px;
             display: flex;
             justify-content: space-around;
             flex-wrap: wrap;
-            gap: 10px;
+            gap: 20px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+            border: 1px solid rgba(255,255,255,0.3);
         }
 
         .status-item {
             text-align: center;
+            padding: 15px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            min-width: 120px;
+            transition: transform 0.3s ease;
+        }
+
+        .status-item:hover {
+            transform: translateY(-2px);
         }
 
         .status-value {
             font-size: 2rem;
             font-weight: bold;
-            color: #667eea;
+            color: #147a50;
         }
 
         .status-label {
@@ -134,7 +273,7 @@
         }
 
         .card h2 {
-            color: #667eea;
+            color: #147a50;
             margin-bottom: 20px;
             font-size: 1.5rem;
             display: flex;
@@ -148,7 +287,7 @@
 
         .btn {
             display: inline-block;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #147a50 0%, #0f5d3d 100%);
             color: white;
             padding: 12px 25px;
             text-decoration: none;
@@ -166,7 +305,7 @@
         }
 
         .btn-secondary {
-            background: linear-gradient(135deg, #64b3f4 0%, #c2e59c 100%);
+            background: linear-gradient(135deg, #52c41a 0%, #73d13d 100%);
         }
 
         .btn-danger {
@@ -174,7 +313,7 @@
         }
 
         .extension-download {
-            background: linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%);
+            background: linear-gradient(135deg, #389e0d 0%, #237804 100%);
             text-align: center;
             color: white;
             padding: 40px;
@@ -222,7 +361,7 @@
             border-radius: 8px;
             padding: 15px;
             margin-top: 15px;
-            border-left: 4px solid #667eea;
+            border-left: 4px solid #147a50;
             min-height: 100px;
             white-space: pre-wrap;
             font-family: monospace;
@@ -242,8 +381,8 @@
         }
 
         .tab.active {
-            border-bottom-color: #667eea;
-            color: #667eea;
+            border-bottom-color: #147a50;
+            color: #147a50;
             font-weight: bold;
         }
 
@@ -332,11 +471,11 @@
         }
 
         .address-bar input:focus {
-            border-color: #667eea;
+            border-color: #147a50;
         }
 
         .address-bar button {
-            background: #667eea;
+            background: #147a50;
             color: white;
             border: none;
             border-radius: 20px;
@@ -347,7 +486,7 @@
         }
 
         .address-bar button:hover {
-            background: #5a67d8;
+            background: #0f5d3d;
         }
 
         .browser-content {
@@ -391,7 +530,7 @@
         }
 
         .chat-message.user {
-            background: #667eea;
+            background: #147a50;
             color: white;
             align-self: flex-end;
             border-bottom-right-radius: 3px;
@@ -482,7 +621,7 @@
         }
 
         .menu-toggle {
-            background: #667eea;
+            background: #147a50;
             color: white;
             border: none;
             padding: 12px 20px;
@@ -497,7 +636,7 @@
         }
 
         .menu-toggle:hover {
-            background: #5a67d8;
+            background: #0f5d3d;
             transform: translateY(-2px);
         }
 
@@ -526,8 +665,8 @@
         }
 
         .menu-item:hover {
-            border-color: #667eea;
-            background: #f8f9ff;
+            border-color: #147a50;
+            background: #f0f8f5;
             transform: translateX(5px);
         }
 
@@ -541,7 +680,7 @@
         .menu-item-title {
             font-weight: bold;
             font-size: 1.1rem;
-            color: #667eea;
+            color: #147a50;
             display: block;
         }
 
@@ -552,7 +691,7 @@
         }
 
         .nav-menu h3 {
-            color: #667eea;
+            color: #147a50;
             margin-bottom: 15px;
             font-size: 1.2rem;
         }
@@ -584,7 +723,7 @@
 
         .connection-item strong {
             min-width: 150px;
-            color: #667eea;
+            color: #147a50;
         }
 
         /* Session Management Styles */
@@ -633,7 +772,7 @@
         }
 
         .footer-section h4 {
-            color: #667eea;
+            color: #147a50;
             margin-bottom: 15px;
             font-size: 1.1rem;
             font-weight: 600;
@@ -652,14 +791,14 @@
         }
 
         .footer-links a {
-            color: #667eea;
+            color: #147a50;
             text-decoration: none;
             font-size: 0.9rem;
             transition: color 0.3s ease;
         }
 
         .footer-links a:hover {
-            color: #5a67d8;
+            color: #0f5d3d;
             text-decoration: underline;
         }
 
@@ -697,11 +836,11 @@
         }
 
         .footer-bottom strong {
-            color: #667eea;
+            color: #147a50;
         }
 
         .footer a {
-            color: #667eea;
+            color: #147a50;
             text-decoration: none;
         }
 
@@ -734,31 +873,102 @@
         }
 
         .user-info {
-            color: #667eea;
+            color: #147a50;
             font-weight: bold;
         }
 
         @media (max-width: 768px) {
             .header h1 {
-                font-size: 2rem;
+                font-size: 2.5rem;
+            }
+            
+            .header p {
+                font-size: 1.1rem;
+            }
+            
+            .hero-section {
+                padding: 25px 20px;
+            }
+            
+            .hero-section h2 {
+                font-size: 1.8rem;
+            }
+            
+            .cta-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .cta-primary, .cta-secondary {
+                width: 100%;
+                max-width: 300px;
+                text-align: center;
+            }
+            
+            .features-grid {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
+            .feature-card {
+                padding: 25px 20px;
             }
             
             .status-bar {
                 flex-direction: column;
+                gap: 15px;
             }
             
             .grid {
                 grid-template-columns: 1fr;
+                gap: 20px;
             }
             
             .session-actions {
                 flex-direction: column;
+                gap: 8px;
             }
             
             .connection-item {
                 flex-direction: column;
                 align-items: flex-start;
                 gap: 5px;
+            }
+            
+            .address-bar {
+                flex-direction: column;
+                gap: 8px;
+            }
+            
+            .address-bar input#nlSessionId {
+                width: 100%;
+            }
+            
+            .browser-content .placeholder div {
+                margin: 8px 0;
+                padding: 8px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 15px;
+            }
+            
+            .header {
+                padding: 30px 15px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .card {
+                padding: 20px;
+            }
+            
+            .feature-card {
+                padding: 20px 15px;
             }
         }
     </style>
@@ -768,6 +978,7 @@
         <div class="header">
             <h1>🌐 Corrently Cloud Browser</h1>
             <p>Advanced web automation platform for natural language browser control.</p>
+            <div class="tagline">Transform your workflow with AI-powered browser automation</div>
             
             <!-- Global Connection Status Indicator -->
             <div class="global-status-indicator" id="globalStatusIndicator">
@@ -776,15 +987,58 @@
             </div>
         </div>
 
-        <!-- Navigation Menu -->
-        <div class="nav-menu">
-            <h3>📚 Documentation & Guides</h3>
-            <a href="/help.html" class="btn">📖 User Guide & Examples</a>
-            <a href="/api-docs.html" class="btn btn-secondary">🔧 API Documentation</a>
-            <a href="/install-guide.html" class="btn btn-secondary">⚙️ Installation Guide</a>
+        <!-- Hero Section -->
+        <div class="hero-section">
+            <h2>� Start Automating in Seconds</h2>
+            <p>Just describe what you want to do in plain English, and our AI will handle the rest. No coding required - simply tell the browser what to do!</p>
+            
+            <div class="cta-buttons">
+                <button class="cta-primary" onclick="focusOnBrowserInput()">✨ Try It Now</button>
+                <a href="/help.html" class="cta-secondary">📖 View Examples</a>
+                <a href="/extension/download" class="cta-secondary">🧩 Get Extension</a>
+            </div>
         </div>
 
-        <!-- Hamburger Menu for Mobile/Compact View -->
+        <!-- Features Grid -->
+        <div class="features-grid">
+            <div class="feature-card">
+                <span class="feature-icon">🤖</span>
+                <h3>Natural Language Control</h3>
+                <p>Control any website using simple English commands. "Go to Amazon and search for wireless headphones" - it's that easy!</p>
+            </div>
+            
+            <div class="feature-card">
+                <span class="feature-icon">🧩</span>
+                <h3>Browser Extension</h3>
+                <p>Install our extension to control your actual browser remotely. Works with Chrome, Firefox, and other modern browsers.</p>
+            </div>
+            
+            <div class="feature-card">
+                <span class="feature-icon">🔗</span>
+                <h3>Session Management</h3>
+                <p>Save and resume your automation sessions. Share session IDs with team members for collaborative workflows.</p>
+            </div>
+            
+            <div class="feature-card">
+                <span class="feature-icon">📊</span>
+                <h3>Visual Feedback</h3>
+                <p>See exactly what's happening with real-time screenshots and detailed execution logs for every action.</p>
+            </div>
+            
+            <div class="feature-card">
+                <span class="feature-icon">🛡️</span>
+                <h3>Secure & Private</h3>
+                <p>Your data stays secure with enterprise-grade security. Run on your own infrastructure or use our cloud service.</p>
+            </div>
+            
+            <div class="feature-card">
+                <span class="feature-icon">⚡</span>
+                <h3>Developer Friendly</h3>
+                <p>Full REST API and WebSocket support. Integrate browser automation into your existing tools and workflows.</p>
+            </div>
+        </div>
+
+        <!-- Quick Access Navigation -->
         <div class="hamburger-menu">
             <button class="menu-toggle" onclick="toggleHamburgerMenu()">
                 <span id="hamburger-icon">☰</span> <span>Quick Access Menu</span>
@@ -825,10 +1079,75 @@
                         <div class="menu-item-desc">Check browser extension and server connectivity</div>
                     </div>
                 </a>
+                <a href="/tasks" class="menu-item">
+                    <span class="menu-item-icon">📋</span>
+                    <div>
+                        <div class="menu-item-title">Task List Builder</div>
+                        <div class="menu-item-desc">Legacy interface for multi-step automation workflows</div>
+                    </div>
+                </a>
             </div>
         </div>
 
-        <!-- User Authentication & Login Section -->
+        <!-- Main Browser Interface -->
+        <div class="browser-window">
+            <div class="browser-header">
+                <div class="dots">
+                    <span class="dot red"></span>
+                    <span class="dot yellow"></span>
+                    <span class="dot green"></span>
+                </div>
+                <div class="browser-title">
+                    🤖 AI Browser Session
+                    <span id="executionModeIndicator" style="margin-left: 15px; font-size: 0.8em; padding: 4px 8px; border-radius: 12px; background: #f0f0f0; color: #666;">
+                        🤖 Auto Mode
+                    </span>
+                </div>
+            </div>
+            <div class="browser-body">
+                <div class="address-bar">
+                    <input type="text" id="nlPrompt" placeholder="🎯 Tell me what to do... e.g., 'Go to Wikipedia and search for artificial intelligence'">
+                    <div style="display: flex; align-items: center; gap: 5px;">
+                        <input type="text" id="nlSessionId" placeholder="Session ID (optional)" style="width: 200px; font-size: 0.9em;">
+                        <button onclick="clearSessionId()" style="background: #dc3545; color: white; border: none; border-radius: 50%; width: 25px; height: 25px; cursor: pointer; font-size: 0.7em;" title="Clear session ID">✕</button>
+                    </div>
+                    <button class="btn" onclick="sendNlCommand()">🚀 Go</button>
+                </div>
+                <div class="session-help" style="font-size: 0.8em; color: #666; margin-bottom: 10px; text-align: center;">
+                    💡 Leave Session ID empty to create a new session, or enter an existing session ID to continue a previous session
+                    <br>
+                    <button class="btn btn-secondary" onclick="showQuickSessionSelect()" style="margin-top: 5px; padding: 5px 10px; font-size: 0.7em;">📋 Select from Active Sessions</button>
+                    <span style="margin-left: 15px; font-weight: bold;" id="quickConnectionStatus">🔴 Checking connections...</span>
+                </div>
+                <div id="quickSessionSelect" style="display: none; background: #f8f9fa; border-radius: 8px; padding: 10px; margin-bottom: 10px; font-size: 0.8em;">
+                    <strong>Active Sessions:</strong>
+                    <div id="quickSessionList" style="margin-top: 5px;">
+                        Loading sessions...
+                    </div>
+                    <button onclick="hideQuickSessionSelect()" style="margin-top: 5px; padding: 2px 8px; background: #ccc; border: none; border-radius: 4px; cursor: pointer;">Close</button>
+                </div>
+                <div class="browser-content" id="browserContent">
+                    <div class="placeholder">
+                        <h3 style="color: #147a50; margin-bottom: 15px;">🎯 Ready to automate your browser!</h3>
+                        <p style="color: #666; margin-bottom: 20px;">Type a command above to get started. Here are some examples:</p>
+                        <div style="text-align: left; max-width: 500px; margin: 0 auto;">
+                            <div style="margin: 10px 0; padding: 10px; background: #f0f8f5; border-radius: 8px; border-left: 3px solid #147a50;">
+                                💼 "Go to LinkedIn and search for data scientists in San Francisco"
+                            </div>
+                            <div style="margin: 10px 0; padding: 10px; background: #f0f8f5; border-radius: 8px; border-left: 3px solid #147a50;">
+                                🛒 "Navigate to Amazon and find wireless earbuds under $100"
+                            </div>
+                            <div style="margin: 10px 0; padding: 10px; background: #f0f8f5; border-radius: 8px; border-left: 3px solid #147a50;">
+                                📰 "Go to BBC News and read me the latest technology headlines"
+                            </div>
+                        </div>
+                    </div>
+                    <div class="chat-history" id="chatHistory"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- User Authentication (Compact) -->
         <div class="login-section" id="loginSection">
             <div id="loginForm" style="display: none;">
                 <h3 style="text-align: center; color: #667eea; margin-bottom: 15px;">🔐 User Authentication</h3>
@@ -853,51 +1172,6 @@
                     <button class="btn btn-secondary" onclick="toggleLoginForm()" style="margin: 5px;">🔐 Login</button>
                     <button class="btn btn-secondary" onclick="logout()" id="logoutBtn" style="display: none; margin: 5px;">🚪 Logout</button>
                     <button class="btn btn-secondary" onclick="showStoredSessions()" style="margin: 5px;">💾 Saved Sessions</button>
-                </div>
-            </div>
-        </div>
-
-        <div class="browser-window">
-            <div class="browser-header">
-                <div class="dots">
-                    <span class="dot red"></span>
-                    <span class="dot yellow"></span>
-                    <span class="dot green"></span>
-                </div>
-                <div class="browser-title">
-                    AI Browser Session
-                    <span id="executionModeIndicator" style="margin-left: 15px; font-size: 0.8em; padding: 4px 8px; border-radius: 12px; background: #f0f0f0; color: #666;">
-                        🤖 Auto Mode
-                    </span>
-                </div>
-            </div>
-            <div class="browser-body">
-                <div class="address-bar">
-                    <input type="text" id="nlPrompt" placeholder="e.g., 'Go to wikipedia.org and search for AI'">
-                    <div style="display: flex; align-items: center; gap: 5px;">
-                        <input type="text" id="nlSessionId" placeholder="Session ID (optional)" style="width: 200px; font-size: 0.9em;">
-                        <button onclick="clearSessionId()" style="background: #dc3545; color: white; border: none; border-radius: 50%; width: 25px; height: 25px; cursor: pointer; font-size: 0.7em;" title="Clear session ID">✕</button>
-                    </div>
-                    <button class="btn" onclick="sendNlCommand()">Go</button>
-                </div>
-                <div class="session-help" style="font-size: 0.8em; color: #666; margin-bottom: 10px; text-align: center;">
-                    💡 Leave Session ID empty to create a new session, or enter an existing session ID to continue a previous session
-                    <br>
-                    <button class="btn btn-secondary" onclick="showQuickSessionSelect()" style="margin-top: 5px; padding: 5px 10px; font-size: 0.7em;">📋 Select from Active Sessions</button>
-                    <span style="margin-left: 15px; font-weight: bold;" id="quickConnectionStatus">🔴 Checking connections...</span>
-                </div>
-                <div id="quickSessionSelect" style="display: none; background: #f8f9fa; border-radius: 8px; padding: 10px; margin-bottom: 10px; font-size: 0.8em;">
-                    <strong>Active Sessions:</strong>
-                    <div id="quickSessionList" style="margin-top: 5px;">
-                        Loading sessions...
-                    </div>
-                    <button onclick="hideQuickSessionSelect()" style="margin-top: 5px; padding: 2px 8px; background: #ccc; border: none; border-radius: 4px; cursor: pointer;">Close</button>
-                </div>
-                <div class="browser-content" id="browserContent">
-                    <div class="placeholder">
-                        <p>The browser view will appear here after you execute a command.</p>
-                    </div>
-                    <div class="chat-history" id="chatHistory"></div>
                 </div>
             </div>
         </div>
@@ -971,7 +1245,7 @@
                                     </span>
                                 </div>
                             </div>
-                            <div style="margin-top: 15px; padding: 10px; background: #e8f4fd; border-radius: 8px; font-size: 0.9em;" id="executionModeHelp">
+                            <div style="margin-top: 15px; padding: 10px; background: #e8f5e8; border-radius: 8px; font-size: 0.9em;" id="executionModeHelp">
                                 💡 <strong>Current recommendation:</strong> <span id="modeRecommendation">Server mode (extension not available)</span>
                             </div>
                         </div>
@@ -1014,9 +1288,9 @@
             </div>
             
             <div class="card">
-                <h2><span class="icon">🎯</span>Task List Interface</h2>
+                <h2><span class="icon">🎯</span>Legacy Task Builder</h2>
                 <p>Build and execute sequences of automation tasks with visual feedback</p>
-                <a href="/index.html" class="btn">🔗 Open Task Builder</a>
+                <a href="/tasks" class="btn">🔗 Open Task Builder</a>
                 <a href="/sample-receipt.json" class="btn btn-secondary" target="_blank">📄 Example Receipt</a>
                 <div style="margin-top: 15px; font-size: 0.9em; color: #666;">
                     Alternative interface for multi-step automation workflows
@@ -1235,11 +1509,11 @@
         
         <div class="footer-bottom">
             <p>
-                © 2024 <strong><a href="https://stromdao.de" target="_blank">STROMDAO GmbH</a></strong> - 
+                © 2025 <strong><a href="https://stromdao.de" target="_blank">STROMDAO GmbH</a></strong> - 
                 Alle Rechte vorbehalten | All rights reserved
                 <br>
-                <small>Gerauer Str. 33, 69234 Dielheim, Germany | 
-                <a href="mailto:kontakt@stromdao.de">kontakt@stromdao.de</a> | 
+                <small>Gerhard Weiser Ring 29, 69256 Mauer, Germany | 
+                <a href="mailto:dev@stromdao.com">dev@stromdao.com</a> | 
                 USt-IdNr.: DE313071808</small>
             </p>
         </div>
@@ -1250,6 +1524,12 @@
         let sessionId = null;
         const baseUrl = window.location.origin;
         
+        // Focus on browser input function
+        function focusOnBrowserInput() {
+            document.getElementById('nlPrompt').focus();
+            document.getElementById('nlPrompt').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
         // Update URLs based on current location
         // Note: These elements are now in the advanced section
         function updateAdvancedUrls() {

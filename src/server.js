@@ -113,31 +113,31 @@ class BrowserAutomationService {
     // Parse JSON bodies
     this.app.use(express.json({ limit: '10mb' }));
     
-    // Serve our enhanced task management interface as the default homepage
+    // Serve the modern advanced web UI as the default homepage
     this.app.get('/', (req, res) => {
-      res.sendFile(path.join(__dirname, '..', 'index.html'));
-    });
-    
-    // Serve task management assets
-    this.app.get('/script.js', (req, res) => {
-      res.sendFile(path.join(__dirname, '..', 'script.js'));
-    });
-    
-    this.app.get('/style.css', (req, res) => {
-      res.sendFile(path.join(__dirname, '..', 'style.css'));
-    });
-    
-    // Serve the original demo at /demo
-    this.app.get('/demo', (req, res) => {
       res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
     });
     
-    // Serve static files from public directory (except index.html which we handle above)
+    // Serve static files from public directory first (includes modern UI assets)
     this.app.use(express.static('public'));
     
-    // Keep the task management interface also available at /tasks for backward compatibility
+    // Serve the legacy task management interface at /tasks
     this.app.get('/tasks', (req, res) => {
       res.sendFile(path.join(__dirname, '..', 'index.html'));
+    });
+    
+    // Serve task management assets for /tasks
+    this.app.get('/tasks/script.js', (req, res) => {
+      res.sendFile(path.join(__dirname, '..', 'script.js'));
+    });
+    
+    this.app.get('/tasks/style.css', (req, res) => {
+      res.sendFile(path.join(__dirname, '..', 'style.css'));
+    });
+    
+    // Keep /demo for backward compatibility (redirect to root)
+    this.app.get('/demo', (req, res) => {
+      res.redirect('/');
     });
 
     // Request logging
