@@ -171,15 +171,20 @@ class PopupController {
       return;
     }
     
+    console.log('Starting connection process...');
     this.showLoading(true);
     this.setButtonLoading(this.connectBtn, true);
     this.updateConnectionStatus('connecting');
+    
     try {
+      console.log('Sending connect message to background script...');
       const response = await this.sendMessageToBackground({
         type: 'connect',
         sessionId,
         serverUrl
       });
+      
+      console.log('Received response from background script:', response);
       
       if (response.success) {
         this.log(`Connected to session: ${sessionId}`, 'success');
@@ -188,9 +193,11 @@ class PopupController {
         throw new Error(response.error || 'Connection failed');
       }
     } catch (error) {
+      console.error('Connection error:', error);
       this.log(`Connection failed: ${error.message}`, 'error');
       this.updateConnectionStatus('disconnected');
     } finally {
+      console.log('Connection process finished, hiding loading...');
       this.setButtonLoading(this.connectBtn, false);
       this.showLoading(false);
     }
@@ -406,9 +413,13 @@ class PopupController {
 
   handleBackgroundMessage(message) {
     // Handle messages from the background script
+    console.log('Received message from background:', message);
     switch (message.type) {
       case 'connection_status':
         this.updateConnectionStatus(message.status);
+        // Hide loading indicator when connection status changes
+        this.showLoading(false);
+        this.log(`Connection status updated: ${message.status}`, message.status === 'connected' ? 'success' : 'info');
         break;
       case 'update_available':
         this.updateVersionDisplay(message.currentVersion, message.version, true);

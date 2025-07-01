@@ -191,6 +191,8 @@ class BackgroundService {
   }
 
   async connect(sessionId, serverUrl) {
+    console.log('Background script: Starting connection process...', { sessionId, serverUrl });
+    
     if (!sessionId) {
       throw new Error('Session ID is required');
     }
@@ -202,15 +204,16 @@ class BackgroundService {
     
     return new Promise((resolve, reject) => {
       const wsUrl = `${this.serverUrl}?sessionId=${sessionId}`;
-      console.log('Connecting to:', wsUrl);
+      console.log('Background script: Connecting to:', wsUrl);
 
       this.wsConnection = new WebSocket(wsUrl);
 
       this.wsConnection.onopen = () => {
-        console.log('WebSocket connected');
+        console.log('Background script: WebSocket connected successfully');
         this.connectionStatus = 'connected';
         this.reconnectAttempts = 0;
         this.startConnectionMonitoring(); // Start monitoring
+        console.log('Background script: Sending connection status to popup...');
         this.notifyPopup({ type: 'connection_status', status: 'connected' });
         resolve({ success: true, status: 'connected' });
       };
@@ -599,9 +602,10 @@ class BackgroundService {
   }
 
   notifyPopup(message) {
+    console.log('Background script: Sending message to popup:', message);
     // Try to send message to popup if it's open
-    chrome.runtime.sendMessage(message).catch(() => {
-      // Popup might not be open, that's fine
+    chrome.runtime.sendMessage(message).catch((error) => {
+      console.log('Background script: Could not send message to popup (popup might not be open):', error);
     });
   }
 
