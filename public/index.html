@@ -2055,9 +2055,12 @@
                 
                 if (data.success && data.sessions) {
                     // Look for sessions that were created by the browser extension
+                    // Check for sessions with extension-specific metadata or purpose
                     const extensionSessions = data.sessions.filter(session => 
-                        session.metadata?.browser === 'chrome-extension' && 
-                        session.status === 'active'
+                        (session.status === 'connected' && session.isConnected === true) &&
+                        (session.metadata?.purpose === 'extension_auto_connect' || 
+                         session.metadata?.browser === 'chrome-extension' ||
+                         session.metadata?.browser === 'chrome')
                     );
                     
                     if (extensionSessions.length > 0) {
@@ -2300,8 +2303,10 @@
                 if (data.success && data.sessions) {
                     // Look for sessions that were created by the browser extension
                     const extensionSessions = data.sessions.filter(session => 
-                        session.metadata?.browser === 'chrome-extension' && 
-                        session.status === 'active'
+                        (session.status === 'connected' && session.isConnected === true) &&
+                        (session.metadata?.purpose === 'extension_auto_connect' || 
+                         session.metadata?.browser === 'chrome-extension' ||
+                         session.metadata?.browser === 'chrome')
                     );
                     
                     if (extensionSessions.length > 0) {
@@ -2332,34 +2337,56 @@
 
         function checkWebSocketConnection() {
             try {
-                const wsUrl = baseUrl.replace('http', 'ws') + '/ws';
+                // Use the correct protocol based on the current page protocol
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                
+                // Try to get a session ID for the WebSocket connection
+                const sessionId = document.getElementById('nlSessionId')?.value || 'test-connection';
+                const wsUrl = `${protocol}//${window.location.host}/ws?sessionId=${sessionId}`;
+                
+                console.log('Testing WebSocket connection to:', wsUrl);
                 const testWs = new WebSocket(wsUrl);
                 
                 // Set a timeout for the connection attempt
                 const timeout = setTimeout(() => {
                     if (testWs.readyState === WebSocket.CONNECTING) {
+                        console.log('WebSocket connection timed out');
                         testWs.close();
                         updateConnectionStatus('websocketStatus', 'websocketStatusText', '🔴', 'WebSocket Timeout');
                     }
-                }, 5000);
+                }, 10000); // Increased timeout for production environment
                 
                 testWs.onopen = function() {
+                    console.log('WebSocket connection successful');
                     clearTimeout(timeout);
                     updateConnectionStatus('websocketStatus', 'websocketStatusText', '🟢', 'WebSocket Ready');
-                    testWs.close();
+                    // Send a test ping to ensure the connection is working
+                    testWs.send(JSON.stringify({ action: 'ping' }));
+                    // Close after a short delay
+                    setTimeout(() => testWs.close(), 1000);
+                };
+                
+                testWs.onmessage = function(event) {
+                    console.log('WebSocket received message:', event.data);
                 };
                 
                 testWs.onerror = function(error) {
-                    clearTimeout(timeout);
                     console.error('WebSocket test error:', error);
+                    clearTimeout(timeout);
                     updateConnectionStatus('websocketStatus', 'websocketStatusText', '🔴', 'WebSocket Failed');
                 };
                 
                 testWs.onclose = function(event) {
                     clearTimeout(timeout);
+                    console.log('WebSocket closed with code:', event.code, 'reason:', event.reason);
                     // Only update status if it wasn't already set by onopen
-                    if (document.getElementById('websocketStatusText').textContent === 'Checking...') {
-                        if (event.code !== 1000) {
+                    const currentStatus = document.getElementById('websocketStatusText').textContent;
+                    if (currentStatus === 'Checking...' || currentStatus.includes('Checking')) {
+                        if (event.code === 1006) {
+                            updateConnectionStatus('websocketStatus', 'websocketStatusText', '🔴', 'WebSocket Connection Refused');
+                        } else if (event.code === 1002) {
+                            updateConnectionStatus('websocketStatus', 'websocketStatusText', '🔴', 'WebSocket Protocol Error');
+                        } else if (event.code !== 1000) {
                             updateConnectionStatus('websocketStatus', 'websocketStatusText', '🔴', `WebSocket Error: ${event.code}`);
                         } else {
                             updateConnectionStatus('websocketStatus', 'websocketStatusText', '🔴', 'WebSocket Unavailable');
