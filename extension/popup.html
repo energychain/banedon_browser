@@ -119,11 +119,36 @@
         </div>
         <button type="button" id="clearLogsBtn" class="btn btn-secondary btn-small">Clear Logs</button>
       </section>
+
+      <!-- Version Section -->
+      <section class="section" id="versionSection">
+        <h2>Version Information</h2>
+        <div class="info-grid">
+          <div class="info-item">
+            <label>Current Version:</label>
+            <span id="currentVersionDisplay">1.0.2</span>
+          </div>
+          <div class="info-item">
+            <label>Latest Version:</label>
+            <span id="latestVersionDisplay">Checking...</span>
+          </div>
+          <div class="info-item update-status" id="updateStatus" style="display: none;">
+            <label>Update Available:</label>
+            <span id="updateMessage">A new version is available!</span>
+          </div>
+        </div>
+        <div class="button-group">
+          <button type="button" id="checkUpdateBtn" class="btn btn-secondary">Check for Updates</button>
+          <button type="button" id="updateBtn" class="btn btn-primary" style="display: none;" onclick="window.open('https://github.com/energychain/banedon_browser/releases', '_blank')">
+            Download Update
+          </button>
+        </div>
+      </section>
     </main>
 
     <footer>
       <div class="footer-text">
-        Browser Automation Service v1.0.1
+        Browser Automation Service v1.0.2
       </div>
     </footer>
   </div>

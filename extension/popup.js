@@ -49,7 +49,7 @@ class PopupController {
     // Version elements
     this.currentVersionDisplay = document.getElementById('currentVersionDisplay');
     this.latestVersionDisplay = document.getElementById('latestVersionDisplay');
-    this.updateStatus = document.getElementById('updateStatus');
+    this.updateStatusElement = document.getElementById('updateStatus');
     this.updateMessage = document.getElementById('updateMessage');
     this.updateBtn = document.getElementById('updateBtn');
     this.checkUpdateBtn = document.getElementById('checkUpdateBtn');
@@ -76,7 +76,9 @@ class PopupController {
     this.testExtractBtn.addEventListener('click', () => this.testExtract());
     
     // Version check button
-    this.checkUpdateBtn.addEventListener('click', () => this.checkForUpdates());
+    if (this.checkUpdateBtn) {
+      this.checkUpdateBtn.addEventListener('click', () => this.checkForUpdates());
+    }
     
     // Other buttons
     this.clearLogsBtn.addEventListener('click', () => this.clearLogs());
@@ -510,13 +512,13 @@ class PopupController {
       }
     }
     
-    if (this.updateStatus && this.updateMessage && this.updateBtn) {
+    if (this.updateStatusElement && this.updateMessage && this.updateBtn) {
       if (updateAvailable) {
-        this.updateStatus.style.display = 'block';
+        this.updateStatusElement.style.display = 'block';
         this.updateMessage.textContent = `Version ${latestVersion} is available!`;
         this.updateBtn.style.display = 'inline-block';
       } else {
-        this.updateStatus.style.display = 'none';
+        this.updateStatusElement.style.display = 'none';
         this.updateBtn.style.display = 'none';
       }
     }

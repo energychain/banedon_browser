@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Corrently Cloud Browser Extension",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Connect your browser to the Corrently Cloud Browser automation service for advanced web automation",
   
   "permissions": [
