@@ -475,10 +475,7 @@ class PopupController {
     }
   }
 
-  updateConnectionStatus(status) {
-    this.connectionStatus = status;
-    this.updateStatus(status, this.currentSessionId, this.currentServerUrl);
-  }
+
 
   async checkForUpdates() {
     this.setButtonLoading(this.checkUpdateBtn, true);
