@@ -1550,6 +1550,12 @@
             setupTabs();
             updateAdvancedUrls();
             
+            // Set up execution mode radio button listeners
+            const modeRadios = document.querySelectorAll('input[name="forceMode"]');
+            modeRadios.forEach(radio => {
+                radio.addEventListener('change', updateExecutionModeIndicator);
+            });
+            
             // Check all connections immediately
             await checkAllConnections();
             
@@ -2093,6 +2099,75 @@
             }, 500);
         }
 
+        function updateExecutionModeIndicator() {
+            const indicator = document.getElementById('executionModeIndicator');
+            const modeAuto = document.getElementById('modeAuto');
+            const modeExtension = document.getElementById('modeExtension');
+            const modeServer = document.getElementById('modeServer');
+            
+            if (!indicator) return;
+            
+            // Determine current mode
+            let currentMode = 'auto';
+            if (modeExtension && modeExtension.checked) {
+                currentMode = 'extension';
+            } else if (modeServer && modeServer.checked) {
+                currentMode = 'server';
+            }
+            
+            // Get connection status
+            const extensionReady = document.getElementById('extensionStatusText')?.textContent.includes('Connected & Ready');
+            const serverReady = document.getElementById('serverStatusText')?.textContent.includes('Connected & Ready');
+            
+            // Update indicator based on mode and status
+            switch (currentMode) {
+                case 'auto':
+                    if (extensionReady) {
+                        indicator.innerHTML = '🧩 Auto (Extension)';
+                        indicator.style.background = '#d4edda';
+                        indicator.style.color = '#155724';
+                    } else if (serverReady) {
+                        indicator.innerHTML = '🖥️ Auto (Server)';
+                        indicator.style.background = '#fff3cd';
+                        indicator.style.color = '#856404';
+                    } else {
+                        indicator.innerHTML = '❌ Auto (No Connection)';
+                        indicator.style.background = '#f8d7da';
+                        indicator.style.color = '#721c24';
+                    }
+                    break;
+                    
+                case 'extension':
+                    if (extensionReady) {
+                        indicator.innerHTML = '🧩 Extension Mode';
+                        indicator.style.background = '#d4edda';
+                        indicator.style.color = '#155724';
+                    } else {
+                        indicator.innerHTML = '⚠️ Extension (Not Connected)';
+                        indicator.style.background = '#f8d7da';
+                        indicator.style.color = '#721c24';
+                    }
+                    break;
+                    
+                case 'server':
+                    if (serverReady) {
+                        indicator.innerHTML = '🖥️ Server Mode';
+                        indicator.style.background = '#d4edda';
+                        indicator.style.color = '#155724';
+                    } else {
+                        indicator.innerHTML = '❌ Server (Not Connected)';
+                        indicator.style.background = '#f8d7da';
+                        indicator.style.color = '#721c24';
+                    }
+                    break;
+                    
+                default:
+                    indicator.innerHTML = '🤖 Auto Mode';
+                    indicator.style.background = '#f0f0f0';
+                    indicator.style.color = '#666';
+            }
+        }
+
         async function checkExtensionConnection() {
             try {
                 // Check for extension-connected sessions on the server
@@ -2173,6 +2248,9 @@
                 recommendation.textContent = 'No connection available';
                 recommendation.style.color = '#dc3545';
             }
+            
+            // Update execution mode indicator
+            updateExecutionModeIndicator();
         }
 
         function updateGlobalStatusIndicator(extensionReady, serverReady, websocketReady) {
