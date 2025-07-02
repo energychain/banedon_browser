@@ -1815,11 +1815,6 @@
                 addToChatHistory('user', promptText);
             }
 
-            const resultDiv = document.getElementById('nl-result');
-            if (resultDiv) {
-                resultDiv.innerHTML = '<p><i>Thinking...</i></p>';
-            }
-
             try {
                 // Include execution mode preference in the request
                 const requestBody = { 
@@ -1841,7 +1836,6 @@
 
                 const data = await response.json();
                 console.log('Response data:', data);
-                resultDiv.innerHTML = ''; // Clear thinking message
 
                 if (!response.ok) {
                      throw new Error(`HTTP error! status: ${response.status}`);
@@ -1873,9 +1867,6 @@
                 console.error('Error sending NL command:', error);
                 if (typeof addToChatHistory === 'function') {
                     addToChatHistory('assistant', `Sorry, I encountered an error: ${error.message}`);
-                }
-                if (resultDiv) {
-                    resultDiv.innerHTML = ''; // Clear thinking message on error too
                 }
             }
         }
