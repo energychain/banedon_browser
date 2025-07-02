@@ -1569,17 +1569,23 @@
 
         async function initializeSession() {
             try {
+                console.log('Initializing session...');
+                
                 // First, check if there are any extension-connected sessions we can use
                 const sessionsResponse = await fetch('/api/sessions');
                 const sessionsData = await sessionsResponse.json();
                 
                 if (sessionsData.success && sessionsData.sessions) {
+                    console.log('Found sessions:', sessionsData.sessions.length);
+                    
                     // Look for extension-connected sessions
                     const extensionSessions = sessionsData.sessions.filter(session => 
                         session.isConnected && 
                         (session.metadata?.browser === 'chrome-extension' || 
                          session.metadata?.purpose === 'extension_auto_connect')
                     );
+                    
+                    console.log('Extension sessions found:', extensionSessions.length);
                     
                     if (extensionSessions.length > 0) {
                         // Use the most recent extension session
@@ -1589,23 +1595,36 @@
                         
                         sessionId = latestExtensionSession.id;
                         console.log('Using existing extension session:', sessionId);
+                        
+                        // Update all session ID fields immediately
+                        document.getElementById('nlSessionId').value = sessionId;
+                        if(document.getElementById('commandSessionId')) {
+                            document.getElementById('commandSessionId').value = sessionId;
+                        }
+                        if(document.getElementById('wsSessionId')) {
+                            document.getElementById('wsSessionId').value = sessionId;
+                        }
+                        if(document.getElementById('currentSessionDisplay')) {
+                            document.getElementById('currentSessionDisplay').value = sessionId;
+                        }
+                        
+                        return; // Don't create a new session if we found an extension session
                     }
                 }
                 
                 // If no extension session found, create a new one
-                if (!sessionId) {
-                    const response = await fetch('/api/sessions', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ metadata: { "purpose": "nl-control", "user": "dashboard-direct" } })
-                    });
-                    const data = await response.json();
-                    if (data.success && data.session && data.session.id) {
-                        sessionId = data.session.id;
-                        console.log('Created new session:', sessionId);
-                    } else {
-                        throw new Error(data.message || 'Failed to get session ID from server.');
-                    }
+                console.log('No extension session found, creating new session...');
+                const response = await fetch('/api/sessions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ metadata: { "purpose": "nl-control", "user": "dashboard-direct" } })
+                });
+                const data = await response.json();
+                if (data.success && data.session && data.session.id) {
+                    sessionId = data.session.id;
+                    console.log('Created new session:', sessionId);
+                } else {
+                    throw new Error(data.message || 'Failed to get session ID from server.');
                 }
                 
                 // Update all session ID fields
@@ -1746,7 +1765,7 @@
             }
             
             const promptText = nlPrompt.value;
-            let sessionId = document.getElementById('nlSessionId') ? document.getElementById('nlSessionId').value : '';
+            sessionId = document.getElementById('nlSessionId') ? document.getElementById('nlSessionId').value : '';
 
             console.log('promptText:', promptText);
             console.log('sessionId:', sessionId);
