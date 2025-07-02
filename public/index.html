@@ -1522,6 +1522,7 @@
     <script>
         let ws = null;
         let sessionId = null;
+        let latestExtensionSessionId = null;
         const baseUrl = window.location.origin;
         
         // Focus on browser input function
@@ -2049,53 +2050,44 @@
         async function checkExtensionConnection() {
             try {
                 // Check for extension-connected sessions on the server
-                // instead of trying to directly communicate with the extension
                 const response = await fetch('/api/sessions');
                 const data = await response.json();
-                
                 if (data.success && data.sessions) {
-                    // Look for sessions that were created by the browser extension
-                    // Check for sessions with extension-specific metadata or purpose
                     const extensionSessions = data.sessions.filter(session => 
                         (session.status === 'connected' && session.isConnected === true) &&
                         (session.metadata?.purpose === 'extension_auto_connect' || 
                          session.metadata?.browser === 'chrome-extension' ||
                          session.metadata?.browser === 'chrome')
                     );
-                    
                     if (extensionSessions.length > 0) {
-                        // Found active extension sessions
                         const latestSession = extensionSessions.sort((a, b) => 
                             new Date(b.createdAt) - new Date(a.createdAt)
                         )[0];
-                        
-                        const statusText = `Connected & Ready (Session: ${latestSession.id})`;
-                        updateConnectionStatus('extensionStatus', 'extensionStatusText', '🟢', statusText);
+                        latestExtensionSessionId = latestSession.id;
+                        updateConnectionStatus('extensionStatus', 'extensionStatusText', '🟢', `Connected & Ready (Session: ${latestSession.id})`);
                         document.getElementById('extensionModeStatus').textContent = '✅ Ready for use';
-                        
                         // Auto-populate the session ID field if it's empty
                         const sessionInput = document.getElementById('nlSessionId');
                         if (sessionInput && !sessionInput.value) {
                             sessionInput.value = latestSession.id;
                         }
-                        
                         // Update current session display
                         const currentSessionDisplay = document.getElementById('currentSessionDisplay');
                         if (currentSessionDisplay && !currentSessionDisplay.value) {
                             currentSessionDisplay.value = latestSession.id;
                         }
                     } else {
-                        // No active extension sessions found
+                        latestExtensionSessionId = null;
                         updateConnectionStatus('extensionStatus', 'extensionStatusText', '🟡', 'Extension Available but Not Connected');
                         document.getElementById('extensionModeStatus').textContent = '⚠️ Extension available but not connected';
                     }
                 } else {
-                    // Server API call failed
+                    latestExtensionSessionId = null;
                     updateConnectionStatus('extensionStatus', 'extensionStatusText', '🔴', 'Extension Status Unknown');
                     document.getElementById('extensionModeStatus').textContent = '❌ Unable to check extension status';
                 }
-                
             } catch (error) {
+                latestExtensionSessionId = null;
                 console.error('Extension check error:', error);
                 updateConnectionStatus('extensionStatus', 'extensionStatusText', '🔴', 'Extension Check Failed');
                 document.getElementById('extensionModeStatus').textContent = '❌ Extension check failed';
@@ -2296,42 +2288,47 @@
         async function checkExtensionConnection() {
             try {
                 // Check for extension-connected sessions on the server
-                // instead of trying to directly communicate with the extension
                 const response = await fetch('/api/sessions');
                 const data = await response.json();
-                
                 if (data.success && data.sessions) {
-                    // Look for sessions that were created by the browser extension
                     const extensionSessions = data.sessions.filter(session => 
                         (session.status === 'connected' && session.isConnected === true) &&
                         (session.metadata?.purpose === 'extension_auto_connect' || 
                          session.metadata?.browser === 'chrome-extension' ||
                          session.metadata?.browser === 'chrome')
                     );
-                    
                     if (extensionSessions.length > 0) {
-                        // Found active extension sessions
-                        updateConnectionStatus('extensionStatus', 'extensionStatusText', '🟢', 'Extension Connected & Ready');
-                        updateExecutionModeUI(true);
-                        return true;
+                        const latestSession = extensionSessions.sort((a, b) => 
+                            new Date(b.createdAt) - new Date(a.createdAt)
+                        )[0];
+                        latestExtensionSessionId = latestSession.id;
+                        updateConnectionStatus('extensionStatus', 'extensionStatusText', '🟢', `Connected & Ready (Session: ${latestSession.id})`);
+                        document.getElementById('extensionModeStatus').textContent = '✅ Ready for use';
+                        // Auto-populate the session ID field if it's empty
+                        const sessionInput = document.getElementById('nlSessionId');
+                        if (sessionInput && !sessionInput.value) {
+                            sessionInput.value = latestSession.id;
+                        }
+                        // Update current session display
+                        const currentSessionDisplay = document.getElementById('currentSessionDisplay');
+                        if (currentSessionDisplay && !currentSessionDisplay.value) {
+                            currentSessionDisplay.value = latestSession.id;
+                        }
                     } else {
-                        // No active extension sessions found
-                        updateConnectionStatus('extensionStatus', 'extensionStatusText', '🟡', 'Extension Installed, Not Connected');
-                        updateExecutionModeUI(false);
-                        return false;
+                        latestExtensionSessionId = null;
+                        updateConnectionStatus('extensionStatus', 'extensionStatusText', '🟡', 'Extension Available but Not Connected');
+                        document.getElementById('extensionModeStatus').textContent = '⚠️ Extension available but not connected';
                     }
                 } else {
-                    // Server API call failed
-                    updateConnectionStatus('extensionStatus', 'extensionStatusText', '�', 'Extension Status Unknown');
-                    updateExecutionModeUI(false);
-                    return false;
+                    latestExtensionSessionId = null;
+                    updateConnectionStatus('extensionStatus', 'extensionStatusText', '🔴', 'Extension Status Unknown');
+                    document.getElementById('extensionModeStatus').textContent = '❌ Unable to check extension status';
                 }
-                
             } catch (error) {
+                latestExtensionSessionId = null;
                 console.error('Extension check error:', error);
-                updateConnectionStatus('extensionStatus', 'extensionStatusText', '🔴', 'Extension Error');
-                updateExecutionModeUI(false);
-                return false;
+                updateConnectionStatus('extensionStatus', 'extensionStatusText', '🔴', 'Extension Check Failed');
+                document.getElementById('extensionModeStatus').textContent = '❌ Extension check failed';
             }
         }
 
@@ -2339,47 +2336,36 @@
             try {
                 // Use the correct protocol based on the current page protocol
                 const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-                
-                // Try to get a session ID for the WebSocket connection
-                const sessionId = document.getElementById('nlSessionId')?.value || 'test-connection';
+                // Always use the latest detected extension session ID if available
+                const sessionId = window.latestExtensionSessionId || document.getElementById('nlSessionId')?.value || 'test-connection';
                 const wsUrl = `${protocol}//${window.location.host}/ws?sessionId=${sessionId}`;
-                
                 console.log('Testing WebSocket connection to:', wsUrl);
                 const testWs = new WebSocket(wsUrl);
-                
-                // Set a timeout for the connection attempt
                 const timeout = setTimeout(() => {
                     if (testWs.readyState === WebSocket.CONNECTING) {
                         console.log('WebSocket connection timed out');
                         testWs.close();
                         updateConnectionStatus('websocketStatus', 'websocketStatusText', '🔴', 'WebSocket Timeout');
                     }
-                }, 10000); // Increased timeout for production environment
-                
+                }, 10000);
                 testWs.onopen = function() {
                     console.log('WebSocket connection successful');
                     clearTimeout(timeout);
                     updateConnectionStatus('websocketStatus', 'websocketStatusText', '🟢', 'WebSocket Ready');
-                    // Send a test ping to ensure the connection is working
                     testWs.send(JSON.stringify({ action: 'ping' }));
-                    // Close after a short delay
                     setTimeout(() => testWs.close(), 1000);
                 };
-                
                 testWs.onmessage = function(event) {
                     console.log('WebSocket received message:', event.data);
                 };
-                
                 testWs.onerror = function(error) {
                     console.error('WebSocket test error:', error);
                     clearTimeout(timeout);
                     updateConnectionStatus('websocketStatus', 'websocketStatusText', '🔴', 'WebSocket Failed');
                 };
-                
                 testWs.onclose = function(event) {
                     clearTimeout(timeout);
                     console.log('WebSocket closed with code:', event.code, 'reason:', event.reason);
-                    // Only update status if it wasn't already set by onopen
                     const currentStatus = document.getElementById('websocketStatusText').textContent;
                     if (currentStatus === 'Checking...' || currentStatus.includes('Checking')) {
                         if (event.code === 1006) {
