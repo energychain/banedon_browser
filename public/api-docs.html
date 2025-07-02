@@ -243,8 +243,8 @@
         <p>This hybrid approach provides maximum flexibility - use extension mode for interactive workflows and server-side mode for automation and CI/CD pipelines.</p>
         
         <div class="parameter">
-            <strong>Base URL:</strong> <code id="baseUrl">http://localhost:3010</code><br>
-            <strong>WebSocket URL:</strong> <code id="wsUrl">ws://localhost:3010/ws</code>
+            <strong>Base URL:</strong> <code id="baseUrl">https://browserless.corrently.cloud</code><br>
+            <strong>WebSocket URL:</strong> <code id="wsUrl">wss://browserless.corrently.cloud/ws</code>
         </div>
     </section>
 
@@ -489,7 +489,7 @@
         
         <h3>Connection</h3>
         <div class="code-block">
-WebSocket URL: ws://localhost:3010/ws?sessionId={sessionId}
+WebSocket URL: wss://browserless.corrently.cloud/ws?sessionId={sessionId}
         </div>
         
         <h3>Message Format</h3>
@@ -569,10 +569,17 @@ WebSocket URL: ws://localhost:3010/ws?sessionId={sessionId}
     </div>
 
     <script>
-        // Update URLs based on current location
-        const baseUrl = window.location.origin;
+        // Update URLs based on current location or use production URL
+        const baseUrl = window.location.hostname === 'localhost' 
+            ? window.location.origin 
+            : 'https://browserless.corrently.cloud';
+        
+        const wsUrl = window.location.hostname === 'localhost'
+            ? window.location.origin.replace('http', 'ws') + '/ws'
+            : 'wss://browserless.corrently.cloud/ws';
+            
         document.getElementById('baseUrl').textContent = baseUrl;
-        document.getElementById('wsUrl').textContent = baseUrl.replace('http', 'ws') + '/ws';
+        document.getElementById('wsUrl').textContent = wsUrl;
     </script>
 </body>
 </html>
