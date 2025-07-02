@@ -631,7 +631,7 @@ class BackgroundService {
         },
         body: JSON.stringify({
           metadata: {
-            browser: 'chrome',
+            browser: 'chrome-extension',
             purpose: 'extension_auto_connect',
             userAgent: navigator.userAgent,
             timestamp: new Date().toISOString()

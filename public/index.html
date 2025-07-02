@@ -1578,11 +1578,10 @@
                 if (sessionsData.success && sessionsData.sessions) {
                     console.log('Found sessions:', sessionsData.sessions.length);
                     
-                    // Look for extension-connected sessions
+                    // Look for extension-connected sessions  
                     const extensionSessions = sessionsData.sessions.filter(session => 
                         session.isConnected && 
-                        (session.metadata?.browser === 'chrome-extension' || 
-                         session.metadata?.purpose === 'extension_auto_connect')
+                        (session.metadata?.browser === 'chrome-extension')
                     );
                     
                     console.log('Extension sessions found:', extensionSessions.length);
