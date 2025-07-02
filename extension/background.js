@@ -624,6 +624,61 @@ class BackgroundService {
     try {
       const serverBaseUrl = this.serverUrl.replace('ws://', 'http://').replace('wss://', 'https://').replace('/ws', '');
       
+      // First, check if there are any existing sessions we can reuse
+      console.log('Checking for existing sessions before creating new one...');
+      try {
+        const sessionsResponse = await fetch(`${serverBaseUrl}/api/sessions`);
+        if (sessionsResponse.ok) {
+          const sessionsData = await sessionsResponse.json();
+          if (sessionsData.success && sessionsData.sessions) {
+            // Look for any active session that the extension can use
+            // Prefer extension sessions, but also consider web UI sessions if no extension session exists
+            let existingSession = sessionsData.sessions.find(session => 
+              session.isConnected && session.metadata?.browser === 'chrome-extension'
+            );
+            
+            // If no extension session found, consider reusing an active web UI session
+            if (!existingSession) {
+              existingSession = sessionsData.sessions.find(session => 
+                session.isConnected && 
+                (session.metadata?.purpose === 'nl-control' || session.metadata?.user === 'dashboard-direct')
+              );
+            }
+            
+            if (existingSession) {
+              console.log('Found existing session to reuse:', existingSession.id, existingSession.metadata);
+              
+              // Update the session metadata to indicate extension is now using it
+              try {
+                await fetch(`${serverBaseUrl}/api/sessions/${existingSession.id}`, {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    metadata: {
+                      ...existingSession.metadata,
+                      browser: 'chrome-extension',
+                      purpose: 'extension_reused',
+                      extensionConnectedAt: new Date().toISOString()
+                    }
+                  })
+                });
+              } catch (updateError) {
+                console.warn('Failed to update session metadata:', updateError);
+              }
+              
+              this.sessionId = existingSession.id;
+              await this.saveSession();
+              console.log('Reusing existing session:', this.sessionId);
+              return this.sessionId;
+            }
+          }
+        }
+      } catch (checkError) {
+        console.warn('Failed to check existing sessions:', checkError);
+      }
+      
+      // No existing session found, create a new one
+      console.log('No reusable session found, creating new session...');
       const response = await fetch(`${serverBaseUrl}/api/sessions`, {
         method: 'POST',
         headers: {

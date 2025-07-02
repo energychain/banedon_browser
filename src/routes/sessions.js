@@ -159,6 +159,51 @@ function createSessionRoutes(sessionManager) {
     }
   });
 
+  // Update session metadata
+  router.put('/:sessionId', async (req, res) => {
+    try {
+      const { sessionId } = req.params;
+      const { metadata } = req.body;
+      
+      if (!metadata) {
+        return res.status(400).json({
+          success: false,
+          error: 'Metadata is required'
+        });
+      }
+
+      const session = sessionManager.getSession(sessionId);
+      if (!session) {
+        return res.status(404).json({
+          success: false,
+          error: 'Session not found'
+        });
+      }
+
+      // Update session metadata
+      session.metadata = { ...session.metadata, ...metadata };
+      session.lastActivity = new Date();
+      
+      logger.info(`Updated session ${sessionId} metadata:`, metadata);
+      
+      res.json({
+        success: true,
+        message: 'Session metadata updated',
+        session: {
+          id: session.id,
+          metadata: session.metadata,
+          lastActivity: session.lastActivity
+        }
+      });
+    } catch (error) {
+      logger.error('Failed to update session metadata:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message
+      });
+    }
+  });
+
   // Get session statistics
   router.get('/_stats', async (req, res) => {
     try {

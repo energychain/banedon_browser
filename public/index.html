@@ -1571,6 +1571,9 @@
             try {
                 console.log('Initializing session...');
                 
+                // Small delay to allow extension to initialize first if present
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
                 // First, check if there are any extension-connected sessions we can use
                 const sessionsResponse = await fetch('/api/sessions');
                 const sessionsData = await sessionsResponse.json();
@@ -1595,6 +1598,23 @@
                         sessionId = latestExtensionSession.id;
                         console.log('Using existing extension session:', sessionId);
                         
+                        // Update the session metadata to indicate web UI is now using it
+                        try {
+                            await fetch(`/api/sessions/${sessionId}`, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    metadata: {
+                                        ...latestExtensionSession.metadata,
+                                        webUIConnectedAt: new Date().toISOString(),
+                                        purpose: 'extension_and_webui_shared'
+                                    }
+                                })
+                            });
+                        } catch (updateError) {
+                            console.warn('Failed to update session metadata:', updateError);
+                        }
+                        
                         // Update all session ID fields immediately
                         document.getElementById('nlSessionId').value = sessionId;
                         if(document.getElementById('commandSessionId')) {
@@ -1616,7 +1636,14 @@
                 const response = await fetch('/api/sessions', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ metadata: { "purpose": "nl-control", "user": "dashboard-direct" } })
+                    body: JSON.stringify({ 
+                        metadata: { 
+                            "purpose": "nl-control", 
+                            "user": "dashboard-direct",
+                            "browser": "web-ui",
+                            "createdBy": "frontend"
+                        } 
+                    })
                 });
                 const data = await response.json();
                 if (data.success && data.session && data.session.id) {
