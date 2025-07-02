@@ -31,13 +31,41 @@ class CommandExecutor {
     const connection = this.sessionManager.getConnection(sessionId);
     const hasExtensionConnection = connection && connection.readyState === 1;
 
-    // Decide execution strategy
-    if (hasExtensionConnection && session.isConnected) {
+    // Get execution mode preference from session metadata
+    const preferredExecutionMode = session.metadata?.preferredExecutionMode || 'auto';
+    
+    logger.info(`Executing command ${commandData.type} for session ${sessionId}, preferredMode: ${preferredExecutionMode}, extensionConnected: ${hasExtensionConnection}`);
+
+    // Decide execution strategy based on preference and availability
+    let useExtension = false;
+    
+    switch (preferredExecutionMode) {
+      case 'extension':
+        if (hasExtensionConnection && session.isConnected) {
+          useExtension = true;
+        } else {
+          throw new Error('Extension execution requested but extension is not connected');
+        }
+        break;
+        
+      case 'server':
+        useExtension = false;
+        break;
+        
+      case 'auto':
+      default:
+        // Auto mode: prefer extension if connected, fallback to server
+        useExtension = hasExtensionConnection && session.isConnected;
+        break;
+    }
+
+    if (useExtension) {
       // Use extension-based execution
+      logger.info(`Using extension-based execution for session ${sessionId}`);
       return await this.executeViaExtension(sessionId, commandData);
     } else {
       // Use server-side browser execution
-      logger.info(`No extension connection for session ${sessionId}, using server-side browser`);
+      logger.info(`Using server-side browser execution for session ${sessionId}`);
       return await this.executeViaServerBrowser(sessionId, commandData);
     }
   }

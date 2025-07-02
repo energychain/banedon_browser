@@ -14,7 +14,7 @@ function createNLTaskRoutes(sessionManager, nlTaskService) {
   router.post('/:sessionId/nl-tasks', async (req, res) => {
     try {
       const { sessionId } = req.params;
-      const { task, description } = req.body;
+      const { task, description, executionMode } = req.body;
 
       if (!task && !description) {
         return res.status(400).json({
@@ -25,10 +25,10 @@ function createNLTaskRoutes(sessionManager, nlTaskService) {
 
       const taskDescription = task || description;
       
-      logger.info(`Natural language task requested for session ${sessionId}: ${taskDescription}`);
+      logger.info(`Natural language task requested for session ${sessionId}: ${taskDescription}, executionMode: ${executionMode}`);
 
       // Always return a result, even if there are errors
-      const result = await nlTaskService.processTask(sessionId, taskDescription);
+      const result = await nlTaskService.processTask(sessionId, taskDescription, executionMode);
       
       // If the result indicates failure but we have some response, still return success
       if (!result.success && result.fallbackResponse) {

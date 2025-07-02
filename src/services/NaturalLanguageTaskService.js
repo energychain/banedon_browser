@@ -26,9 +26,10 @@ class NaturalLanguageTaskService {
    * Process a natural language task with iterative execution
    * @param {string} sessionId - Session ID
    * @param {string} taskDescription - Natural language description of the task
+   * @param {string} executionMode - Execution mode: 'auto', 'extension', or 'server'
    * @returns {Promise<Object>} Task execution result with AI analysis
    */
-  async processTask(sessionId, taskDescription) {
+  async processTask(sessionId, taskDescription, executionMode = 'auto') {
     try {
       // Set current session ID for context
       this.setCurrentSessionId(sessionId);
@@ -37,6 +38,12 @@ class NaturalLanguageTaskService {
       if (!session) {
         throw new Error(`Session not found: ${sessionId}`);
       }
+
+      logger.info(`Processing natural language task for session ${sessionId}: ${taskDescription}, executionMode: ${executionMode}`);
+
+      // Store execution mode preference in session metadata for use by command executor
+      session.metadata = session.metadata || {};
+      session.metadata.preferredExecutionMode = executionMode;
 
       // Add user message to history and get the latest history
       this.sessionManager.addToHistory(sessionId, { role: 'user', content: taskDescription });
