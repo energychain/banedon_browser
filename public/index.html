@@ -1698,25 +1698,49 @@
         }
 
         async function sendNlCommand() {
+            console.log('sendNlCommand called');
+            
             const nlPrompt = document.getElementById('nlPrompt');
+            if (!nlPrompt) {
+                console.error('nlPrompt element not found');
+                return;
+            }
+            
             const promptText = nlPrompt.value;
-            let sessionId = document.getElementById('nlSessionId').value;
+            let sessionId = document.getElementById('nlSessionId') ? document.getElementById('nlSessionId').value : '';
+
+            console.log('promptText:', promptText);
+            console.log('sessionId:', sessionId);
 
             if (!promptText) {
+                console.log('No prompt text, returning early');
                 return;
             }
 
             // Get selected execution mode
-            const selectedMode = document.querySelector('input[name="forceMode"]:checked').value;
+            const selectedModeElement = document.querySelector('input[name="forceMode"]:checked');
+            if (!selectedModeElement) {
+                console.error('No execution mode selected');
+                return;
+            }
+            const selectedMode = selectedModeElement.value;
+            console.log('selectedMode:', selectedMode);
             
             // Check if extension mode is selected but extension is not connected
             if (selectedMode === 'extension') {
-                const extensionStatus = document.getElementById('extensionStatusText').textContent;
+                const extensionStatusElement = document.getElementById('extensionStatusText');
+                const extensionStatus = extensionStatusElement ? extensionStatusElement.textContent : '';
+                console.log('extensionStatus:', extensionStatus);
                 if (!extensionStatus.includes('Connected & Ready')) {
-                    addToChatHistory('assistant', '❌ Cannot execute in extension mode: Browser extension is not connected. Please connect the extension or choose a different execution mode.');
+                    console.log('Extension mode selected but not connected, showing error');
+                    if (typeof addToChatHistory === 'function') {
+                        addToChatHistory('assistant', '❌ Cannot execute in extension mode: Browser extension is not connected. Please connect the extension or choose a different execution mode.');
+                    }
                     return;
                 }
             }
+
+            console.log('About to proceed with task execution');
 
             // Show execution mode feedback
             let modeMessage = '';
@@ -1728,20 +1752,24 @@
                     modeMessage = '🖥️ Executing on server (headless browser)...';
                     break;
                 case 'auto':
-                    const extensionReady = document.getElementById('extensionStatusText').textContent.includes('Connected & Ready');
+                    const extensionStatusElement = document.getElementById('extensionStatusText');
+                    const extensionReady = extensionStatusElement && extensionStatusElement.textContent.includes('Connected & Ready');
                     modeMessage = extensionReady ? '🧩 Auto-selected: Executing via browser extension...' : '🖥️ Auto-selected: Executing on server...';
                     break;
             }
-            addToChatHistory('assistant', modeMessage);
+            if (typeof addToChatHistory === 'function') {
+                addToChatHistory('assistant', modeMessage);
+            }
 
             // Prepare headers with authentication if available
             const headers = { 'Content-Type': 'application/json' };
-            if (currentSessionToken) {
+            if (typeof currentSessionToken !== 'undefined' && currentSessionToken) {
                 headers['X-Session-Token'] = currentSessionToken;
             }
 
             // If no session ID provided, create a new session
             if (!sessionId) {
+                console.log('No session ID, creating new session...');
                 try {
                     const sessionResponse = await fetch('/api/sessions', {
                         method: 'POST',
@@ -1755,26 +1783,42 @@
                             } 
                         })
                     });
+                    console.log('Session creation response:', sessionResponse.status);
                     const sessionData = await sessionResponse.json();
+                    console.log('Session creation data:', sessionData);
+                    
                     if (sessionData.success && sessionData.session) {
                         sessionId = sessionData.session.id;
-                        document.getElementById('nlSessionId').value = sessionId;
-                        document.getElementById('currentSessionDisplay').value = sessionId;
-                        addToChatHistory('assistant', `Created new session: ${sessionId}`);
+                        if (document.getElementById('nlSessionId')) {
+                            document.getElementById('nlSessionId').value = sessionId;
+                        }
+                        if (document.getElementById('currentSessionDisplay')) {
+                            document.getElementById('currentSessionDisplay').value = sessionId;
+                        }
+                        if (typeof addToChatHistory === 'function') {
+                            addToChatHistory('assistant', `Created new session: ${sessionId}`);
+                        }
                     } else {
                         throw new Error('Failed to create session');
                     }
                 } catch (error) {
-                    addToChatHistory('assistant', `Error creating session: ${error.message}`);
+                    console.error('Session creation error:', error);
+                    if (typeof addToChatHistory === 'function') {
+                        addToChatHistory('assistant', `Error creating session: ${error.message}`);
+                    }
                     return;
                 }
             }
 
-            nlPrompt.value = ''; // Clear input
-            addToChatHistory('user', promptText);
+            if (nlPrompt) nlPrompt.value = ''; // Clear input
+            if (typeof addToChatHistory === 'function') {
+                addToChatHistory('user', promptText);
+            }
 
             const resultDiv = document.getElementById('nl-result');
-            resultDiv.innerHTML = '<p><i>Thinking...</i></p>';
+            if (resultDiv) {
+                resultDiv.innerHTML = '<p><i>Thinking...</i></p>';
+            }
 
             try {
                 // Include execution mode preference in the request
@@ -1783,13 +1827,20 @@
                     executionMode: selectedMode
                 };
 
+                console.log('About to send fetch request to:', `/api/sessions/${sessionId}/nl-tasks`);
+                console.log('Request body:', requestBody);
+                console.log('Headers:', headers);
+
                 const response = await fetch(`/api/sessions/${sessionId}/nl-tasks`, {
                     method: 'POST',
                     headers: headers,
                     body: JSON.stringify(requestBody),
                 });
 
+                console.log('Response received:', response.status, response.statusText);
+
                 const data = await response.json();
+                console.log('Response data:', data);
                 resultDiv.innerHTML = ''; // Clear thinking message
 
                 if (!response.ok) {
@@ -1806,22 +1857,26 @@
 
                 const task = data.task;
 
-                if (task.history) {
+                if (task.history && typeof renderChatHistory === 'function') {
                     renderChatHistory(task.history);
                 }
                 
-                if (task.response) {
+                if (task.response && typeof addToChatHistory === 'function') {
                     addToChatHistory('assistant', task.response);
                 }
 
-                if (task.beforeScreenshot || task.afterScreenshot) {
+                if ((task.beforeScreenshot || task.afterScreenshot) && typeof renderScreenshots === 'function') {
                     renderScreenshots(task.beforeScreenshot, task.afterScreenshot);
                 }
 
             } catch (error) {
                 console.error('Error sending NL command:', error);
-                addToChatHistory('assistant', `Sorry, I encountered an error: ${error.message}`);
-                resultDiv.innerHTML = ''; // Clear thinking message on error too
+                if (typeof addToChatHistory === 'function') {
+                    addToChatHistory('assistant', `Sorry, I encountered an error: ${error.message}`);
+                }
+                if (resultDiv) {
+                    resultDiv.innerHTML = ''; // Clear thinking message on error too
+                }
             }
         }
 
