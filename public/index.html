@@ -1569,27 +1569,60 @@
 
         async function initializeSession() {
             try {
-                const response = await fetch('/api/sessions', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ metadata: { "purpose": "nl-control", "user": "dashboard-direct" } })
-                });
-                const data = await response.json();
-                if (data.success && data.session && data.session.id) {
-                    sessionId = data.session.id;
-                    document.getElementById('nlSessionId').value = sessionId;
+                // First, check if there are any extension-connected sessions we can use
+                const sessionsResponse = await fetch('/api/sessions');
+                const sessionsData = await sessionsResponse.json();
+                
+                if (sessionsData.success && sessionsData.sessions) {
+                    // Look for extension-connected sessions
+                    const extensionSessions = sessionsData.sessions.filter(session => 
+                        session.isConnected && 
+                        (session.metadata?.browser === 'chrome-extension' || 
+                         session.metadata?.purpose === 'extension_auto_connect')
+                    );
                     
-                    // Also fill in other session ID fields in advanced tools
-                    if(document.getElementById('commandSessionId')) {
-                        document.getElementById('commandSessionId').value = sessionId;
+                    if (extensionSessions.length > 0) {
+                        // Use the most recent extension session
+                        const latestExtensionSession = extensionSessions.sort((a, b) => 
+                            new Date(b.createdAt) - new Date(a.createdAt)
+                        )[0];
+                        
+                        sessionId = latestExtensionSession.id;
+                        console.log('Using existing extension session:', sessionId);
                     }
-                    if(document.getElementById('wsSessionId')) {
-                        document.getElementById('wsSessionId').value = sessionId;
-                    }
-                    console.log('Session initialized:', sessionId);
-                } else {
-                     throw new Error(data.message || 'Failed to get session ID from server.');
                 }
+                
+                // If no extension session found, create a new one
+                if (!sessionId) {
+                    const response = await fetch('/api/sessions', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ metadata: { "purpose": "nl-control", "user": "dashboard-direct" } })
+                    });
+                    const data = await response.json();
+                    if (data.success && data.session && data.session.id) {
+                        sessionId = data.session.id;
+                        console.log('Created new session:', sessionId);
+                    } else {
+                        throw new Error(data.message || 'Failed to get session ID from server.');
+                    }
+                }
+                
+                // Update all session ID fields
+                document.getElementById('nlSessionId').value = sessionId;
+                
+                // Also fill in other session ID fields in advanced tools
+                if(document.getElementById('commandSessionId')) {
+                    document.getElementById('commandSessionId').value = sessionId;
+                }
+                if(document.getElementById('wsSessionId')) {
+                    document.getElementById('wsSessionId').value = sessionId;
+                }
+                if(document.getElementById('currentSessionDisplay')) {
+                    document.getElementById('currentSessionDisplay').value = sessionId;
+                }
+                
+                console.log('Session initialized:', sessionId);
             } catch (error) {
                 console.error('Failed to initialize session:', error);
                 const nlResponse = document.getElementById('nlResponse');
