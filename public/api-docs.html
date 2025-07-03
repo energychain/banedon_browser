@@ -227,6 +227,7 @@
                     <li><a href="#commands">Command Execution</a></li>
                     <li><a href="#websocket">WebSocket API</a></li>
                     <li><a href="#errors">Error Handling</a></li>
+                    <li><a href="#extension">Extension Behavior</a></li>
                 </ul>
             </div>
 
@@ -519,6 +520,119 @@ WebSocket URL: wss://browserless.corrently.cloud/ws?sessionId={sessionId}
   "type": "sessionStatus",
   "status": "active",
   "sessionId": "uuid-here"
+}
+        </div>
+    </section>
+
+    <section id="extension">
+        <h2>Extension Behavior</h2>
+        <p>When using Extension-Based Mode, the browser extension handles commands through the WebSocket connection. Understanding extension behavior is crucial for proper automation.</p>
+        
+        <h3>Tab Management</h3>
+        <div class="parameter">
+            <strong>🔄 Automatic Tab Creation:</strong> Extension must open new tabs via navigate command before other operations<br>
+            <strong>🎯 Tab Targeting:</strong> Commands are executed in the active or specified tab<br>
+            <strong>📋 Tab Lifecycle:</strong> Tabs remain open unless explicitly closed<br>
+            <strong>⚠️ Command Flow:</strong> Always start with navigate command to establish browser context
+        </div>
+        
+        <h3>Common Extension Issues</h3>
+        
+        <h4>Extension Not Opening New Tabs:</h4>
+        <div class="response-example">
+Symptoms: WebSocket connects successfully but no new tab appears
+Common Error: "Unknown command type: get_page_elements"
+
+Root Cause: Extension expects navigation command first to establish browser context
+
+Solution:
+1. Ensure first command is always "navigate" to open new tab
+2. Extension must handle navigate command before other operations
+3. Check that extension properly implements tab creation logic
+
+Example Fix - Proper Command Sequence:
+1. Send navigate command: {"type": "navigate", "payload": {"url": "https://bbc.com"}}
+2. Wait for tab creation and page load
+3. Then send other commands: {"type": "get_page_elements", "payload": {}}
+
+Troubleshooting:
+1. Check browser permissions for the extension
+2. Verify extension is enabled and active  
+3. Check browser console for extension errors
+4. Ensure popup blockers are disabled for the site
+5. Test with simple navigate command first
+        </div>
+        
+        <h4>Unknown Command Type Errors:</h4>
+        <div class="response-example">
+Symptoms: "Unknown command type: get_page_elements" or similar
+Root Cause: Extension receiving commands it doesn't recognize
+
+Common Issues:
+- Extension missing command handlers in background.js
+- Commands sent before proper browser context established
+- Extension and server command format mismatch
+
+Solutions:
+1. Verify extension has handlers for all command types
+2. Always start with navigate command to establish context
+3. Check extension background.js for supported command types
+4. Update extension if command handlers are missing
+
+Supported Extension Commands:
+- navigate, click, type, getTitle, getText, screenshot
+- evaluate, waitForElement, getPageElements (if implemented)
+        </div>
+        
+        <h3>Command Sequencing</h3>
+        <div class="parameter">
+            <strong>📋 Required Flow:</strong> Extension mode requires specific command sequence<br>
+            <strong>1️⃣ Navigate First:</strong> Always start with navigate command to open tab<br>
+            <strong>2️⃣ Wait for Load:</strong> Allow page to fully load before sending additional commands<br>
+            <strong>3️⃣ Execute Actions:</strong> Then send interaction commands (click, type, etc.)
+        </div>
+        
+        <h4>Correct Command Sequence:</h4>
+        <div class="code-block">
+// 1. First - Navigate to establish browser context
+{
+  "type": "navigate",
+  "payload": {
+    "url": "https://bbc.com/news/technology"
+  }
+}
+
+// 2. Wait for page load, then send follow-up commands
+{
+  "type": "getText",
+  "payload": {
+    "selector": "h2.gs-c-promo-heading__title"
+  }
+}
+        </div>
+
+        <h3>Extension vs Server-Side Mode</h3>
+        <div class="parameter">
+            <strong>🔌 Extension Mode:</strong> Best for interactive workflows, real browser environment, user context<br>
+            <strong>🤖 Server Mode:</strong> Best for automation, CI/CD, headless operations, guaranteed execution<br>
+            <strong>⚙️ Auto Mode:</strong> Attempts extension first, falls back to server-side automatically
+        </div>
+        
+        <h4>Force Server-Side Execution:</h4>
+        <p>If extension issues persist, you can force server-side execution:</p>
+        <div class="code-block">
+{
+  "task": "Go to BBC News and read me the latest technology headlines",
+  "executionMode": "server"
+}
+        </div>
+        
+        <h4>Force Extension Execution:</h4>
+        <p>To specifically test extension functionality:</p>
+        <div class="code-block">
+{
+  "task": "Go to BBC News and read me the latest technology headlines", 
+  "executionMode": "extension"
 }
         </div>
     </section>

@@ -312,9 +312,20 @@ class BackgroundService {
   }
 
   async executeCommand(commandId, command) {
-    console.log('Executing command:', command.type, commandId);
+    console.log('Executing command:', command.type, 'with ID:', commandId, 'payload:', command.payload);
 
     try {
+      // Check if we have a working tab for non-navigate commands
+      if (command.type !== 'navigate' && !this.workingTabId) {
+        console.warn('No working tab established. Some commands may require navigation first.');
+        // For certain commands, we can still try to use the active tab
+        if (['get_page_elements', 'getTitle', 'screenshot'].includes(command.type)) {
+          console.log('Attempting to use active tab for command:', command.type);
+        } else {
+          throw new Error('No active tab context. Please navigate to a page first.');
+        }
+      }
+
       let result;
 
       switch (command.type) {
@@ -339,13 +350,29 @@ class BackgroundService {
         case 'scroll':
           result = await this.executeScroll(command.payload);
           break;
+        case 'get_page_elements':
+          result = await this.executeGetPageElements(command.payload);
+          break;
+        case 'getTitle':
+          result = await this.executeGetTitle(command.payload);
+          break;
+        case 'getText':
+          result = await this.executeGetText(command.payload);
+          break;
+        case 'evaluate':
+          result = await this.executeEvaluate(command.payload);
+          break;
+        case 'waitForElement':
+          result = await this.executeWaitForElement(command.payload);
+          break;
         default:
           throw new Error(`Unknown command type: ${command.type}`);
       }
 
+      console.log('Command executed successfully:', commandId, 'Result:', result);
       this.sendCommandResult(commandId, true, result);
     } catch (error) {
-      console.error('Command execution failed:', error);
+      console.error('Command execution failed:', commandId, error);
       this.sendCommandResult(commandId, false, null, error.message);
     }
   }
@@ -353,32 +380,55 @@ class BackgroundService {
   async executeNavigate(payload) {
     const { url } = payload;
     
+    console.log('Executing navigate command to:', url);
+    
     // Create a new tab for navigation instead of using the current tab
     const newTab = await chrome.tabs.create({ url, active: true });
     this.workingTabId = newTab.id; // Store the working tab ID for future commands
     
-    // Wait for navigation to complete
+    console.log('Created new tab:', newTab.id, 'for URL:', url);
+    
+    // Wait for navigation to complete with enhanced monitoring
     return new Promise((resolve) => {
+      let resolved = false;
+      
       const listener = (tabId, changeInfo, tab) => {
-        if (tabId === newTab.id && changeInfo.status === 'complete') {
+        if (tabId === newTab.id && changeInfo.status === 'complete' && !resolved) {
+          resolved = true;
           chrome.tabs.onUpdated.removeListener(listener);
-          resolve({
-            url: tab.url,
-            title: tab.title,
-            timestamp: new Date().toISOString()
-          });
+          
+          console.log('Navigation completed for tab:', tabId, 'URL:', tab.url);
+          
+          // Additional delay to ensure page is fully interactive
+          setTimeout(() => {
+            resolve({
+              url: tab.url,
+              title: tab.title,
+              tabId: tab.id,
+              timestamp: new Date().toISOString(),
+              navigationComplete: true
+            });
+          }, 1000); // Give the page time to fully load and become interactive
         }
       };
+      
       chrome.tabs.onUpdated.addListener(listener);
       
       // Timeout after 30 seconds
       setTimeout(() => {
-        chrome.tabs.onUpdated.removeListener(listener);
-        resolve({
-          url: url,
-          title: 'Navigation timeout',
-          timestamp: new Date().toISOString()
-        });
+        if (!resolved) {
+          resolved = true;
+          chrome.tabs.onUpdated.removeListener(listener);
+          console.log('Navigation timeout for tab:', newTab.id);
+          resolve({
+            url: url,
+            title: 'Navigation timeout',
+            tabId: newTab.id,
+            timestamp: new Date().toISOString(),
+            navigationComplete: false,
+            error: 'Navigation timeout after 30 seconds'
+          });
+        }
       }, 30000);
     });
   }
@@ -564,6 +614,180 @@ class BackgroundService {
         };
       },
       args: [selector, action, params]
+    });
+
+    return {
+      ...results[0].result,
+      timestamp: new Date().toISOString()
+    };
+  }
+
+  // Additional command methods for better API compatibility
+  async executeGetPageElements(payload) {
+    const tab = await this.getWorkingTab();
+    
+    const results = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: () => {
+        // Get all interactive elements on the page
+        const selectors = [
+          'a[href]', 'button', 'input', 'select', 'textarea',
+          '[onclick]', '[role="button"]', '[role="link"]',
+          'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+          '.headline', '.title', '.news-item', '[data-testid*="headline"]',
+          '.article-title', '.story-title', '.promo-heading'
+        ];
+        
+        const elements = [];
+        selectors.forEach(selector => {
+          const found = document.querySelectorAll(selector);
+          found.forEach(el => {
+            if (el.textContent && el.textContent.trim()) {
+              elements.push({
+                tagName: el.tagName.toLowerCase(),
+                text: el.textContent.trim(),
+                href: el.href || null,
+                id: el.id || null,
+                className: el.className || null,
+                selector: selector,
+                position: {
+                  x: el.offsetLeft,
+                  y: el.offsetTop,
+                  width: el.offsetWidth,
+                  height: el.offsetHeight
+                }
+              });
+            }
+          });
+        });
+        
+        return {
+          elements: elements,
+          totalCount: elements.length,
+          url: window.location.href,
+          title: document.title
+        };
+      },
+      args: []
+    });
+
+    return {
+      ...results[0].result,
+      timestamp: new Date().toISOString()
+    };
+  }
+
+  async executeGetTitle(payload) {
+    const tab = await this.getWorkingTab();
+    
+    const results = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: () => {
+        return {
+          title: document.title,
+          url: window.location.href
+        };
+      },
+      args: []
+    });
+
+    return {
+      ...results[0].result,
+      timestamp: new Date().toISOString()
+    };
+  }
+
+  async executeGetText(payload) {
+    const { selector } = payload;
+    const tab = await this.getWorkingTab();
+
+    const results = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: (selector) => {
+        const element = document.querySelector(selector);
+        if (!element) {
+          throw new Error(`Element not found: ${selector}`);
+        }
+        
+        return {
+          text: element.textContent?.trim(),
+          innerHTML: element.innerHTML,
+          selector: selector
+        };
+      },
+      args: [selector]
+    });
+
+    return {
+      ...results[0].result,
+      timestamp: new Date().toISOString()
+    };
+  }
+
+  async executeEvaluate(payload) {
+    const { script } = payload;
+    const tab = await this.getWorkingTab();
+
+    const results = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: (scriptCode) => {
+        // Safely evaluate the script
+        try {
+          return eval(scriptCode);
+        } catch (error) {
+          throw new Error(`Script evaluation failed: ${error.message}`);
+        }
+      },
+      args: [script]
+    });
+
+    return {
+      result: results[0].result,
+      script: script,
+      timestamp: new Date().toISOString()
+    };
+  }
+
+  async executeWaitForElement(payload) {
+    const { selector, timeout = 10000 } = payload;
+    const tab = await this.getWorkingTab();
+
+    const results = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: (selector, timeout) => {
+        return new Promise((resolve, reject) => {
+          const startTime = Date.now();
+          
+          const checkElement = () => {
+            const element = document.querySelector(selector);
+            if (element) {
+              resolve({
+                found: true,
+                selector: selector,
+                waitTime: Date.now() - startTime,
+                element: {
+                  tagName: element.tagName.toLowerCase(),
+                  text: element.textContent?.trim(),
+                  id: element.id || null,
+                  className: element.className || null
+                }
+              });
+            } else if (Date.now() - startTime >= timeout) {
+              resolve({
+                found: false,
+                selector: selector,
+                waitTime: timeout,
+                error: 'Element not found within timeout'
+              });
+            } else {
+              setTimeout(checkElement, 100);
+            }
+          };
+          
+          checkElement();
+        });
+      },
+      args: [selector, timeout]
     });
 
     return {
